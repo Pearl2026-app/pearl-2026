@@ -122,7 +122,12 @@ export default function EnquiryPage() {
                     </Select>
                   </label>
                 )}
-                {editable && can('ORDERS', 'create') && <ConvertEnquiry enquiry={e} />}
+                {editable && can('ORDERS', 'create') && e.type !== 'CUSTOMIZED' && <ConvertEnquiry enquiry={e} />}
+                {e.customRequest ? (
+                  <Link href={`/custom-orders/${e.customRequest.id}`} className="text-sm text-accent underline">Open the customized order</Link>
+                ) : (
+                  can('CUSTOM_ORDERS', 'create') && <Link href={`/custom-orders/new?enquiryId=${e.id}`} className="text-sm text-accent underline">Start a customized order</Link>
+                )}
               </>
             )}
           </Card>

@@ -322,6 +322,10 @@ export class OrdersService implements OnModuleInit {
         const stamp = to === 'PICKED_UP' ? { pickedUpAt: now } : to === 'OUT_FOR_DELIVERY' ? { outForDeliveryAt: now } : to === 'DELIVERED' ? { deliveredAt: now } : {};
         await tx.delivery.updateMany({ where: { orderId }, data: { status: to as 'PICKED_UP', ...stamp, ...(to === 'FAILED' || to === 'RETURNED' ? { failureReason: opts.reason } : {}) } });
       }
+      // A customized order's production stage follows dispatch and delivery.
+      if (order.type === 'CUSTOMIZED' && (to === 'PICKED_UP' || to === 'DELIVERED')) {
+        await tx.customRequest.updateMany({ where: { orderId }, data: { stage: to === 'DELIVERED' ? 'DELIVERED' : 'DISPATCHED' } });
+      }
       await tx.orderEvent.create({
         data: { orderId, actorId: user?.id ?? null, type: 'STATUS_CHANGED', fromStatus: order.status, toStatus: to, message: opts.reason ?? null },
       });
@@ -399,13 +403,21 @@ export class OrdersService implements OnModuleInit {
   async recordPayment(user: AuthUser, orderId: string, input: { method: PaymentMethod; amountPaise: number; reference?: string | null }) {
     const order = await this.find(user, orderId);
     if (order.paymentStatus === 'PAID' || order.paymentStatus === 'COD_COLLECTED') throw badRequest('ALREADY_PAID', 'This order is already paid.');
-    if (input.amountPaise !== order.totalPaise) throw badRequest('AMOUNT_MISMATCH', `The order total is ${formatINR(order.totalPaise)}.`, { amountPaise: 'Must equal the order total' });
+    // Customized orders are paid in parts (advance, then balance); other orders in full.
+    const received = await this.prisma.payment.aggregate({ where: { orderId, status: 'CAPTURED' }, _sum: { amountPaise: true } });
+    const outstanding = order.totalPaise - (received._sum.amountPaise ?? 0);
+    const partAllowed = order.type === 'CUSTOMIZED';
+    if (input.amountPaise <= 0 || input.amountPaise > outstanding || (!partAllowed && input.amountPaise !== outstanding))
+      throw badRequest('AMOUNT_MISMATCH', `The amount due is ${formatINR(outstanding)}.`, { amountPaise: partAllowed ? `Up to ${formatINR(outstanding)}` : 'Must equal the amount due' });
+    const fullyPaid = input.amountPaise === outstanding;
     await this.prisma.$transaction(async (tx) => {
       await tx.payment.create({ data: { orderId, method: input.method, provider: 'manual', amountPaise: input.amountPaise, status: 'CAPTURED', collectedById: user.id, raw: { reference: input.reference ?? null } } });
-      await tx.order.update({ where: { id: orderId }, data: { paymentStatus: order.paymentMethod === 'COD' && input.method === 'COD' ? 'COD_COLLECTED' : 'PAID' } });
-      await this.stock.convert(tx, orderId);
-      await this.issueInvoice(tx, orderId);
-      await tx.orderEvent.create({ data: { orderId, actorId: user.id, type: 'PAYMENT_UPDATED', message: `Payment of ${formatINR(input.amountPaise)} recorded (${input.method.toLowerCase()})${input.reference ? `, ref ${input.reference}` : ''}.` } });
+      if (fullyPaid) {
+        await tx.order.update({ where: { id: orderId }, data: { paymentStatus: order.paymentMethod === 'COD' && input.method === 'COD' ? 'COD_COLLECTED' : 'PAID' } });
+        await this.stock.convert(tx, orderId);
+        await this.issueInvoice(tx, orderId);
+      }
+      await tx.orderEvent.create({ data: { orderId, actorId: user.id, type: 'PAYMENT_UPDATED', message: `Payment of ${formatINR(input.amountPaise)} recorded (${input.method.toLowerCase()})${input.reference ? `, ref ${input.reference}` : ''}${fullyPaid ? '' : `; ${formatINR(outstanding - input.amountPaise)} still due`}.` } });
       await this.audit.record('Order', orderId, 'RECORD_PAYMENT', { paymentStatus: order.paymentStatus }, input, tx);
     });
     return this.find(user, orderId);

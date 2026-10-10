@@ -8,7 +8,6 @@ import { badRequest } from '../common/errors';
 export type OtpPurpose = 'CUSTOMER_LOGIN' | 'PARTNER_LOGIN' | 'STAFF_LOGIN' | 'DELIVERY_PROOF';
 
 const WINDOW_MS = 15 * 60_000;
-const MAX_PER_WINDOW = 5;
 
 @Injectable()
 export class OtpService {
@@ -42,7 +41,7 @@ export class OtpService {
     const recent = await this.prisma.otpChallenge.count({
       where: { destination: opts.destination, purpose: { startsWith: opts.purpose }, createdAt: { gte: since } },
     });
-    if (recent >= MAX_PER_WINDOW)
+    if (recent >= config().OTP_MAX_PER_WINDOW)
       throw new HttpException({ code: 'OTP_RATE_LIMIT', message: 'Too many codes requested. Please wait a few minutes.' }, HttpStatus.TOO_MANY_REQUESTS);
 
     const code = this.generate();

@@ -466,6 +466,9 @@ async function main() {
     ['OTP', 'EMAIL', 'Your Sahyadri Pearls verification code is {{code}}. It expires in 5 minutes.', 'Your verification code'],
     ['DELIVERY_OTP', 'SMS', 'Share {{code}} with our delivery partner to receive order {{orderNumber}}.'],
     ['DELIVERY_ASSIGNED', 'PUSH', 'New delivery: order {{orderNumber}}, {{area}}.', 'New delivery assigned'],
+    ['CUSTOM_STAGE', 'WHATSAPP', 'Hi {{name}}, an update on your customized {{item}}: it is now {{stage}}. {{quote}}'],
+    ['CUSTOM_STAGE', 'EMAIL', 'Dear {{name}},\n\nYour customized {{item}} is now {{stage}}. {{quote}}\n\nSahyadri Pearls', 'Your customized {{item}}: {{stage}}'],
+    ['PO_SENT', 'EMAIL', 'Dear {{manufacturer}},\n\nPlease find purchase order {{number}} (due {{dueDate}}): {{pdfUrl}}\nKindly confirm acceptance.\n\nSahyadri Pearls', 'Purchase order {{number}}'],
     ['REFERRAL_REWARD', 'EMAIL', 'Hi {{name}},\n\nYour referral reward is ready. Use code {{code}} for {{amount}} off your next order.\n\nSahyadri Pearls', 'Your referral reward'],
   ];
   for (const [key, channel, body, subject] of templates) {

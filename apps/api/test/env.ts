@@ -18,5 +18,7 @@ Object.assign(process.env, {
   API_URL: 'http://api.test',
   STORAGE_LOCAL_DIR: process.env.STORAGE_LOCAL_DIR ?? mkdtempSync(join(tmpdir(), 'sp-test-storage-')),
   PAYMENT_PROVIDER: 'sandbox',
+  // Test files run in parallel and each signs in the seeded accounts; the limit itself is tested in auth.test.ts.
+  OTP_MAX_PER_WINDOW: '30',
 });
 delete process.env.DEV_FIXED_OTP;

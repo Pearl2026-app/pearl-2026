@@ -32,7 +32,9 @@ export async function api<T = unknown>(path: string, init: RequestInit & { json?
     credentials: 'include',
   });
   if (res.status === 401 && retry && !path.startsWith('/auth/')) {
-    if (await refresh()) return api<T>(path, init, false);
+    // sp_s is a script-readable hint (no secret) that a session may exist; without it there is nothing to refresh.
+    const mayHaveSession = typeof document !== 'undefined' && /(?:^|; )sp_s=1/.test(document.cookie);
+    if (mayHaveSession && (await refresh())) return api<T>(path, init, false);
     if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
       window.location.href = `/login?next=${encodeURIComponent(window.location.pathname + window.location.search)}`;
     }

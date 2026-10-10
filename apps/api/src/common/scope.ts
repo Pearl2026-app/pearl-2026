@@ -87,6 +87,18 @@ export function customRequestScope(u: AuthUser): Prisma.CustomRequestWhereInput 
   }
 }
 
+export function purchaseOrderScope(u: AuthUser): Prisma.PurchaseOrderWhereInput {
+  switch (u.role) {
+    case 'SUPER_ADMIN':
+    case 'STAFF':
+      return {};
+    case 'CITY_MANAGER':
+      return { order: { cityId: u.cityId ?? '__none__' } };
+    default:
+      return IMPOSSIBLE;
+  }
+}
+
 export function deliveryPartnerScope(u: AuthUser): Prisma.DeliveryPartnerWhereInput {
   switch (u.role) {
     case 'SUPER_ADMIN':

@@ -25,6 +25,14 @@ describe('staff login (email + password + OTP)', () => {
     expect(me.body.permissions.SETTINGS).toContain('edit');
   });
 
+  it('limits how many codes one number may request in the window', async () => {
+    const phone = '+919844400001';
+    const limit = Number(process.env.OTP_MAX_PER_WINDOW);
+    for (let i = 0; i < limit; i++) await http().post(api('/auth/otp/request')).send({ phone }).expect(200);
+    const r = await http().post(api('/auth/otp/request')).send({ phone }).expect(429);
+    expect(r.body.code).toBe('OTP_RATE_LIMIT');
+  });
+
   it('locks a code after too many wrong attempts and never accepts it twice', async () => {
     const login = await http().post(api('/auth/staff/login')).send({ email: LOGINS.staff, password: PASSWORD }).expect(200);
     await drain();

@@ -1,0 +1,70 @@
+'use client';
+import Link from 'next/link';
+import { Suspense, useState } from 'react';
+import { Input, Select } from '@sahyadri/ui';
+import { DataTable, Pagination } from '@/components/data-table';
+import { useRefOptions } from '@/components/fields';
+import { PageHeader } from '@/components/shell';
+import { qs } from '@/lib/api';
+import { PO_STATUSES } from '@/lib/custom';
+import { date, humanize, inr } from '@/lib/format';
+import { useCan } from '@/lib/session';
+import { useList, useListParams } from '@/lib/use-list';
+
+interface P { id: string; number: string; createdAt: string; dueDate: string; status: string; quantity: number; agreedCostPaise: number; manufacturer: { name: string }; order: { id: string; number: string } | null }
+
+function List() {
+  const { params, set } = useListParams();
+  const { data, isLoading } = useList<P>('/admin/purchase-orders', params);
+  const makers = useRefOptions({ path: '/admin/manufacturers' });
+  const can = useCan();
+  const [q, setQ] = useState(params.q ?? '');
+  return (
+    <div>
+      <PageHeader
+        title="Purchase orders"
+        actions={
+          <>
+            <a className="inline-flex min-h-9 items-center rounded-sm border border-line bg-surface px-3 text-sm" href={`/api/v1/admin/purchase-orders${qs({ ...params, format: 'csv', page: undefined, pageSize: undefined })}`}>Export CSV</a>
+            {can('PURCHASE_ORDERS', 'create') && <Link href="/purchase-orders/new" className="inline-flex min-h-9 items-center rounded-sm bg-accent px-3 text-sm font-medium text-white">New purchase order</Link>}
+          </>
+        }
+      />
+      <form className="mb-3 flex flex-wrap gap-2" onSubmit={(e) => { e.preventDefault(); set({ q }); }}>
+        <Input aria-label="Search" placeholder="PO, order no. or specification" value={q} onChange={(e) => setQ(e.target.value)} className="max-w-xs" />
+        <Select aria-label="Status" className="max-w-44" value={params.status ?? ''} onChange={(e) => set({ status: e.target.value || undefined })}>
+          <option value="">All statuses</option>
+          {PO_STATUSES.map((s) => <option key={s} value={s}>{humanize(s)}</option>)}
+        </Select>
+        <Select aria-label="Manufacturer" className="max-w-52" value={params.manufacturerId ?? ''} onChange={(e) => set({ manufacturerId: e.target.value || undefined })}>
+          <option value="">All manufacturers</option>
+          {makers.data?.items.map((m) => <option key={String(m.id)} value={String(m.id)}>{String(m.name)}</option>)}
+        </Select>
+      </form>
+      <DataTable
+        rows={data?.items ?? []}
+        loading={isLoading}
+        rowHref={(r) => `/purchase-orders/${r.id}`}
+        empty="No purchase orders"
+        columns={[
+          { key: 'number', label: 'PO' },
+          { key: 'createdAt', label: 'Date', render: (r) => date(r.createdAt) },
+          { key: 'manufacturer', label: 'Manufacturer', render: (r) => r.manufacturer.name },
+          { key: 'order', label: 'Order', render: (r) => r.order?.number ?? '—' },
+          { key: 'agreedCostPaise', label: 'Agreed cost', render: (r) => inr(r.agreedCostPaise) },
+          { key: 'dueDate', label: 'Due', render: (r) => date(r.dueDate) },
+          { key: 'status', label: 'Status', render: (r) => humanize(r.status) },
+        ]}
+      />
+      {data && <Pagination page={data.page} pageSize={data.pageSize} total={data.total} onPage={(p) => set({ page: String(p) })} />}
+    </div>
+  );
+}
+
+export default function PurchaseOrdersPage() {
+  return (
+    <Suspense>
+      <List />
+    </Suspense>
+  );
+}

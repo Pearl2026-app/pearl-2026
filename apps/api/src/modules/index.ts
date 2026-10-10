@@ -8,5 +8,6 @@ import { PublicModule } from './public/public.module';
 import { EnquiriesModule } from './enquiries/enquiries.module';
 import { OrdersModule } from './orders/orders.module';
 import { DeliveryModule } from './delivery/delivery.module';
+import { CustomModule } from './custom/custom.module';
 
-export const FEATURE_MODULES: any[] = [NetworkModule, CatalogueModule, ContentAdminModule, UsersModule, SettingsModule, PublicModule, EnquiriesModule, OrdersModule, DeliveryModule];
+export const FEATURE_MODULES: any[] = [NetworkModule, CatalogueModule, ContentAdminModule, UsersModule, SettingsModule, PublicModule, EnquiriesModule, OrdersModule, DeliveryModule, CustomModule];

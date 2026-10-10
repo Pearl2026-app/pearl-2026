@@ -27,6 +27,8 @@ const schema = z.object({
   APP_SECRET: z.string().min(16).optional(),
   OTP_TTL_SECONDS: z.coerce.number().default(300),
   OTP_MAX_ATTEMPTS: z.coerce.number().default(5),
+  /** Codes one phone or email may request per 15 minutes. */
+  OTP_MAX_PER_WINDOW: z.coerce.number().int().min(1).default(5),
   DEV_FIXED_OTP: z.string().regex(/^\d{6}$/).optional(),
   COOKIE_SECURE: bool.optional(),
   COOKIE_DOMAIN: z.string().optional(),
