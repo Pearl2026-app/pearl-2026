@@ -1,0 +1,16 @@
+@import 'tailwindcss';
+@import '@sahyadri/ui/theme.css';
+@source '../../../packages/ui/src';
+
+html {
+  background: var(--color-bg);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+body {
+  min-height: 100vh;
+}
+table {
+  border-collapse: collapse;
+}
