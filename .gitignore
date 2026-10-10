@@ -12,3 +12,5 @@ coverage/
 !.env.example
 .DS_Store
 uploads/
+packages/db/.env
+apps/*/.env.local

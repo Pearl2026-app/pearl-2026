@@ -1,5 +1,4 @@
-// Sahyadri Pearls — Phase 0 DRAFT schema, for review.
-// No migrations are generated from this file until Phase 1 is approved.
+// Sahyadri Pearls database schema. Every change needs a new migration (never edit an applied one).
 //
 // Conventions (see docs/DATA-MODEL.md):
 // - Every id is a cuid string. Every table has createdAt / updatedAt.
@@ -11,7 +10,8 @@
 // - Almost every business record carries cityId: city is the main permission and report boundary.
 
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "debian-openssl-3.0.x", "linux-musl-openssl-3.0.x"]
 }
 
 datasource db {
@@ -697,12 +697,18 @@ model Product {
   stockType  StockType @default(UNIQUE)
   quantity   Int       @default(1)
   outOfStock Boolean   @default(false) // manual switch
+  isFeatured Boolean   @default(false) // shown in Featured Pieces on the home page
+  sortOrder  Int       @default(0)
   soldAt     DateTime? // set when a UNIQUE piece is sold
 
   videoUrl       String?
+  /// Vendor edits to a live product wait here until an admin approves them
+  pendingChanges Json?
   seoTitle       String?
   seoDescription String?
   publishedAt    DateTime?
+  /// Generated full-text column (name, SKU, description, shape, colour); see migration fts_and_guards
+  searchVector   Unsupported("tsvector")?
   archivedAt     DateTime?
 
   images        ProductImage[]
@@ -720,8 +726,8 @@ model Product {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  // Full-text search index (name, sku, description) is added in a raw SQL migration in Phase 2.
 
+  @@index([searchVector], type: Gin)
   @@index([status, categoryId])
   @@index([farmId])
   @@index([vendorId])
@@ -744,6 +750,8 @@ model ProductImage {
   product   Product          @relation(fields: [productId], references: [id])
   kind      ProductImageKind @default(CAROUSEL)
   url       String
+  /// Resized variants: { "400": url, "800": url, ... }
+  variants  Json?
   alt       String?
   width     Int?
   height    Int?
@@ -817,6 +825,9 @@ model Cart {
   lastActivityAt   DateTime  @default(now())
   reminderSentAt   DateTime?
   convertedOrderId String?   @unique
+  /// Captured at checkout so a guest cart can get a reminder
+  contactPhone     String?
+  contactName      String?
 
   items CartItem[]
 
@@ -862,6 +873,8 @@ model StockHold {
   orderId        String
   order          Order           @relation(fields: [orderId], references: [id])
   quantity       Int             @default(1)
+  /// true for a UNIQUE product; a partial unique index allows one ACTIVE/CONVERTED hold per unique piece
+  isUnique       Boolean         @default(false)
   status         StockHoldStatus @default(ACTIVE)
   expiresAt      DateTime
   releasedReason String?
@@ -888,6 +901,8 @@ model Coupon {
   perCustomerLimit Int?         @default(1)
   isActive         Boolean      @default(true)
   showOnOffersPage Boolean      @default(false)
+  /// Personal coupon (e.g. a referral reward) usable only by this customer
+  customerId       String?
 
   categories  CouponCategory[]
   products    CouponProduct[]
@@ -895,6 +910,8 @@ model Coupon {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([customerId])
 }
 
 model CouponCategory {
@@ -989,6 +1006,9 @@ model Order {
 
   couponCode   String?
   customerNote String?
+  /// Where the order came from: web, app, whatsapp, instagram, phone, utm source …
+  channel      String?
+  attribution  Json?
   internalNote String?
   /// For enquiry-converted orders
   enquiryId    String?  @unique
