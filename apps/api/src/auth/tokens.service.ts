@@ -16,6 +16,8 @@ const sha256 = (s: string) => createHash('sha256').update(s).digest('hex');
 
 export const ACCESS_COOKIE = 'sp_at';
 export const REFRESH_COOKIE = 'sp_rt';
+/** Readable by scripts and holds no secret: only tells the browser a session may exist, so guests skip /me and refresh calls. */
+export const SESSION_HINT_COOKIE = 'sp_s';
 
 @Injectable()
 export class TokensService {
@@ -78,11 +80,13 @@ export class TokensService {
     const base = { httpOnly: true, secure: c.cookieSecure, sameSite: 'lax' as const, domain: c.COOKIE_DOMAIN };
     res.cookie(ACCESS_COOKIE, tokens.accessToken, { ...base, path: '/', maxAge: 15 * 60_000 });
     res.cookie(REFRESH_COOKIE, tokens.refreshToken, { ...base, path: '/api/v1/auth', maxAge: c.JWT_REFRESH_TTL_DAYS * 86400_000 });
+    res.cookie(SESSION_HINT_COOKIE, '1', { ...base, httpOnly: false, path: '/', maxAge: c.JWT_REFRESH_TTL_DAYS * 86400_000 });
   }
 
   clearCookies(res: Response): void {
     const c = config();
     res.clearCookie(ACCESS_COOKIE, { path: '/', domain: c.COOKIE_DOMAIN });
     res.clearCookie(REFRESH_COOKIE, { path: '/api/v1/auth', domain: c.COOKIE_DOMAIN });
+    res.clearCookie(SESSION_HINT_COOKIE, { path: '/', domain: c.COOKIE_DOMAIN });
   }
 }

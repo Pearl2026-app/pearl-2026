@@ -48,6 +48,8 @@ export class JobsService implements OnModuleDestroy {
   }
 
   async add(name: string, data: unknown = {}, opts: { delayMs?: number; jobId?: string; attempts?: number } = {}): Promise<void> {
+    // BullMQ rejects ':' in custom ids; check in every mode so tests catch it too.
+    if (opts.jobId?.includes(':')) throw new Error(`Job id must not contain ':' (${opts.jobId})`);
     if (this.mode === 'inline') {
       if (opts.delayMs && opts.delayMs > 0) {
         this.delayed.push({ name, data, runAt: Date.now() + opts.delayMs });

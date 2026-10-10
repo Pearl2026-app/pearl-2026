@@ -6,6 +6,9 @@ export class ApiError extends Error {
   }
 }
 
+/** Set by the API next to the httpOnly session cookies; holds no secret. */
+export const mayHaveSession = () => typeof document !== 'undefined' && /(?:^|; )sp_s=1/.test(document.cookie);
+
 let refreshing: Promise<boolean> | null = null;
 const refresh = () =>
   (refreshing ??= fetch('/api/v1/auth/refresh', { method: 'POST', headers: { 'X-SP-Client': 'web', 'Content-Type': 'application/json' }, body: '{}' })
@@ -25,7 +28,7 @@ export async function api<T = unknown>(path: string, init: RequestInit & { json?
       headers: { 'X-SP-Client': 'web', ...(json !== undefined ? { 'Content-Type': 'application/json' } : {}), ...headers },
       credentials: 'include',
     });
-    if (res.status === 401 && retry && !path.startsWith('/auth/')) {
+    if (res.status === 401 && retry && !path.startsWith('/auth/') && mayHaveSession()) {
       if (await refresh()) return api<T>(path, init, false);
     }
     if (!res.ok) {

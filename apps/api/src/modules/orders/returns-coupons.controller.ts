@@ -246,7 +246,7 @@ export class AfterDeliveryService implements OnModuleInit {
 
   async delivered(orderId: string) {
     const rr = await this.settings.get('review_request');
-    if (rr.enabled) await this.jobs.add('reviews.request', { orderId }, { delayMs: rr.delayDays * 86400_000, jobId: `review:${orderId}` });
+    if (rr.enabled) await this.jobs.add('reviews.request', { orderId }, { delayMs: rr.delayDays * 86400_000, jobId: `review-${orderId}` });
     await this.rewardReferral(orderId);
   }
 

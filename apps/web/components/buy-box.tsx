@@ -1,7 +1,7 @@
 'use client';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { cx } from '@sahyadri/ui';
 import { api, errorText } from '@/lib/api';
 import type { ProductDetail } from '@/lib/types';
@@ -70,6 +70,9 @@ export function WishlistButton({ productId }: { productId: string }) {
   const { me } = useSession();
   const [saved, setSaved] = useState(false);
   const [busy, setBusy] = useState(false);
+  useEffect(() => {
+    if (me) api<string[]>('/me/wishlist/ids').then((ids) => setSaved(ids.includes(productId))).catch(() => undefined);
+  }, [me, productId]);
   if (!me)
     return (
       <Link href={`/login?next=${encodeURIComponent(typeof window !== 'undefined' ? location.pathname : '/')}`} className="inline-flex min-h-11 items-center gap-2 text-sm text-muted hover:text-accent">

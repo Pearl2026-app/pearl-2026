@@ -42,3 +42,22 @@ Note: the three source PDFs were not available when Phase 0 was prepared. Decisi
 | D27 | E2E and load tools | Playwright for end-to-end tests; k6 for load. Vitest for unit tests; Jest via Nest for API integration tests against a real Postgres in Docker. | Standard tooling. |
 | D28 | Languages | English only at launch; message templates carry a `language` field so Marathi/Hindi can be added. | Not requested in the brief. |
 | D29 | White-label | No agency or developer names in code, metadata, app listings or emails. Footer text: "Developed by Sahyadri Pearls" and "© {year} Sahyadri Pearls. All Rights Reserved.", with the year computed. | Rule 10. |
+
+## Made during the build
+
+| # | Topic | Decision | Why |
+|---|---|---|---|
+| D30 | SPEC.md | The prompt is saved from Part 1 onward with a reconciliation table; the "how to use" preamble and author line are left out. | White-label rule (D29); the build instructions live in STATUS. |
+| D31 | Versions | Node 22, pnpm 9, Next 15.5, NestJS 11, Prisma 6, zod 3, Tailwind 4, Vitest 3 (API tests use Vitest with SWC, not Jest as D27 said). | Current stable releases; one test runner for the whole repo. |
+| D32 | Delivery GST | A delivery charge is taxed at the highest GST rate among the order's lines (composite supply). | GST rule for composite supplies; the cautious choice. **Flag: owner's CA to confirm.** |
+| D33 | Sandbox payments | The sandbox provider refuses to start when `NODE_ENV=production`. Without live keys, production offers COD only. | No fake "paid" orders in production. |
+| D34 | Test database | Each test run migrates and seeds its own schema in `sahyadri_test` and drops only that schema afterwards. | Never wipes a database that may hold data. |
+| D35 | Logins | Only Super Admin creates or changes staff and partner logins and grants. | Permissions are the most sensitive setting. **Flag.** |
+| D36 | Images on the web | Plain `<img srcset>` over the API's pre-built WebP variants instead of `next/image`. | Variants already exist; avoids a second optimiser. |
+| D37 | Page rendering | Storefront pages render per request with a short in-memory cache of API reads. | Stock and prices must be fresh (a sold piece must not look available). |
+| D38 | Cost fields | Cost and margin fields are hidden from Franchise and City Manager (UI and CSV). | Commercially sensitive. **Flag.** |
+| D39 | COD invoices | A COD order's invoice is issued when the cash is recorded as collected; online orders get it on payment capture. | The invoice follows the money. |
+| D40 | Price on request | A price-on-request piece cannot be added to the cart; it is sold through an enquiry or a manual order, where head office (Super Admin/Staff) enters the agreed price. City Managers and Franchises cannot change prices. | Prices are a money decision. **Flag.** |
+| D41 | Repeat checkout | Checking out the same cart again releases that cart's earlier unpaid online order (marked Failed). A payment that still arrives for it is refunded automatically (D15). | Customers are not blocked by their own hold; Rule 2 still holds. |
+| D42 | Session hint cookie | Besides the httpOnly token cookies, the API sets `sp_s=1` (readable by scripts, no secret) so the site only asks for the session when one may exist. | Fewer requests and no console noise for guests. |
+

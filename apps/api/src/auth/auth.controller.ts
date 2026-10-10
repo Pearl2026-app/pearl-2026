@@ -97,8 +97,14 @@ export class AuthController {
   @HttpCode(200)
   async refresh(@Body() dto: RefreshDto, @Req() req: Request, @Res({ passthrough: true }) res: Response) {
     const token = dto.refreshToken ?? (req as Request & { cookies?: Record<string, string> }).cookies?.[REFRESH_COOKIE];
-    if (!token) throw badRequest('REFRESH_INVALID', 'Please sign in again.');
-    return this.respond(req, res, await this.auth.refresh(token));
+    try {
+      if (!token) throw badRequest('REFRESH_INVALID', 'Please sign in again.');
+      return this.respond(req, res, await this.auth.refresh(token));
+    } catch (e) {
+      // A dead session clears its cookies, so the browser stops retrying.
+      if (req.headers['x-sp-client']) this.tokens.clearCookies(res);
+      throw e;
+    }
   }
 
   @Public()

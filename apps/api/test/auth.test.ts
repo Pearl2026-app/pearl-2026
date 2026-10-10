@@ -98,5 +98,13 @@ describe('sessions', () => {
     await http().get(api('/me')).set('Cookie', at!).expect(200);
     await http().post(api('/auth/device-token')).set('Cookie', at!).send({ token: 'x'.repeat(20), platform: 'WEB', appKind: 'customer' }).expect(403);
     await http().post(api('/auth/device-token')).set('Cookie', at!).set('X-SP-Client', 'web').send({ token: 'x'.repeat(20), platform: 'WEB', appKind: 'customer' }).expect(200);
+    // The script-readable hint holds no token, and a dead refresh clears every session cookie.
+    const hint = cookies.find((c) => c.startsWith('sp_s='))!;
+    expect(hint).toMatch(/^sp_s=1;/);
+    expect(hint).not.toMatch(/HttpOnly/i);
+    const dead = await http().post(api('/auth/refresh')).set('X-SP-Client', 'web').set('Cookie', 'sp_rt=not-a-token').send({}).expect(400);
+    const cleared = ([] as string[]).concat(dead.headers['set-cookie'] ?? []).join(';');
+    expect(cleared).toMatch(/sp_s=;/);
+    expect(cleared).toMatch(/sp_rt=;/);
   });
 });

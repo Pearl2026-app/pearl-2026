@@ -164,7 +164,7 @@ export function ResourceForm<T extends { id: string }>({ def, id, children }: { 
   return (
     <div className="max-w-4xl">
       <PageHeader
-        title={isNew ? `New ${def.singular.toLowerCase()}` : String((row as Record<string, unknown>)?.name ?? (row as Record<string, unknown>)?.title ?? def.singular)}
+        title={isNew ? `New ${def.singular.toLowerCase()}` : String((row as Record<string, unknown>)?.name ?? (row as Record<string, unknown>)?.title ?? (row as Record<string, unknown>)?.code ?? def.singular)}
         description={
           <Link href={`/${def.key}`} className="text-accent hover:underline">
             ← {def.title}

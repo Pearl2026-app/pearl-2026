@@ -1,6 +1,6 @@
 'use client';
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
-import { api } from '@/lib/api';
+import { api, mayHaveSession } from '@/lib/api';
 import { flushPendingEnquiries } from '@/lib/enquiry';
 
 export interface Me {
@@ -28,7 +28,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const [cartCount, setCartCount] = useState(0);
   const refresh = useCallback(async () => {
     const [m, c] = await Promise.all([
-      api<Me>('/me').catch(() => null),
+      mayHaveSession() ? api<Me>('/me').catch(() => null) : Promise.resolve(null),
       api<{ count: number }>('/cart/count').catch(() => ({ count: 0 })),
     ]);
     setMe(m && m.role === 'CUSTOMER' ? m : null);

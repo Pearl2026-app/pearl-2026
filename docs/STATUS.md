@@ -14,7 +14,7 @@ Resume rule: read [SPEC.md](SPEC.md) and this file, then continue from the first
 - GSTIN, legal name and registered address for invoices (Settings → Store).
 
 ## Flagged for owner review (money, permissions, deletion)
-See [DECISIONS.md](DECISIONS.md) and [OPEN-QUESTIONS.md](OPEN-QUESTIONS.md). Cautious defaults were taken; items are listed there.
+See [DECISIONS.md](DECISIONS.md) and [OPEN-QUESTIONS.md](OPEN-QUESTIONS.md). Cautious defaults were taken. Flagged so far: D32 (GST on delivery), D33 (no sandbox in production), D35 (only Super Admin manages logins), D38 (cost fields hidden from partners), D40 (only head office sets agreed prices), D15/D41 (automatic refunds of late payments).
 
 ## Checklist
 
@@ -49,14 +49,19 @@ Notes:
 - [ ] Mobile Lighthouse ≥ 90 measurement → Phase 6 (pages are server-rendered with ~106 kB JS, lazy images and pre-sized WebP variants)
 - [ ] Ring Finder page → Phase 4 (per SPEC phase list)
 
-### Phase 3 — Commerce
-- [ ] Cart (guest + merge), coupons
-- [ ] Checkout, stock holds, COD, payment provider + verified webhook
-- [ ] Orders: state machine, timeline, manual + enquiry orders, invoice PDF
-- [ ] Customer account (orders, addresses, wishlist share, referral, returns), tracking
-- [ ] Notifications on status change (WhatsApp/email/push with fallbacks)
-- [ ] Returns, refunds; referral rewards
-- [ ] Race test, webhook tests, e2e browse→cart→pay→track
+### Phase 3 — Commerce ✅ (tag phase-3)
+- [x] Cart (guest cookie, merge into the account on login, server totals), coupons (rules, limits, personal coupons)
+- [x] Checkout, 15-minute stock holds (row locks + partial unique index), COD with limit, sandbox/Razorpay provider, signature-verified idempotent webhook
+- [x] Orders: state machine per role, timeline, manual orders (agreed price for price-on-request pieces), one-click enquiry conversion, GST invoice PDF (CGST/SGST or IGST)
+- [x] Customer account (profile, orders, addresses, wishlist + share, referral, returns, reviews), public tracking by signed link
+- [x] Notifications on status change (logged first, then sent via WhatsApp/email/push with fallbacks)
+- [x] Returns and cancellations queue, refunds through the gateway, COD reconciliation, referral rewards and review requests after delivery
+- [x] Admin: orders list/filters/CSV, order detail, new manual order, enquiry conversion, payments + COD reconcile, returns, coupons with usage
+- [x] Race test (6 parallel checkouts → one order), webhook tests (bad signature, duplicate, failed, late payment → refund), 69 API tests
+- [x] Browser check (Playwright, local): product → cart → checkout → sandbox payment → confirmation → invoice; admin order handling, manual order, enquiry conversion. A committed Playwright suite is part of Phase 6.
+
+Notes:
+- Found in the browser check and fixed: BullMQ rejects `:` in job ids (inline test mode did not; ids are now checked in every mode); the API started its worker before modules registered their jobs (the per-minute hold sweep was not scheduled); checking out the same cart twice was blocked by the customer's own earlier hold (the earlier unpaid order is now released); guests made needless `/me` and refresh calls (a script-readable `sp_s=1` hint cookie, holding no secret, now gates them).
 
 ### Phase 4 — Operations
 - [ ] Partner panels (City Manager, Vendor, Franchise, Delivery) + delivery proof + COD

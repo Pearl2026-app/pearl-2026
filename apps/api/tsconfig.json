@@ -6,6 +6,7 @@
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
     "strictPropertyInitialization": false,
+    "declaration": false,
     "types": ["node", "multer"]
   },
   "include": ["src", "test"]

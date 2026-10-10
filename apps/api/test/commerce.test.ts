@@ -193,6 +193,18 @@ describe('payment webhooks (rule 5)', () => {
     expect((await guestCheckout(piece.id, 'COD', '9811100010')).res.status).toBe(201); // available again
   });
 
+  it('lets the same cart check out again: the earlier unpaid order releases its piece', async () => {
+    const piece = await uniquePiece('Retry Ring');
+    const { agent: a, res: first } = await guestCheckout(piece.id, 'ONLINE', '9811100031');
+    expect(first.status).toBe(201);
+    const again = await a.post(api('/checkout')).send({ contact: { name: 'Guest Buyer', phone: '9811100031' }, address: { ...ADDRESS, phone: '9811100031' }, cityId: puneId, paymentMethod: 'ONLINE' });
+    expect(again.status).toBe(201);
+    expect((await db.order.findUniqueOrThrow({ where: { id: first.body.order.id } })).status).toBe('FAILED');
+    expect(await db.stockHold.count({ where: { productId: piece.id, status: 'ACTIVE' } })).toBe(1);
+    // A different buyer is still blocked by the live hold.
+    expect((await guestCheckout(piece.id, 'COD', '9811100032')).res.status).toBe(409);
+  });
+
   it('expires an unpaid hold after 15 minutes, and refunds a payment that arrives too late', async () => {
     const piece = await uniquePiece('Late Ring');
     const { res } = await guestCheckout(piece.id, 'ONLINE', '9811100011');

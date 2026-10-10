@@ -139,6 +139,20 @@ export class StockService implements OnModuleInit {
     }
   }
 
+  /**
+   * The same cart checked out again before paying: the earlier unpaid order gives its pieces back,
+   * otherwise the customer would be blocked by their own hold. A late payment on it is refunded automatically.
+   */
+  async supersede(orderId: string) {
+    await this.prisma.$transaction(async (tx) => {
+      const order = await tx.order.findUnique({ where: { id: orderId } });
+      if (!order || order.status !== 'PLACED' || order.paymentStatus !== 'PENDING') return;
+      await this.release(tx, orderId, 'superseded');
+      await tx.order.update({ where: { id: orderId }, data: { status: 'FAILED', paymentStatus: 'FAILED' } });
+      await tx.orderEvent.create({ data: { orderId, type: 'STATUS_CHANGED', fromStatus: 'PLACED', toStatus: 'FAILED', message: 'Replaced by a new checkout from the same cart; the pieces were released.' } });
+    });
+  }
+
   /** Background sweep (every minute) and per-order delayed job. Also safe to call anytime. */
   async expireHolds(orderId?: string): Promise<number> {
     const due = await this.prisma.stockHold.findMany({
@@ -157,6 +171,6 @@ export class StockService implements OnModuleInit {
   }
 
   scheduleExpiry(orderId: string) {
-    return this.jobs.add('stock.expire', { orderId }, { delayMs: HOLD_MINUTES * 60_000 + 5_000, jobId: `expire:${orderId}` });
+    return this.jobs.add('stock.expire', { orderId }, { delayMs: HOLD_MINUTES * 60_000 + 5_000, jobId: `expire-${orderId}` });
   }
 }

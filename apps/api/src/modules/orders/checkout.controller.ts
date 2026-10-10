@@ -16,6 +16,7 @@ import { CART_COOKIE, CartService } from './cart.service';
 import { InvoiceService } from './invoice.service';
 import { OrdersService } from './orders.service';
 import { PaymentsService } from './payments.service';
+import { StockService } from './stock.service';
 
 const cartToken = (req: Request) => ((req.headers['x-cart-token'] as string | undefined) ?? (req as Request & { cookies?: Record<string, string> }).cookies?.[CART_COOKIE] ?? null);
 
@@ -129,6 +130,7 @@ export class CheckoutController {
     private readonly payments: PaymentsService,
     private readonly settings: SettingsService,
     private readonly invoices: InvoiceService,
+    private readonly stock: StockService,
   ) {}
 
   /** Lightweight total for the checkout page as the customer picks a city (server-computed). */
@@ -172,6 +174,9 @@ export class CheckoutController {
       address = { ...saved, label: saved.label ?? undefined };
     }
     if (!address) throw badRequest('ADDRESS_REQUIRED', 'Add a delivery address.', { address: 'Required' });
+
+    const earlier = await this.prisma.order.findMany({ where: { source: 'CHECKOUT', status: 'PLACED', paymentStatus: 'PENDING', paymentMethod: 'ONLINE', attribution: { path: ['cartId'], equals: cart.id } }, select: { id: true } });
+    for (const o of earlier) await this.stock.supersede(o.id);
 
     const order = await this.orders.create({
       source: 'CHECKOUT',
