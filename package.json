@@ -1,7 +1,7 @@
 {
   "name": "sahyadri-pearls",
   "private": true,
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Sahyadri Pearls storefront, business platform and mobile apps",
   "packageManager": "pnpm@9.12.0",
   "engines": {
@@ -12,9 +12,21 @@
     "dev": "turbo run dev",
     "lint": "turbo run lint",
     "test": "turbo run test",
-    "typecheck": "turbo run typecheck"
+    "typecheck": "turbo run typecheck",
+    "db:generate": "pnpm --filter @sahyadri/db generate",
+    "db:migrate": "pnpm --filter @sahyadri/db migrate:deploy",
+    "db:seed": "pnpm --filter @sahyadri/db seed",
+    "format": "prettier --write ."
   },
   "devDependencies": {
-    "turbo": "^2.1.3"
+    "@eslint/js": "^9.39.0",
+    "eslint": "^9.39.5",
+    "prettier": "^3.9.10",
+    "turbo": "^2.11.7",
+    "typescript": "~5.9.3",
+    "typescript-eslint": "^8.71.1"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": ["@prisma/client", "@prisma/engines", "prisma", "sharp", "@swc/core", "esbuild"]
   }
 }
