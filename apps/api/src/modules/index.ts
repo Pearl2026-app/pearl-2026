@@ -6,5 +6,6 @@ import { SettingsModule } from './settings/settings.module';
 import { UsersModule } from './users/users.module';
 import { PublicModule } from './public/public.module';
 import { EnquiriesModule } from './enquiries/enquiries.module';
+import { OrdersModule } from './orders/orders.module';
 
-export const FEATURE_MODULES: any[] = [NetworkModule, CatalogueModule, ContentAdminModule, UsersModule, SettingsModule, PublicModule, EnquiriesModule];
+export const FEATURE_MODULES: any[] = [NetworkModule, CatalogueModule, ContentAdminModule, UsersModule, SettingsModule, PublicModule, EnquiriesModule, OrdersModule];

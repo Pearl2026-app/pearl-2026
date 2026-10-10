@@ -168,7 +168,9 @@ describe('enquiry capture (rule 3)', () => {
 describe('enquiry inbox scope', () => {
   let puneEnquiry: string;
   beforeAll(async () => {
-    puneEnquiry = (await db.enquiry.findFirstOrThrow({ where: { city: { slug: 'pune' }, franchise: { isNot: null } } })).id;
+    const p = await db.product.findFirstOrThrow({ where: { slug: 'black-tide-ring' } });
+    const r = await http().post(api('/enquiries')).send({ clientId: randomUUID(), type: 'PRODUCT', productId: p.id, citySlug: 'pune', phone: '9876500099', name: 'Inbox Test' }).expect(201);
+    puneEnquiry = r.body.id;
   });
 
   it('shows Pune enquiries to Pune staff and the assigned franchise only', async () => {

@@ -1,3 +1,4 @@
+import { limit } from '../../config/config';
 import { Body, Controller, Get, HttpCode, Module, Param, Patch, Post, Query, Res, UploadedFiles, UseInterceptors } from '@nestjs/common';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { ApiConsumes, ApiTags } from '@nestjs/swagger';
@@ -72,7 +73,7 @@ class PublicEnquiriesController {
 
   @Public()
   @Post()
-  @Throttle({ default: { limit: 30, ttl: 60_000 } })
+  @Throttle({ default: { limit: limit(30), ttl: 60_000 } })
   create(@CurrentUser() user: AuthUser | null, @Body(new ZodValidationPipe(enquiryInput)) dto: z.infer<typeof enquiryInput>) {
     return this.enquiries.create(dto, user);
   }
@@ -80,7 +81,7 @@ class PublicEnquiriesController {
   /** Customized Jewellery form: creates a customized enquiry plus its request, with reference images. */
   @Public()
   @Post('custom')
-  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  @Throttle({ default: { limit: limit(10), ttl: 60_000 } })
   @ApiConsumes('multipart/form-data')
   @UseInterceptors(FilesInterceptor('images', 6, { limits: { fileSize: 15 * 1024 * 1024, files: 6 } }))
   async custom(@CurrentUser() user: AuthUser | null, @UploadedFiles() files: Express.Multer.File[] = [], @Body() body: Record<string, string>) {

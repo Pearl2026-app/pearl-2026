@@ -98,3 +98,19 @@ export async function tokenFor(who: Who): Promise<string> {
 }
 
 export const bearer = (t: string) => ({ Authorization: `Bearer ${t}` });
+
+/** A client that keeps cookies (guest cart). */
+export function agent() {
+  if (!app) throw new Error('call getApp() first');
+  return request.agent(app.getHttpServer());
+}
+
+export const ADDRESS = {
+  name: 'Asha Patil',
+  phone: '9800000007',
+  line1: '12 Prabhat Road',
+  area: 'Erandwane',
+  cityName: 'Pune',
+  state: 'Maharashtra',
+  pincode: '411004',
+};

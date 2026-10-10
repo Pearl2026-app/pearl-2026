@@ -117,3 +117,6 @@ export function resetConfig(): void {
 }
 
 export const CONFIG = Symbol('CONFIG');
+
+/** Per-route rate limit; tests lift limits so they can make many requests quickly. */
+export const limit = (n: number) => () => (config().NODE_ENV === 'test' ? 100_000 : n);

@@ -1,3 +1,4 @@
+import { limit } from '../../config/config';
 import { Body, Controller, Get, Param, Post, UploadedFile, UseInterceptors } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiConsumes, ApiTags } from '@nestjs/swagger';
@@ -175,7 +176,7 @@ export class PublicContentController {
 
   @Public()
   @Post('careers/:slug/apply')
-  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  @Throttle({ default: { limit: limit(5), ttl: 60_000 } })
   @ApiConsumes('multipart/form-data')
   @UseInterceptors(FileInterceptor('resume', { limits: { fileSize: 10 * 1024 * 1024, files: 1 } }))
   async apply(@Param('slug') slug: string, @UploadedFile() resume: Express.Multer.File, @Body() body: Record<string, string>) {

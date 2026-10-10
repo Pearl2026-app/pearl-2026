@@ -1,3 +1,4 @@
+import { limit } from '../config/config';
 import { Body, Controller, Get, HttpCode, Post, Req, Res } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
@@ -23,7 +24,7 @@ type Issued = { accessToken: string; refreshToken: string; user: unknown };
 
 @ApiTags('auth')
 @Controller('auth')
-@Throttle({ default: { limit: 20, ttl: 60_000 } })
+@Throttle({ default: { limit: limit(20), ttl: 60_000 } })
 export class AuthController {
   constructor(
     private readonly auth: AuthService,
@@ -72,7 +73,7 @@ export class AuthController {
   @Public()
   @Post('staff/login')
   @HttpCode(200)
-  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  @Throttle({ default: { limit: limit(10), ttl: 60_000 } })
   staffLogin(@Body() dto: StaffLoginDto) {
     return this.auth.staffLogin(dto.email, dto.password);
   }
