@@ -1,34 +1,74 @@
 # Status
 
-_Last updated: 10 Oct 2026_
+Resume rule: read [SPEC.md](SPEC.md) and this file, then continue from the first unchecked item.
 
-## Current phase: 0 (Plan for approval): complete, awaiting client approval
+## Needed from the owner
+- Payment gateway live keys (Razorpay assumed): `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, `RAZORPAY_WEBHOOK_SECRET`. Until then: sandbox provider + COD.
+- WhatsApp Business API approval and provider credentials (`WHATSAPP_*`). Until then: click-to-chat links + email.
+- SMS OTP provider with DLT registration (`SMS_*`). Until then: email OTP for staff, console OTP in development.
+- Email service credentials (`SMTP_*`). Until then: messages queued and visible in the admin.
+- Firebase project for push (`FCM_*`). Until then: push is logged only; WhatsApp/email carry order updates.
+- S3-compatible storage + CDN (`S3_*`, `CDN_BASE_URL`). Until then: local disk.
+- AI model provider key (`AI_*`). Until then: plain filtered Ring Finder results.
+- Hosting account in an India region, domain, Google Play and Apple developer accounts.
+- GSTIN, legal name and registered address for invoices (Settings → Store).
 
-| Phase | State |
-|---|---|
-| 0 Plan for approval | ✅ Delivered, awaiting approval |
-| 1 Foundation | Not started |
-| 2 Storefront & enquiries | Not started |
-| 3 Commerce | Not started |
-| 4 Operations | Not started |
-| 5 Mobile apps | Not started |
-| 6 Hardening & handover | Not started |
+## Flagged for owner review (money, permissions, deletion)
+See [DECISIONS.md](DECISIONS.md) and [OPEN-QUESTIONS.md](OPEN-QUESTIONS.md). Cautious defaults were taken; items are listed there.
 
-## Phase 0 deliverables
-- [x] Sitemap: [SITEMAP.md](SITEMAP.md)
-- [x] Design direction and sample screens: [DESIGN-DIRECTION.md](DESIGN-DIRECTION.md)
-- [x] Database schema: [DATA-MODEL.md](DATA-MODEL.md) + draft [`schema.prisma`](../packages/db/prisma/schema.prisma) (passes `prisma validate`)
-- [x] Permission matrix: [PERMISSION-MATRIX.md](PERMISSION-MATRIX.md)
-- [x] API outline: [API-OUTLINE.md](API-OUTLINE.md)
-- [x] Phase plan with estimates: [PHASE-PLAN.md](PHASE-PLAN.md)
-- [x] Decisions: [DECISIONS.md](DECISIONS.md)
-- [x] Open questions: [OPEN-QUESTIONS.md](OPEN-QUESTIONS.md)
-- [x] Monorepo skeleton: workspace config, empty app and package folders, `.env.example`
+## Checklist
 
-## Known gaps
-- The three source PDFs referenced in the brief were not available when Phase 0 was prepared. The plan follows the Master Build Prompt; if the PDFs contain requirements it does not mention, the plan needs a revision.
-- Sample screens are annotated wireframes in markdown. High-fidelity visual mockups can follow once photography and the logo are available.
-- No application code, migrations or tests exist yet (by design for Phase 0).
+### Phase 0 — Plan
+- [x] SPEC.md saved, STATUS.md checklist
+- [x] Sitemap, design direction + sample screens, schema, permission matrix, API outline, phase plan
 
-## Waiting on the client
-Approval of this package, and answers to [OPEN-QUESTIONS.md](OPEN-QUESTIONS.md). Q1–Q4 in particular have lead times outside our control.
+### Phase 1 — Foundation
+- [ ] Monorepo tooling (TypeScript, lint, test runners, CI workflow, docker-compose)
+- [ ] packages/shared: permissions, validation, money/GST/coupon maths + unit tests
+- [ ] packages/db: initial migration, raw SQL (hold index, audit grants, FTS), seed
+- [ ] packages/ui: tokens + Tailwind preset + base components
+- [ ] API: config, Prisma, auth (OTP + staff password/OTP, refresh, sessions)
+- [ ] API: guards, scope layer, audit log interceptor
+- [ ] API: providers (payment, WhatsApp, SMS, email, push, storage, AI, pearl rate) with fallbacks
+- [ ] API: network CRUD (cities, vendors, franchises, manufacturers, delivery partners)
+- [ ] API: catalogue CRUD (categories, collections, farms, products, images, video, CSV import, approval)
+- [ ] API: content (banners, blocks, pages + versions, testimonials, gallery, FAQ, jobs), settings, flags, audit viewer, users & grants
+- [ ] Permission integration tests for seven roles
+- [ ] Admin shell + Phase 1 screens
+
+### Phase 2 — Storefront and enquiries
+- [ ] Public catalogue API (filters, FTS, facets), content API
+- [ ] Enquiries API (capture, routing, templates, acknowledgement, inbox, notes, convert)
+- [ ] Storefront pages (all in SITEMAP), floating WhatsApp, SEO (metadata, JSON-LD, sitemap)
+- [ ] Customized Jewellery, farms, FAQ, Careers, legal pages, contact, bulk
+- [ ] Admin enquiry inbox + WhatsApp settings
+- [ ] Enquiry capture integration test
+
+### Phase 3 — Commerce
+- [ ] Cart (guest + merge), coupons
+- [ ] Checkout, stock holds, COD, payment provider + verified webhook
+- [ ] Orders: state machine, timeline, manual + enquiry orders, invoice PDF
+- [ ] Customer account (orders, addresses, wishlist share, referral, returns), tracking
+- [ ] Notifications on status change (WhatsApp/email/push with fallbacks)
+- [ ] Returns, refunds; referral rewards
+- [ ] Race test, webhook tests, e2e browse→cart→pay→track
+
+### Phase 4 — Operations
+- [ ] Partner panels (City Manager, Vendor, Franchise, Delivery) + delivery proof + COD
+- [ ] Customized order workflow, PO PDF
+- [ ] Pearl pricing + calculator
+- [ ] Dashboard, reports, WhatsApp analytics, CSV
+- [ ] Abandoned cart, reviews, certificates + QR, Ring Finder, push campaigns
+- [ ] e2e browse→enquire→convert→deliver
+
+### Phase 5 — Mobile apps
+- [ ] Customer app (Expo)
+- [ ] Delivery app (Expo) with offline queue
+- [ ] Store release preparation (icons, splash, listing text, EAS config)
+
+### Phase 6 — Hardening and handover
+- [ ] Security review
+- [ ] Load test (incl. unique piece under load)
+- [ ] Backups + tested restore
+- [ ] Deployment (Docker images, compose/production config)
+- [ ] Docs: setup guide, API reference, runbook, admin user guide, training notes
