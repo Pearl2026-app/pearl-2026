@@ -1,0 +1,1724 @@
+// Sahyadri Pearls — Phase 0 DRAFT schema, for review.
+// No migrations are generated from this file until Phase 1 is approved.
+//
+// Conventions (see docs/DATA-MODEL.md):
+// - Every id is a cuid string. Every table has createdAt / updatedAt.
+// - Money is integer paise (Int for line amounts, BigInt not needed below ₹2.1 crore per field;
+//   aggregate reports compute in SQL with bigint casts).
+// - Carat and weights are Decimal.
+// - Rule 7: orders, enquiries, customers and products are never hard-deleted; they carry
+//   archivedAt (or isActive for configuration records).
+// - Almost every business record carries cityId: city is the main permission and report boundary.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ════════════════════════════════════════════════════════════════════
+// Enums
+// ════════════════════════════════════════════════════════════════════
+
+enum Role {
+  SUPER_ADMIN
+  STAFF
+  CITY_MANAGER
+  VENDOR
+  FRANCHISE
+  DELIVERY_PARTNER
+  CUSTOMER
+}
+
+enum PermissionModule {
+  DASHBOARD
+  USERS
+  STAFF
+  CATEGORIES
+  COLLECTIONS
+  FARMS
+  PRODUCTS
+  ORDERS
+  CUSTOM_ORDERS
+  PURCHASE_ORDERS
+  ENQUIRIES
+  WHATSAPP_SETTINGS
+  CONTENT
+  COUPONS
+  NOTIFICATIONS
+  CITIES
+  VENDORS
+  FRANCHISES
+  MANUFACTURERS
+  DELIVERY_PARTNERS
+  PRICING
+  PAYMENTS
+  RETURNS
+  REVIEWS
+  REPORTS
+  CAREERS
+  SETTINGS
+  AUDIT_LOG
+}
+
+enum ProductStatus {
+  DRAFT
+  PENDING_APPROVAL // vendor-submitted, awaiting admin approval
+  PUBLISHED
+  UNPUBLISHED
+  ARCHIVED
+}
+
+enum StockType {
+  UNIQUE // one-of-a-kind piece, sold once
+  QUANTITY // countable stock
+}
+
+enum ProductImageKind {
+  MAIN
+  CAROUSEL
+  LIFESTYLE
+}
+
+enum StockHoldStatus {
+  ACTIVE
+  CONVERTED // order paid or COD confirmed
+  RELEASED // payment failed, cancelled or expired
+}
+
+enum DiscountType {
+  PERCENT
+  FLAT
+}
+
+enum OrderSource {
+  CHECKOUT
+  ENQUIRY
+  MANUAL
+}
+
+enum OrderType {
+  STANDARD
+  CUSTOMIZED
+}
+
+enum OrderStatus {
+  PLACED
+  CONFIRMED
+  PACKED
+  ASSIGNED
+  PICKED_UP
+  OUT_FOR_DELIVERY
+  DELIVERED
+  CANCELLED
+  FAILED
+  RETURNED
+  REFUNDED
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  COD_PENDING
+  COD_COLLECTED
+  FAILED
+  REFUNDED
+}
+
+enum PaymentMethod {
+  ONLINE // gateway: UPI, cards, net banking, wallets
+  COD
+  BANK_TRANSFER // manual orders / customized advances
+  OTHER
+}
+
+enum PaymentTxnStatus {
+  CREATED
+  AUTHORIZED
+  CAPTURED
+  FAILED
+  REFUNDED
+  PARTIALLY_REFUNDED
+}
+
+enum RefundStatus {
+  REQUESTED
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+enum ReturnType {
+  RETURN
+  CANCELLATION
+}
+
+enum ReturnStatus {
+  REQUESTED
+  APPROVED
+  REJECTED
+  PICKUP_SCHEDULED
+  PICKED_UP
+  RECEIVED
+  REFUNDED
+  CLOSED
+}
+
+enum DeliveryStatus {
+  ASSIGNED
+  PICKED_UP
+  OUT_FOR_DELIVERY
+  DELIVERED
+  FAILED
+  RETURNED
+}
+
+enum ProofKind {
+  SIGNATURE
+  CUSTOMER_OTP
+}
+
+enum ProductionStage {
+  REQUIREMENT
+  QUOTED
+  ADVANCE_PAID
+  PO_RAISED
+  IN_MANUFACTURING
+  QUALITY_CHECK
+  READY
+  DISPATCHED
+  DELIVERED
+}
+
+enum PurchaseOrderStatus {
+  DRAFT
+  SENT
+  ACCEPTED
+  IN_PRODUCTION
+  RECEIVED
+  CLOSED
+}
+
+enum EnquiryType {
+  PRODUCT
+  CUSTOMIZED
+  BULK
+  RING_FINDER
+  CONTACT
+}
+
+enum EnquiryStage {
+  NEW
+  IN_PROGRESS
+  QUOTED
+  CONVERTED
+  CLOSED
+}
+
+enum ReviewStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum PearlRateSource {
+  MANUAL
+  FEED
+}
+
+enum NotificationChannel {
+  PUSH
+  WHATSAPP
+  EMAIL
+  SMS
+}
+
+enum NotificationStatus {
+  DRAFT
+  SCHEDULED
+  SENDING
+  SENT
+  FAILED
+  CANCELLED
+}
+
+enum DeliveryLogStatus {
+  QUEUED
+  SENT
+  DELIVERED
+  READ
+  FAILED
+}
+
+enum Platform {
+  ANDROID
+  IOS
+  WEB
+}
+
+enum JobApplicationStatus {
+  NEW
+  SHORTLISTED
+  REJECTED
+  HIRED
+}
+
+enum ContentBlockKind {
+  HERO
+  RICH_TEXT
+  TRUST_POINTS
+  FEATURED_PRODUCTS
+  FEATURED_COLLECTIONS
+  STORY
+  CTA
+}
+
+// ════════════════════════════════════════════════════════════════════
+// People
+// ════════════════════════════════════════════════════════════════════
+
+/// Every login: staff, partners and customers. One role per user.
+model User {
+  id           String    @id @default(cuid())
+  role         Role
+  name         String
+  email        String?   @unique
+  phone        String?   @unique // E.164, e.g. +919876543210
+  passwordHash String? // staff roles only (email + password + OTP)
+  isActive     Boolean   @default(true)
+  lastLoginAt  DateTime?
+
+  // Scope links. Which one is set depends on role (see docs/PERMISSION-MATRIX.md).
+  cityId            String?
+  city              City?            @relation(fields: [cityId], references: [id])
+  vendorId          String?
+  vendor            Vendor?          @relation(fields: [vendorId], references: [id])
+  franchiseId       String?
+  franchise         Franchise?       @relation(fields: [franchiseId], references: [id])
+  deliveryPartnerId String?          @unique
+  deliveryPartner   DeliveryPartner? @relation(fields: [deliveryPartnerId], references: [id])
+
+  customer       Customer?
+  permissions    StaffPermission[]
+  deviceTokens   DeviceToken[]
+  sessions       AuthSession[]
+  auditLogs      AuditLog[]
+  ownedEnquiries Enquiry[]         @relation("EnquiryOwner")
+  enquiryNotes   EnquiryNote[]
+  orderEvents    OrderEvent[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([role, isActive])
+  @@index([cityId])
+}
+
+/// Module-level grants for STAFF users. SUPER_ADMIN has everything implicitly;
+/// other roles use the fixed matrix in packages/shared.
+model StaffPermission {
+  id        String           @id @default(cuid())
+  userId    String
+  user      User             @relation(fields: [userId], references: [id])
+  module    PermissionModule
+  canView   Boolean          @default(true)
+  canCreate Boolean          @default(false)
+  canEdit   Boolean          @default(false)
+  canDelete Boolean          @default(false)
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  @@unique([userId, module])
+}
+
+/// Refresh-token sessions, so a deactivated user can be signed out everywhere.
+model AuthSession {
+  id               String    @id @default(cuid())
+  userId           String
+  user             User      @relation(fields: [userId], references: [id])
+  refreshTokenHash String    @unique
+  userAgent        String?
+  ip               String?
+  expiresAt        DateTime
+  revokedAt        DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@index([userId])
+}
+
+/// One-time passwords for login. Stored hashed; attempts are counted.
+model OtpChallenge {
+  id          String              @id @default(cuid())
+  destination String // phone or email
+  channel     NotificationChannel
+  codeHash    String
+  purpose     String // LOGIN, DELIVERY_PROOF, ...
+  attempts    Int                 @default(0)
+  expiresAt   DateTime
+  consumedAt  DateTime?
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+
+  @@index([destination, purpose])
+}
+
+model Customer {
+  id                     String         @id @default(cuid())
+  userId                 String         @unique
+  user                   User           @relation(fields: [userId], references: [id])
+  cityId                 String?
+  city                   City?          @relation(fields: [cityId], references: [id])
+  referralCode           String         @unique
+  referredById           String?
+  referredBy             Customer?      @relation("CustomerReferrals", fields: [referredById], references: [id])
+  referrals              Customer[]     @relation("CustomerReferrals")
+  isBlocked              Boolean        @default(false)
+  preferredPaymentMethod PaymentMethod?
+  archivedAt             DateTime?
+
+  addresses         Address[]
+  carts             Cart[]
+  wishlistItems     WishlistItem[]
+  orders            Order[]
+  enquiries         Enquiry[]
+  reviews           Review[]
+  returnRequests    ReturnRequest[]
+  couponRedemptions CouponRedemption[]
+  referralsMade     Referral[]         @relation("ReferralReferrer")
+  referralReceived  Referral?          @relation("ReferralReferee")
+  customRequests    CustomRequest[]
+  loyaltyEntries    LoyaltyLedger[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([cityId])
+}
+
+model Address {
+  id         String    @id @default(cuid())
+  customerId String
+  customer   Customer  @relation(fields: [customerId], references: [id])
+  label      String? // Home, Office
+  name       String
+  phone      String
+  line1      String
+  line2      String?
+  landmark   String?
+  area       String?
+  cityId     String?
+  city       City?     @relation(fields: [cityId], references: [id])
+  cityName   String // free text when the city is not a serviced City
+  state      String
+  pincode    String
+  isDefault  Boolean   @default(false)
+  archivedAt DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  @@index([customerId])
+}
+
+model DeviceToken {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id])
+  token      String   @unique
+  platform   Platform
+  appKind    String // customer | delivery
+  isActive   Boolean  @default(true)
+  lastSeenAt DateTime @default(now())
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([userId])
+}
+
+// ════════════════════════════════════════════════════════════════════
+// Network
+// ════════════════════════════════════════════════════════════════════
+
+model City {
+  id                  String  @id @default(cuid())
+  name                String  @unique
+  slug                String  @unique
+  state               String
+  isActive            Boolean @default(true)
+  sortOrder           Int     @default(0)
+  /// Delivery charge for this city in paise; null = use the global default setting
+  deliveryChargePaise Int?
+
+  users           User[]
+  customers       Customer[]
+  addresses       Address[]
+  franchises      Franchise[]
+  vendorCities    VendorCity[]
+  franchiseCities FranchiseCity[]
+  deliveryCities  DeliveryPartnerCity[]
+  manufacturers   Manufacturer[]
+  categoryCities  CategoryCity[]
+  productCities   ProductCity[]
+  orders          Order[]
+  enquiries       Enquiry[]
+  whatsAppNumbers WhatsAppNumber[]
+  routingRules    RoutingRule[]
+  customRequests  CustomRequest[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Vendor {
+  id          String  @id @default(cuid())
+  name        String
+  contactName String?
+  phone       String
+  email       String?
+  address     String?
+  gstin       String?
+  isActive    Boolean @default(true)
+
+  users       User[]
+  cities      VendorCity[]
+  products    Product[]
+  orders      Order[]
+  commissions VendorCommission[]
+  settlements Settlement[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model VendorCity {
+  vendorId String
+  vendor   Vendor @relation(fields: [vendorId], references: [id])
+  cityId   String
+  city     City   @relation(fields: [cityId], references: [id])
+
+  @@id([vendorId, cityId])
+}
+
+model Franchise {
+  id          String  @id @default(cuid())
+  name        String
+  cityId      String
+  city        City    @relation(fields: [cityId], references: [id])
+  area        String
+  address     String
+  contactName String?
+  phone       String
+  email       String?
+  isActive    Boolean @default(true)
+
+  users     User[]
+  cities    FranchiseCity[] // extra cities served, beyond the home city
+  enquiries Enquiry[]
+  orders    Order[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([cityId])
+}
+
+model FranchiseCity {
+  franchiseId String
+  franchise   Franchise @relation(fields: [franchiseId], references: [id])
+  cityId      String
+  city        City      @relation(fields: [cityId], references: [id])
+
+  @@id([franchiseId, cityId])
+}
+
+model Manufacturer {
+  id          String  @id @default(cuid())
+  name        String
+  contactName String?
+  phone       String?
+  email       String?
+  cityId      String?
+  city        City?   @relation(fields: [cityId], references: [id])
+  speciality  String?
+  isActive    Boolean @default(true)
+
+  orders         Order[]
+  purchaseOrders PurchaseOrder[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model DeliveryPartner {
+  id          String  @id @default(cuid())
+  name        String
+  phone       String  @unique
+  vehicleInfo String?
+  isActive    Boolean @default(true)
+
+  user          User?
+  cities        DeliveryPartnerCity[]
+  deliveries    Delivery[]
+  locationPings DeliveryLocationPing[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model DeliveryPartnerCity {
+  deliveryPartnerId String
+  deliveryPartner   DeliveryPartner @relation(fields: [deliveryPartnerId], references: [id])
+  cityId            String
+  city              City            @relation(fields: [cityId], references: [id])
+
+  @@id([deliveryPartnerId, cityId])
+}
+
+// ════════════════════════════════════════════════════════════════════
+// Catalogue
+// ════════════════════════════════════════════════════════════════════
+
+model Category {
+  id             String    @id @default(cuid())
+  name           String
+  slug           String    @unique
+  description    String?
+  imageUrl       String?
+  isActive       Boolean   @default(true)
+  sortOrder      Int       @default(0)
+  /// GST rate in basis points (300 = 3%) and HSN code, used by invoices
+  gstRateBp      Int       @default(300)
+  hsnCode        String?
+  seoTitle       String?
+  seoDescription String?
+  archivedAt     DateTime?
+
+  cities   CategoryCity[]
+  products Product[]
+  coupons  CouponCategory[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+/// Cities a category appears in. No rows = shown in every city.
+model CategoryCity {
+  categoryId String
+  category   Category @relation(fields: [categoryId], references: [id])
+  cityId     String
+  city       City     @relation(fields: [cityId], references: [id])
+
+  @@id([categoryId, cityId])
+}
+
+model Collection {
+  id             String    @id @default(cuid())
+  name           String
+  slug           String    @unique
+  description    String?
+  imageUrl       String?
+  isActive       Boolean   @default(true)
+  isFeatured     Boolean   @default(false)
+  sortOrder      Int       @default(0)
+  seoTitle       String?
+  seoDescription String?
+  archivedAt     DateTime?
+
+  products Product[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Farm {
+  id             String    @id @default(cuid())
+  name           String
+  slug           String    @unique
+  location       String
+  latitude       Decimal?  @db.Decimal(9, 6)
+  longitude      Decimal?  @db.Decimal(9, 6)
+  summary        String?
+  story          String? // rich text
+  heroImageUrl   String?
+  galleryUrls    String[]
+  isActive       Boolean   @default(true)
+  sortOrder      Int       @default(0)
+  seoTitle       String?
+  seoDescription String?
+  archivedAt     DateTime?
+
+  products   Product[]
+  pearlRates PearlRate[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Product {
+  id          String        @id @default(cuid())
+  sku         String        @unique
+  name        String
+  slug        String        @unique
+  description String?
+  status      ProductStatus @default(DRAFT)
+
+  categoryId   String
+  category     Category    @relation(fields: [categoryId], references: [id])
+  collectionId String?
+  collection   Collection? @relation(fields: [collectionId], references: [id])
+  farmId       String?
+  farm         Farm?       @relation(fields: [farmId], references: [id])
+  vendorId     String?
+  vendor       Vendor?     @relation(fields: [vendorId], references: [id])
+
+  // Money, integer paise
+  pricePaise      Int
+  compareAtPaise  Int? // optional strike-through price
+  metalCostPaise  Int?
+  labourCostPaise Int?
+  pearlCostPaise  Int?
+  priceOnRequest  Boolean @default(false) // hides price and Add to Cart; WhatsApp enquiry only
+
+  // Pearl specification
+  caratWeight   Decimal? @db.Decimal(8, 3)
+  shape         String?
+  colour        String?
+  lustre        String?
+  surface       String?
+  grade         String?
+  sizeMm        Decimal? @db.Decimal(5, 2)
+  metal         String?
+  certification String?
+
+  // Stock
+  stockType  StockType @default(UNIQUE)
+  quantity   Int       @default(1)
+  outOfStock Boolean   @default(false) // manual switch
+  soldAt     DateTime? // set when a UNIQUE piece is sold
+
+  videoUrl       String?
+  seoTitle       String?
+  seoDescription String?
+  publishedAt    DateTime?
+  archivedAt     DateTime?
+
+  images        ProductImage[]
+  cities        ProductCity[]
+  relatedFrom   RelatedProduct[] @relation("RelatedFrom")
+  relatedTo     RelatedProduct[] @relation("RelatedTo")
+  certificates  Certificate[]
+  reviews       Review[]
+  cartItems     CartItem[]
+  wishlistItems WishlistItem[]
+  stockHolds    StockHold[]
+  orderItems    OrderItem[]
+  enquiries     Enquiry[]
+  coupons       CouponProduct[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  // Full-text search index (name, sku, description) is added in a raw SQL migration in Phase 2.
+
+  @@index([status, categoryId])
+  @@index([farmId])
+  @@index([vendorId])
+  @@index([collectionId])
+}
+
+/// Cities a product is sold in. No rows = all active cities.
+model ProductCity {
+  productId String
+  product   Product @relation(fields: [productId], references: [id])
+  cityId    String
+  city      City    @relation(fields: [cityId], references: [id])
+
+  @@id([productId, cityId])
+}
+
+model ProductImage {
+  id        String           @id @default(cuid())
+  productId String
+  product   Product          @relation(fields: [productId], references: [id])
+  kind      ProductImageKind @default(CAROUSEL)
+  url       String
+  alt       String?
+  width     Int?
+  height    Int?
+  sortOrder Int              @default(0)
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  @@index([productId, sortOrder])
+}
+
+model RelatedProduct {
+  productId String
+  product   Product @relation("RelatedFrom", fields: [productId], references: [id])
+  relatedId String
+  related   Product @relation("RelatedTo", fields: [relatedId], references: [id])
+  sortOrder Int     @default(0)
+
+  @@id([productId, relatedId])
+}
+
+/// Certificate of authenticity. The QR code encodes {WEB_URL}/verify/{code}.
+model Certificate {
+  id        String    @id @default(cuid())
+  code      String    @unique
+  productId String
+  product   Product   @relation(fields: [productId], references: [id])
+  issuedAt  DateTime  @default(now())
+  issuedBy  String?
+  details   Json? // lab, grade, measurements
+  pdfUrl    String?
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model Review {
+  id            String       @id @default(cuid())
+  productId     String
+  product       Product      @relation(fields: [productId], references: [id])
+  customerId    String
+  customer      Customer     @relation(fields: [customerId], references: [id])
+  orderId       String?
+  order         Order?       @relation(fields: [orderId], references: [id])
+  rating        Int // 1–5, checked in the API
+  title         String?
+  body          String?
+  photoUrls     String[]
+  status        ReviewStatus @default(PENDING)
+  moderatedById String?
+  moderatedAt   DateTime?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  @@unique([productId, customerId, orderId])
+  @@index([productId, status])
+}
+
+// ════════════════════════════════════════════════════════════════════
+// Shopping
+// ════════════════════════════════════════════════════════════════════
+
+/// Guest carts are keyed by an anonymous token in a cookie; they merge into the customer's cart on login.
+model Cart {
+  id               String    @id @default(cuid())
+  customerId       String?
+  customer         Customer? @relation(fields: [customerId], references: [id])
+  guestToken       String?   @unique
+  couponCode       String?
+  cityId           String?
+  /// Abandoned-cart reminder bookkeeping
+  lastActivityAt   DateTime  @default(now())
+  reminderSentAt   DateTime?
+  convertedOrderId String?   @unique
+
+  items CartItem[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([customerId])
+  @@index([lastActivityAt])
+}
+
+model CartItem {
+  id        String   @id @default(cuid())
+  cartId    String
+  cart      Cart     @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product  @relation(fields: [productId], references: [id])
+  quantity  Int      @default(1)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([cartId, productId])
+}
+
+model WishlistItem {
+  id         String   @id @default(cuid())
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id])
+  productId  String
+  product    Product  @relation(fields: [productId], references: [id])
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([customerId, productId])
+}
+
+/// Holds a UNIQUE product (or quantity units) for one checkout for 15 minutes.
+/// Created inside a transaction after SELECT ... FOR UPDATE on the Product row.
+/// The partial unique index "one ACTIVE hold per UNIQUE product" is added in raw SQL.
+model StockHold {
+  id             String          @id @default(cuid())
+  productId      String
+  product        Product         @relation(fields: [productId], references: [id])
+  orderId        String
+  order          Order           @relation(fields: [orderId], references: [id])
+  quantity       Int             @default(1)
+  status         StockHoldStatus @default(ACTIVE)
+  expiresAt      DateTime
+  releasedReason String?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  @@index([productId, status])
+  @@index([status, expiresAt])
+}
+
+model Coupon {
+  id               String       @id @default(cuid())
+  code             String       @unique // stored upper-case
+  description      String?
+  discountType     DiscountType
+  /// PERCENT: basis points (1000 = 10%). FLAT: paise.
+  discountValue    Int
+  minOrderPaise    Int          @default(0)
+  maxDiscountPaise Int?
+  firstOrderOnly   Boolean      @default(false)
+  startsAt         DateTime?
+  endsAt           DateTime?
+  usageLimit       Int? // total
+  perCustomerLimit Int?         @default(1)
+  isActive         Boolean      @default(true)
+  showOnOffersPage Boolean      @default(false)
+
+  categories  CouponCategory[]
+  products    CouponProduct[]
+  redemptions CouponRedemption[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model CouponCategory {
+  couponId   String
+  coupon     Coupon   @relation(fields: [couponId], references: [id])
+  categoryId String
+  category   Category @relation(fields: [categoryId], references: [id])
+
+  @@id([couponId, categoryId])
+}
+
+model CouponProduct {
+  couponId  String
+  coupon    Coupon  @relation(fields: [couponId], references: [id])
+  productId String
+  product   Product @relation(fields: [productId], references: [id])
+
+  @@id([couponId, productId])
+}
+
+model CouponRedemption {
+  id            String    @id @default(cuid())
+  couponId      String
+  coupon        Coupon    @relation(fields: [couponId], references: [id])
+  customerId    String?
+  customer      Customer? @relation(fields: [customerId], references: [id])
+  orderId       String    @unique
+  order         Order     @relation(fields: [orderId], references: [id])
+  discountPaise Int
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([couponId])
+}
+
+/// A referral is created when a new customer signs up with a code; rewarded when their first order is delivered.
+model Referral {
+  id                  String    @id @default(cuid())
+  referrerId          String
+  referrer            Customer  @relation("ReferralReferrer", fields: [referrerId], references: [id])
+  refereeId           String    @unique
+  referee             Customer  @relation("ReferralReferee", fields: [refereeId], references: [id])
+  qualifyingOrderId   String?
+  referrerRewardPaise Int?
+  refereeRewardPaise  Int?
+  rewardedAt          DateTime?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+}
+
+// ════════════════════════════════════════════════════════════════════
+// Orders
+// ════════════════════════════════════════════════════════════════════
+
+model Order {
+  id     String      @id @default(cuid())
+  number String      @unique // SP-YYMM-00001
+  source OrderSource
+  type   OrderType   @default(STANDARD)
+
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id])
+  cityId     String
+  city       City     @relation(fields: [cityId], references: [id])
+
+  /// Address copied at order time so later edits don't change history
+  addressSnapshot Json
+  contactName     String
+  contactPhone    String
+  contactEmail    String?
+
+  // Assignments
+  vendorId       String?
+  vendor         Vendor?       @relation(fields: [vendorId], references: [id])
+  franchiseId    String?
+  franchise      Franchise?    @relation(fields: [franchiseId], references: [id])
+  manufacturerId String?
+  manufacturer   Manufacturer? @relation(fields: [manufacturerId], references: [id])
+
+  status        OrderStatus   @default(PLACED)
+  paymentStatus PaymentStatus @default(PENDING)
+  paymentMethod PaymentMethod
+
+  // Money, integer paise, all computed on the server
+  subtotalPaise Int
+  discountPaise Int    @default(0)
+  taxablePaise  Int
+  gstPaise      Int
+  deliveryPaise Int    @default(0)
+  totalPaise    Int
+  currencyCode  String @default("INR")
+
+  couponCode   String?
+  customerNote String?
+  internalNote String?
+  /// For enquiry-converted orders
+  enquiryId    String?  @unique
+  enquiry      Enquiry? @relation("EnquiryConvertedOrder", fields: [enquiryId], references: [id])
+  createdById  String? // staff user for MANUAL / ENQUIRY orders
+
+  placedAt    DateTime  @default(now())
+  confirmedAt DateTime?
+  deliveredAt DateTime?
+  cancelledAt DateTime?
+  archivedAt  DateTime?
+
+  items            OrderItem[]
+  events           OrderEvent[]
+  payments         Payment[]
+  refunds          Refund[]
+  invoice          Invoice?
+  returnRequests   ReturnRequest[]
+  delivery         Delivery?
+  stockHolds       StockHold[]
+  reviews          Review[]
+  couponRedemption CouponRedemption?
+  customRequest    CustomRequest?
+  purchaseOrders   PurchaseOrder[]
+  commissions      VendorCommission[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([cityId, status])
+  @@index([customerId])
+  @@index([vendorId])
+  @@index([franchiseId])
+  @@index([manufacturerId])
+  @@index([placedAt])
+  @@index([paymentStatus])
+}
+
+model OrderItem {
+  id             String   @id @default(cuid())
+  orderId        String
+  order          Order    @relation(fields: [orderId], references: [id])
+  productId      String?
+  product        Product? @relation(fields: [productId], references: [id])
+  /// Snapshots, so history survives product edits
+  sku            String
+  name           String
+  imageUrl       String?
+  hsnCode        String?
+  quantity       Int
+  unitPricePaise Int
+  discountPaise  Int      @default(0)
+  gstRateBp      Int
+  gstPaise       Int
+  lineTotalPaise Int
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([orderId])
+}
+
+/// Order timeline. Append-only.
+model OrderEvent {
+  id         String       @id @default(cuid())
+  orderId    String
+  order      Order        @relation(fields: [orderId], references: [id])
+  actorId    String?
+  actor      User?        @relation(fields: [actorId], references: [id])
+  type       String // STATUS_CHANGED, PAYMENT_UPDATED, ASSIGNED, NOTE, ...
+  fromStatus OrderStatus?
+  toStatus   OrderStatus?
+  message    String?
+  data       Json?
+  createdAt  DateTime     @default(now())
+
+  @@index([orderId, createdAt])
+}
+
+model Payment {
+  id                String           @id @default(cuid())
+  orderId           String
+  order             Order            @relation(fields: [orderId], references: [id])
+  method            PaymentMethod
+  provider          String? // razorpay
+  providerOrderId   String?          @unique
+  providerPaymentId String?          @unique
+  amountPaise       Int
+  status            PaymentTxnStatus @default(CREATED)
+  /// For COD: recorded by delivery partner and reconciled by admin
+  collectedById     String?
+  reconciledAt      DateTime?
+  reconciledById    String?
+  raw               Json? // last verified webhook payload
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+
+  refunds Refund[]
+
+  @@index([orderId])
+}
+
+/// Webhook idempotency: every processed provider event id is stored once.
+model WebhookEvent {
+  id          String    @id @default(cuid())
+  provider    String
+  eventId     String
+  eventType   String
+  payload     Json
+  processedAt DateTime?
+  error       String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([provider, eventId])
+}
+
+model Refund {
+  id               String         @id @default(cuid())
+  orderId          String
+  order            Order          @relation(fields: [orderId], references: [id])
+  paymentId        String?
+  payment          Payment?       @relation(fields: [paymentId], references: [id])
+  returnRequestId  String?
+  returnRequest    ReturnRequest? @relation(fields: [returnRequestId], references: [id])
+  amountPaise      Int
+  reason           String?
+  status           RefundStatus   @default(REQUESTED)
+  providerRefundId String?        @unique
+  processedById    String?
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+}
+
+/// GST invoice. Numbered per financial year: SP/2026-27/00001.
+model Invoice {
+  id            String   @id @default(cuid())
+  orderId       String   @unique
+  order         Order    @relation(fields: [orderId], references: [id])
+  number        String   @unique
+  financialYear String // 2026-27
+  sequence      Int
+  issuedAt      DateTime @default(now())
+  sellerGstin   String?
+  buyerGstin    String?
+  placeOfSupply String
+  isInterState  Boolean // IGST vs CGST + SGST
+  cgstPaise     Int      @default(0)
+  sgstPaise     Int      @default(0)
+  igstPaise     Int      @default(0)
+  totalPaise    Int
+  pdfUrl        String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([financialYear, sequence])
+}
+
+model ReturnRequest {
+  id           String       @id @default(cuid())
+  orderId      String
+  order        Order        @relation(fields: [orderId], references: [id])
+  customerId   String
+  customer     Customer     @relation(fields: [customerId], references: [id])
+  type         ReturnType
+  reason       String
+  details      String?
+  photoUrls    String[]
+  status       ReturnStatus @default(REQUESTED)
+  decisionNote String?
+  decidedById  String?
+  decidedAt    DateTime?
+  pickupAt     DateTime?
+  refunds      Refund[]
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  @@index([status])
+}
+
+model Delivery {
+  id                 String           @id @default(cuid())
+  orderId            String           @unique
+  order              Order            @relation(fields: [orderId], references: [id])
+  deliveryPartnerId  String?
+  deliveryPartner    DeliveryPartner? @relation(fields: [deliveryPartnerId], references: [id])
+  status             DeliveryStatus   @default(ASSIGNED)
+  assignedAt         DateTime         @default(now())
+  pickedUpAt         DateTime?
+  outForDeliveryAt   DateTime?
+  deliveredAt        DateTime?
+  failureReason      String? // required for FAILED / RETURNED
+  proofPhotoUrl      String?
+  proofKind          ProofKind?
+  proofSignatureUrl  String?
+  proofOtpVerifiedAt DateTime?
+  codCollectedPaise  Int?
+  latitude           Decimal?         @db.Decimal(9, 6) // captured at delivery
+  longitude          Decimal?         @db.Decimal(9, 6)
+  /// Client-generated id for offline-queued updates, so retries are idempotent
+  lastClientEventId  String?
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+
+  @@index([deliveryPartnerId, status])
+}
+
+// ════════════════════════════════════════════════════════════════════
+// Customized work
+// ════════════════════════════════════════════════════════════════════
+
+model CustomRequest {
+  id         String    @id @default(cuid())
+  enquiryId  String?   @unique
+  enquiry    Enquiry?  @relation(fields: [enquiryId], references: [id])
+  customerId String?
+  customer   Customer? @relation(fields: [customerId], references: [id])
+  cityId     String?
+  city       City?     @relation(fields: [cityId], references: [id])
+  orderId    String?   @unique
+  order      Order?    @relation(fields: [orderId], references: [id])
+
+  jewelleryType      String
+  metal              String?
+  size               String?
+  weightGrams        Decimal? @db.Decimal(8, 3)
+  pearlDetails       String?
+  designNotes        String?
+  referenceImageUrls String[]
+  designFileUrls     String[]
+  budgetPaise        Int?
+  extraNotes         String?
+  /// Answers carried over from the Ring Finder, when it handed off here
+  ringFinderAnswers  Json?
+
+  // Cost breakdown → quoted price (paise)
+  metalCostPaise  Int?
+  labourCostPaise Int?
+  pearlCostPaise  Int?
+  marginPaise     Int?
+  quotedPaise     Int?
+  advancePaise    Int?
+
+  stage        ProductionStage @default(REQUIREMENT)
+  stageHistory Json? // [{stage, at, by}]
+  archivedAt   DateTime?
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+
+  @@index([stage])
+}
+
+model PurchaseOrder {
+  id              String              @id @default(cuid())
+  number          String              @unique // PO-2026-00001
+  manufacturerId  String
+  manufacturer    Manufacturer        @relation(fields: [manufacturerId], references: [id])
+  orderId         String?
+  order           Order?              @relation(fields: [orderId], references: [id])
+  specification   String
+  quantity        Int                 @default(1)
+  agreedCostPaise Int
+  dueDate         DateTime
+  status          PurchaseOrderStatus @default(DRAFT)
+  pdfUrl          String?
+  createdById     String
+  notes           String?
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+
+  @@index([manufacturerId, status])
+}
+
+// ════════════════════════════════════════════════════════════════════
+// Enquiries (WhatsApp CRM)
+// ════════════════════════════════════════════════════════════════════
+
+model Enquiry {
+  id        String       @id @default(cuid())
+  reference String       @unique // ENQ-26-000123, put in the WhatsApp message
+  type      EnquiryType
+  stage     EnquiryStage @default(NEW)
+
+  productId String?
+  product   Product? @relation(fields: [productId], references: [id])
+  pageUrl   String?
+  cityId    String?
+  city      City?    @relation(fields: [cityId], references: [id])
+  /// utm_source / referrer / "instagram" / "app" etc.
+  source    String?
+  utm       Json?
+
+  customerId   String?
+  customer     Customer? @relation(fields: [customerId], references: [id])
+  contactName  String?
+  contactPhone String?
+  contactEmail String?
+  message      String?
+  payload      Json? // form answers (bulk, contact, ring finder)
+
+  ownerId          String?
+  owner            User?           @relation("EnquiryOwner", fields: [ownerId], references: [id])
+  franchiseId      String?
+  franchise        Franchise?      @relation(fields: [franchiseId], references: [id])
+  whatsAppNumberId String?
+  whatsAppNumber   WhatsAppNumber? @relation(fields: [whatsAppNumberId], references: [id])
+
+  /// Client-generated id so a retried background save does not duplicate
+  clientId        String?   @unique
+  firstResponseAt DateTime?
+  acknowledgedAt  DateTime?
+  closedAt        DateTime?
+  archivedAt      DateTime?
+
+  notes          EnquiryNote[]
+  convertedOrder Order?         @relation("EnquiryConvertedOrder")
+  customRequest  CustomRequest?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([stage, cityId])
+  @@index([type])
+  @@index([ownerId])
+  @@index([franchiseId])
+  @@index([createdAt])
+}
+
+model EnquiryNote {
+  id        String   @id @default(cuid())
+  enquiryId String
+  enquiry   Enquiry  @relation(fields: [enquiryId], references: [id])
+  authorId  String
+  author    User     @relation(fields: [authorId], references: [id])
+  body      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([enquiryId])
+}
+
+model WhatsAppNumber {
+  id        String  @id @default(cuid())
+  label     String // "Pune team", "Wholesale"
+  phone     String // E.164
+  cityId    String?
+  city      City?   @relation(fields: [cityId], references: [id])
+  isDefault Boolean @default(false)
+  isActive  Boolean @default(true)
+
+  enquiries    Enquiry[]
+  routingRules RoutingRule[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model MessageTemplate {
+  id                   String              @id @default(cuid())
+  key                  String // ENQUIRY_PRODUCT, ENQUIRY_ACK, ORDER_CONFIRMED, CART_REMINDER, ...
+  channel              NotificationChannel
+  language             String              @default("en")
+  /// Body with {{placeholders}}, e.g. {{productName}} {{sku}} {{reference}}
+  body                 String
+  subject              String? // email
+  /// BSP-approved template name, for WhatsApp Business API sends
+  providerTemplateName String?
+  isActive             Boolean             @default(true)
+  createdAt            DateTime            @default(now())
+  updatedAt            DateTime            @updatedAt
+
+  @@unique([key, channel, language])
+}
+
+/// Routes an enquiry to a WhatsApp number, owner and/or franchise.
+/// Most specific match wins (priority ascending, then city+type over city over type over default).
+model RoutingRule {
+  id                String         @id @default(cuid())
+  name              String
+  priority          Int            @default(100)
+  cityId            String?
+  city              City?          @relation(fields: [cityId], references: [id])
+  enquiryType       EnquiryType?
+  whatsAppNumberId  String
+  whatsAppNumber    WhatsAppNumber @relation(fields: [whatsAppNumberId], references: [id])
+  assignOwnerId     String?
+  assignFranchiseId String?
+  isActive          Boolean        @default(true)
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+}
+
+// ════════════════════════════════════════════════════════════════════
+// Content
+// ════════════════════════════════════════════════════════════════════
+
+model Banner {
+  id             String    @id @default(cuid())
+  placement      String // HOME_HERO, HOME_SECONDARY, CATEGORY_TOP
+  title          String?
+  subtitle       String?
+  imageUrl       String
+  mobileImageUrl String?
+  linkUrl        String?
+  ctaLabel       String?
+  sortOrder      Int       @default(0)
+  startsAt       DateTime?
+  endsAt         DateTime?
+  isActive       Boolean   @default(true)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+}
+
+/// Editable blocks of the storefront (home sections, trust points, story, footer text, app store links).
+model ContentBlock {
+  id        String           @id @default(cuid())
+  key       String           @unique // home.story, home.trust, footer.address, app.links ...
+  kind      ContentBlockKind
+  title     String?
+  data      Json
+  sortOrder Int              @default(0)
+  isActive  Boolean          @default(true)
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+}
+
+/// Static pages: legal pages, Our Story, Shipping policy, etc. Each publish creates a PageVersion.
+model Page {
+  id               String        @id @default(cuid())
+  slug             String        @unique // terms, privacy, refund-policy, ...
+  title            String
+  isLegal          Boolean       @default(false)
+  currentVersionId String?       @unique
+  currentVersion   PageVersion?  @relation("CurrentVersion", fields: [currentVersionId], references: [id])
+  versions         PageVersion[] @relation("PageVersions")
+  seoTitle         String?
+  seoDescription   String?
+  isActive         Boolean       @default(true)
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+}
+
+model PageVersion {
+  id            String   @id @default(cuid())
+  pageId        String
+  page          Page     @relation("PageVersions", fields: [pageId], references: [id])
+  version       Int
+  body          String // rich text / markdown
+  publishedById String?
+  publishedAt   DateTime @default(now())
+  currentOf     Page?    @relation("CurrentVersion")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([pageId, version])
+}
+
+model Testimonial {
+  id        String   @id @default(cuid())
+  name      String
+  city      String?
+  quote     String
+  photoUrl  String?
+  rating    Int?
+  sortOrder Int      @default(0)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model GalleryItem {
+  id        String   @id @default(cuid())
+  title     String?
+  caption   String?
+  mediaUrl  String
+  mediaType String   @default("image") // image | video
+  tag       String? // farm, craft, customers
+  sortOrder Int      @default(0)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Faq {
+  id        String   @id @default(cuid())
+  question  String
+  answer    String
+  group     String? // Orders, Pearls, Delivery
+  sortOrder Int      @default(0)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model JobOpening {
+  id           String           @id @default(cuid())
+  title        String
+  slug         String           @unique
+  location     String
+  description  String
+  eligibility  String?
+  isActive     Boolean          @default(true)
+  closesAt     DateTime?
+  applications JobApplication[]
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+}
+
+model JobApplication {
+  id           String               @id @default(cuid())
+  jobOpeningId String
+  jobOpening   JobOpening           @relation(fields: [jobOpeningId], references: [id])
+  name         String
+  email        String
+  phone        String
+  coverNote    String?
+  resumeUrl    String // private storage, signed URLs only
+  status       JobApplicationStatus @default(NEW)
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
+
+  @@index([jobOpeningId])
+}
+
+// ════════════════════════════════════════════════════════════════════
+// Pricing
+// ════════════════════════════════════════════════════════════════════
+
+/// Pearl rate per carat by grade, farm and size band. Manual rows are the guaranteed source.
+model PearlRate {
+  id                String          @id @default(cuid())
+  grade             String // AAA, AA, A ...
+  farmId            String?
+  farm              Farm?           @relation(fields: [farmId], references: [id])
+  sizeMinMm         Decimal         @db.Decimal(5, 2)
+  sizeMaxMm         Decimal         @db.Decimal(5, 2)
+  ratePerCaratPaise Int
+  source            PearlRateSource @default(MANUAL)
+  effectiveFrom     DateTime        @default(now())
+  isActive          Boolean         @default(true)
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  @@index([grade, farmId, isActive])
+}
+
+/// Margin applied by the price calculator. Most specific match wins.
+model MarginRule {
+  id             String   @id @default(cuid())
+  name           String
+  categoryId     String?
+  grade          String?
+  marginBp       Int // basis points over cost (2500 = 25%)
+  minMarginPaise Int?
+  priority       Int      @default(100)
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+// ════════════════════════════════════════════════════════════════════
+// System
+// ════════════════════════════════════════════════════════════════════
+
+/// A composed notification campaign (offers/promotions) or a system-triggered order update.
+model Notification {
+  id             String              @id @default(cuid())
+  channel        NotificationChannel
+  title          String
+  body           String
+  imageUrl       String?
+  deepLink       String?
+  /// Audience: { all: true } | { cityIds: [...] } | { segment: "repeat_buyers" } | { userId }
+  audience       Json
+  status         NotificationStatus  @default(DRAFT)
+  scheduledAt    DateTime?
+  sentAt         DateTime?
+  isSystem       Boolean             @default(false)
+  createdById    String?
+  targetCount    Int                 @default(0)
+  deliveredCount Int                 @default(0)
+  failedCount    Int                 @default(0)
+  logs           NotificationLog[]
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+}
+
+/// Every outbound message (push, WhatsApp, email, SMS), visible in the admin.
+model NotificationLog {
+  id                String              @id @default(cuid())
+  notificationId    String?
+  notification      Notification?       @relation(fields: [notificationId], references: [id])
+  channel           NotificationChannel
+  recipient         String
+  userId            String?
+  templateKey       String?
+  subject           String?
+  body              String
+  status            DeliveryLogStatus   @default(QUEUED)
+  providerMessageId String?
+  error             String?
+  attempts          Int                 @default(0)
+  /// Related records, e.g. { orderId } or { enquiryId }
+  context           Json?
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+
+  @@index([channel, status])
+  @@index([createdAt])
+}
+
+/// Business settings as data: payment methods, delivery charges, GST defaults, return window,
+/// referral rewards, abandoned-cart timing, store details, app store links.
+model Setting {
+  key         String   @id
+  value       Json
+  description String?
+  updatedById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model FeatureFlag {
+  key         String   @id // vendor_commissions, live_gps, multi_currency, loyalty_points, pearl_rate_feed, ai_ring_finder
+  enabled     Boolean  @default(false)
+  description String?
+  updatedById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+/// Append-only. The application DB role has INSERT/SELECT only on this table (enforced in a raw SQL migration).
+model AuditLog {
+  id        String   @id @default(cuid())
+  actorId   String?
+  actor     User?    @relation(fields: [actorId], references: [id])
+  actorRole Role?
+  action    String // CREATE, UPDATE, ARCHIVE, LOGIN, STATUS_CHANGE, EXPORT ...
+  entity    String // Product, Order, ...
+  entityId  String?
+  before    Json?
+  after     Json?
+  ip        String?
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  @@index([entity, entityId])
+  @@index([actorId, createdAt])
+  @@index([createdAt])
+}
+
+/// Atomic counters for human-readable numbers (orders, invoices per FY, POs, enquiries).
+model Sequence {
+  key       String   @id // order:2610, invoice:2026-27, po:2026, enquiry:26
+  value     Int      @default(0)
+  updatedAt DateTime @updatedAt
+}
+
+// ════════════════════════════════════════════════════════════════════
+// Switched off for now (behind feature flags)
+// ════════════════════════════════════════════════════════════════════
+
+/// flag: vendor_commissions
+model VendorCommission {
+  id           String      @id @default(cuid())
+  vendorId     String
+  vendor       Vendor      @relation(fields: [vendorId], references: [id])
+  orderId      String
+  order        Order       @relation(fields: [orderId], references: [id])
+  rateBp       Int
+  amountPaise  Int
+  settlementId String?
+  settlement   Settlement? @relation(fields: [settlementId], references: [id])
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  @@unique([vendorId, orderId])
+}
+
+/// flag: vendor_commissions
+model Settlement {
+  id          String             @id @default(cuid())
+  vendorId    String
+  vendor      Vendor             @relation(fields: [vendorId], references: [id])
+  periodStart DateTime
+  periodEnd   DateTime
+  amountPaise Int
+  status      String             @default("PENDING") // PENDING, PAID
+  paidAt      DateTime?
+  reference   String?
+  commissions VendorCommission[]
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+}
+
+/// flag: loyalty_points
+model LoyaltyLedger {
+  id         String   @id @default(cuid())
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id])
+  points     Int // positive earn, negative redeem
+  reason     String
+  orderId    String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([customerId])
+}
+
+/// flag: multi_currency
+model Currency {
+  code              String   @id // INR, USD, AED
+  symbol            String
+  /// Units of this currency per 1 INR, scaled by 1e6
+  rateFromInrMicros Int
+  isActive          Boolean  @default(false)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+
+/// flag: live_gps
+model DeliveryLocationPing {
+  id                String          @id @default(cuid())
+  deliveryPartnerId String
+  deliveryPartner   DeliveryPartner @relation(fields: [deliveryPartnerId], references: [id])
+  deliveryId        String?
+  latitude          Decimal         @db.Decimal(9, 6)
+  longitude         Decimal         @db.Decimal(9, 6)
+  accuracyM         Int?
+  recordedAt        DateTime
+  createdAt         DateTime        @default(now())
+
+  @@index([deliveryPartnerId, recordedAt])
+}
