@@ -74,7 +74,6 @@ export function ImageUpload({ value, onChange, folder = 'content' }: { value: st
   return (
     <div className="flex items-center gap-3">
       {value ? (
-        // eslint-disable-next-line @next/next/no-img-element
         <img src={value} alt="" className="h-20 w-20 rounded-sm border border-line object-cover" />
       ) : (
         <div className="flex h-20 w-20 items-center justify-center rounded-sm border border-dashed border-line text-xs text-muted">No image</div>

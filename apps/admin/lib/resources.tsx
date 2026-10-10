@@ -325,7 +325,6 @@ export const RESOURCES: Record<string, ResourceDef> = {
       { key: 'title', label: 'Title' },
       { key: 'tag', label: 'Tag' },
       { key: 'mediaUrl', label: 'Image', render: (r) => (
-        // eslint-disable-next-line @next/next/no-img-element
         <img src={r.mediaUrl} alt="" className="h-10 w-16 rounded-sm object-cover" />
       ) },
       { key: 'isActive', label: 'Status', render: active },

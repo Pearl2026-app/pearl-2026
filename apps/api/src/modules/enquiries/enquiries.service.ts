@@ -76,7 +76,14 @@ export class EnquiriesService {
   async create(input: EnquiryInput, user: AuthUser | null, extra?: { customRequest?: Prisma.CustomRequestUncheckedCreateWithoutEnquiryInput }) {
     if (input.clientId) {
       const existing = await this.prisma.enquiry.findUnique({ where: { clientId: input.clientId }, include: { product: true, whatsAppNumber: true, city: true } });
-      if (existing) return this.response(existing);
+      if (existing) {
+        // The customer may already have sent the reference made on their device: keep it searchable.
+        const alt = input.fallbackReference;
+        if (alt && FALLBACK_REF.test(alt) && alt !== existing.reference && (existing.payload as { altReference?: string } | null)?.altReference !== alt) {
+          await this.prisma.enquiry.update({ where: { id: existing.id }, data: { payload: { ...((existing.payload as object) ?? {}), altReference: alt } } });
+        }
+        return this.response(existing);
+      }
     }
     const product = input.productId
       ? await this.prisma.product.findFirst({ where: { id: input.productId, archivedAt: null }, select: { id: true, name: true, sku: true } })

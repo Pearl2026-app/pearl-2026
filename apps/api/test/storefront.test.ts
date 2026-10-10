@@ -53,7 +53,8 @@ describe('public catalogue', () => {
   });
 
   it('does not show unpublished products', async () => {
-    const draft = await db.product.findFirstOrThrow({ where: { status: { not: 'PUBLISHED' } } });
+    const cat = await db.category.findFirstOrThrow();
+    const draft = await db.product.create({ data: { sku: 'TST-DRAFT-1', name: 'Draft piece', slug: 'draft-piece-test', categoryId: cat.id, pricePaise: 100, status: 'DRAFT' } });
     await http().get(api(`/catalogue/products/${draft.slug}`)).expect(404);
   });
 
@@ -226,5 +227,19 @@ describe('careers', () => {
     const file = await http().get(path).expect(200);
     expect(file.headers['content-type']).toBe('application/pdf');
     await http().get(path.replace(/sig=[^&]+/, 'sig=bad')).expect(404);
+  });
+});
+
+describe('enquiry saved slowly after WhatsApp already opened', () => {
+  it('records the device reference on the saved enquiry and finds it by either reference', async () => {
+    const p = await db.product.findFirstOrThrow({ where: { slug: 'moonlit-pendant' } });
+    const clientId = randomUUID();
+    const first = await http().post(api('/enquiries')).send({ clientId, type: 'PRODUCT', productId: p.id }).expect(201);
+    await http().post(api('/enquiries')).send({ clientId, type: 'PRODUCT', productId: p.id, fallbackReference: 'ENQ-W-ZZ99YY88' }).expect(201);
+    const e = await db.enquiry.findUniqueOrThrow({ where: { clientId } });
+    expect(e.reference).toBe(first.body.reference);
+    expect((e.payload as { altReference: string }).altReference).toBe('ENQ-W-ZZ99YY88');
+    const found = await http().get(api('/admin/enquiries?q=ENQ-W-ZZ99YY88')).set(bearer(await tokenFor('superAdmin'))).expect(200);
+    expect(found.body.items.map((x: { id: string }) => x.id)).toContain(e.id);
   });
 });

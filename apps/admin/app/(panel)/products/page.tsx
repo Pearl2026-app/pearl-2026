@@ -138,7 +138,6 @@ function Products() {
             sortable: true,
             render: (r) => (
               <span className="flex items-center gap-3">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
                 {r.images[0] ? <img src={r.images[0].url} alt="" className="h-10 w-10 rounded-sm object-cover" /> : <span className="h-10 w-10 rounded-sm bg-surface-muted" />}
                 <span>
                   {r.name}

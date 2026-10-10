@@ -22,6 +22,8 @@ export default tseslint.config(
       ...reactHooks.configs.recommended.rules,
       ...nextPlugin.configs.recommended.rules,
       '@next/next/no-html-link-for-pages': 'off',
+      // Images come pre-sized from the API (WebP variants + srcset), so next/image optimisation is not used (DECISIONS D36).
+      '@next/next/no-img-element': 'off',
     },
   },
 );

@@ -154,7 +154,7 @@ class EnquiryInboxController {
         q.source ? { source: q.source } : {},
         q.from || q.to ? { createdAt: between(q.from, q.to) } : {},
         q.q
-          ? { OR: [{ reference: { contains: q.q, mode: 'insensitive' } }, { contactName: { contains: q.q, mode: 'insensitive' } }, { contactPhone: { contains: q.q } }, { product: { sku: { contains: q.q, mode: 'insensitive' } } }, { product: { name: { contains: q.q, mode: 'insensitive' } } }] }
+          ? { OR: [{ reference: { contains: q.q, mode: 'insensitive' } }, { payload: { path: ['altReference'], equals: q.q.toUpperCase() } }, { contactName: { contains: q.q, mode: 'insensitive' } }, { contactPhone: { contains: q.q } }, { product: { sku: { contains: q.q, mode: 'insensitive' } } }, { product: { name: { contains: q.q, mode: 'insensitive' } } }] }
           : {},
       ],
     };

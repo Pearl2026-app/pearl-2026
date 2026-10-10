@@ -109,7 +109,6 @@ function SortableImage({ img, onMain, onRemove, disabled }: { img: Img; onMain: 
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: img.id, disabled });
   return (
     <li ref={setNodeRef} style={{ transform: CSS.Transform.toString(transform), transition }} className="relative rounded-sm border border-line bg-surface p-1">
-      {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src={img.url} alt={img.alt ?? ''} className="aspect-square w-full cursor-grab rounded-sm object-cover" {...attributes} {...listeners} />
       <div className="mt-1 flex items-center justify-between gap-1 text-xs">
         {img.kind === 'MAIN' ? <Badge tone="success">Main</Badge> : <button className="text-accent underline" onClick={onMain} disabled={disabled}>Make main</button>}
