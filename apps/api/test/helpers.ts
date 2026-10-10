@@ -22,7 +22,7 @@ export const LOGINS = {
 } as const;
 
 let app: INestApplication | null = null;
-export const db = new PrismaClient();
+export const db: PrismaClient = new PrismaClient();
 
 export async function getApp(): Promise<INestApplication> {
   if (!app) {

@@ -16,7 +16,7 @@ function cell(v: unknown): string {
 export function toCsv<T>(rows: T[], columns: CsvColumn<T>[]): string {
   const lines = [columns.map((c) => cell(c.header)).join(',')];
   for (const r of rows) lines.push(columns.map((c) => cell(c.value(r))).join(','));
-  return '﻿' + lines.join('\r\n') + '\r\n';
+  return '\uFEFF' + lines.join('\r\n') + '\r\n';
 }
 
 export function sendCsv<T>(res: Response, filename: string, rows: T[], columns: CsvColumn<T>[]): void {
@@ -31,7 +31,7 @@ export function parseCsv(text: string): string[][] {
   let row: string[] = [];
   let field = '';
   let q = false;
-  const s = text.replace(/^﻿/, '');
+  const s = text.replace(/^\uFEFF/, '');
   for (let i = 0; i < s.length; i++) {
     const ch = s[i]!;
     if (q) {

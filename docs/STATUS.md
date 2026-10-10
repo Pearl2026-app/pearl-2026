@@ -22,19 +22,23 @@ See [DECISIONS.md](DECISIONS.md) and [OPEN-QUESTIONS.md](OPEN-QUESTIONS.md). Cau
 - [x] SPEC.md saved, STATUS.md checklist
 - [x] Sitemap, design direction + sample screens, schema, permission matrix, API outline, phase plan
 
-### Phase 1 — Foundation
-- [ ] Monorepo tooling (TypeScript, lint, test runners, CI workflow, docker-compose)
-- [ ] packages/shared: permissions, validation, money/GST/coupon maths + unit tests
-- [ ] packages/db: initial migration, raw SQL (hold index, audit grants, FTS), seed
-- [ ] packages/ui: tokens + Tailwind preset + base components
-- [ ] API: config, Prisma, auth (OTP + staff password/OTP, refresh, sessions)
-- [ ] API: guards, scope layer, audit log interceptor
-- [ ] API: providers (payment, WhatsApp, SMS, email, push, storage, AI, pearl rate) with fallbacks
-- [ ] API: network CRUD (cities, vendors, franchises, manufacturers, delivery partners)
-- [ ] API: catalogue CRUD (categories, collections, farms, products, images, video, CSV import, approval)
-- [ ] API: content (banners, blocks, pages + versions, testimonials, gallery, FAQ, jobs), settings, flags, audit viewer, users & grants
-- [ ] Permission integration tests for seven roles
-- [ ] Admin shell + Phase 1 screens
+### Phase 1 — Foundation ✅ (tag phase-1)
+- [x] Monorepo tooling (TypeScript, ESLint, Vitest, CI workflow, docker-compose.dev.yml)
+- [x] packages/shared: permissions, validation, money/GST/coupon maths + unit tests (31)
+- [x] packages/db: initial migration, guards migration (hold index, append-only triggers, FTS), idempotent seed
+- [x] packages/ui: tokens + Tailwind theme + base components
+- [x] API: config, Prisma, auth (customer OTP, partner OTP, staff password + OTP, email fallback, refresh rotation with reuse detection)
+- [x] API: global guard, scope layer (404 on out-of-scope ids), audit log
+- [x] API: providers with fallbacks (payment sandbox/Razorpay, WhatsApp click-to-chat/Cloud API, SMS console/HTTP, email log/SMTP, push log/FCM, storage local/S3, AI none/OpenAI-compatible, pearl-rate feed)
+- [x] API: network CRUD (cities, vendors, franchises, manufacturers, delivery partners)
+- [x] API: catalogue (categories, collections, farms, products, images, video, CSV import, bulk images, vendor approval, certificates, reviews)
+- [x] API: content (banners, blocks, versioned pages, testimonials, gallery, FAQ, careers, applications), settings, flags, users & grants, customers, audit and message logs
+- [x] Permission integration tests for seven roles (Phase 1 modules)
+- [x] Admin shell + Phase 1 screens (verified in a browser)
+
+Notes:
+- Tests run in a fresh per-run schema of the test database (Prisma blocks `migrate reset` when run by an agent; nothing existing is wiped).
+- Minor: the product "Related pieces" picker lists the product itself; the API ignores self-links.
 
 ### Phase 2 — Storefront and enquiries
 - [ ] Public catalogue API (filters, FTS, facets), content API
