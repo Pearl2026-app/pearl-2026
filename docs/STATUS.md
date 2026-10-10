@@ -3,7 +3,6 @@
 Resume rule: read [SPEC.md](SPEC.md) and this file, then continue from the first unchecked item.
 
 ## Needed from the owner
-- **GitHub write access** (blocks everything online): reconnect at https://claude.ai/connect-github and install the Claude GitHub App on the Pearl2026-app organization. Every push so far returned 403.
 - **Hosting accounts** for docs/DEPLOYMENT.md: Vercel, Fly.io, Neon or Supabase (Mumbai), Upstash Redis (Mumbai), AWS S3 (ap-south-1); a domain.
 - **Approved legal texts** (terms, refund, privacy, return & cancellation, shipping): production starts with drafts.
 - Payment gateway live keys (Razorpay assumed): `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, `RAZORPAY_WEBHOOK_SECRET`. Until then: sandbox provider + COD.
