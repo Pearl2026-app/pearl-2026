@@ -139,7 +139,7 @@ export default function OrderPage() {
                 <dt className="text-muted">Status</dt><dd><StatusBadge status={o.delivery.status} /></dd>
                 {o.delivery.failureReason && (<><dt className="text-muted">Reason</dt><dd>{o.delivery.failureReason}</dd></>)}
                 {o.delivery.codCollectedPaise != null && (<><dt className="text-muted">COD collected</dt><dd>{inr(o.delivery.codCollectedPaise)}</dd></>)}
-                {o.delivery.proofPhotoUrl && (<><dt className="text-muted">Proof</dt><dd><a href={`/api/v1/admin/deliveries/${o.delivery.id}/proof`} className="text-accent underline" target="_blank" rel="noreferrer">View photo</a>{o.delivery.proofOtpVerifiedAt ? ' · OTP verified' : o.delivery.proofSignatureUrl ? ' · signed' : ''}</dd></>)}
+                {o.delivery.proofPhotoUrl && (<><dt className="text-muted">Proof</dt><dd><a href={`/api/v1/admin/deliveries/${o.delivery.id}/proof`} className="text-accent underline" target="_blank" rel="noreferrer">View photo</a>{o.delivery.proofOtpVerifiedAt ? ' · customer code verified' : ''}{o.delivery.proofSignatureUrl && <> · <a href={`/api/v1/admin/deliveries/${o.delivery.id}/proof?kind=signature`} className="text-accent underline" target="_blank" rel="noreferrer">signature</a></>}</dd></>)}
               </dl>
             </Card>
           )}
