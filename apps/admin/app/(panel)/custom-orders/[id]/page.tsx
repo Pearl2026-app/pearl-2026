@@ -9,7 +9,7 @@ import { useRefOptions } from '@/components/fields';
 import { PageHeader } from '@/components/shell';
 import { useToast } from '@/components/toast';
 import { api, errorText } from '@/lib/api';
-import { STAGES } from '@/lib/custom';
+import { STAGES, stageLabel } from '@/lib/custom';
 import { dateTime, humanize, inr, toPaise, toRupees } from '@/lib/format';
 import { useCan, useMe } from '@/lib/session';
 
@@ -167,7 +167,7 @@ function CustomOrder({ id }: { id: string }) {
   const preview = quoteCustom({ ...costPaise, gstRateBp: c.gstRateBp });
   const quoteOpen = c.stage === 'REQUIREMENT' || c.stage === 'QUOTED';
   const move = (stage: string) => {
-    const note = window.prompt(`Note for moving to “${humanize(stage)}” (optional)`) ?? undefined;
+    const note = window.prompt(`Note for moving to “${stageLabel(stage)}” (optional)`) ?? undefined;
     act.mutate({ path: '/stage', json: { stage, note: note || null } });
   };
 
@@ -185,7 +185,7 @@ function CustomOrder({ id }: { id: string }) {
       />
       <ol className="mb-4 flex flex-wrap gap-1 text-xs" aria-label="Production stages">
         {STAGES.map((s, j) => (
-          <li key={s} aria-current={s === c.stage ? 'step' : undefined} className={`rounded-full px-3 py-1 ${j < i ? 'bg-accent-soft text-accent' : j === i ? 'bg-accent text-white' : 'bg-surface-muted text-muted'}`}>{humanize(s)}</li>
+          <li key={s} aria-current={s === c.stage ? 'step' : undefined} className={`rounded-full px-3 py-1 ${j < i ? 'bg-accent-soft text-accent' : j === i ? 'bg-accent text-white' : 'bg-surface-muted text-muted'}`}>{stageLabel(s)}</li>
         ))}
       </ol>
       <div className="grid gap-4 lg:grid-cols-[1fr_340px]">
@@ -241,10 +241,10 @@ function CustomOrder({ id }: { id: string }) {
             <Card className="flex flex-col gap-2">
               <h2 className="font-semibold">Stage</h2>
               {next === 'PO_RAISED' && !c.order?.purchaseOrders.length && <p className="text-xs text-muted">Raise a purchase order to move on.</p>}
-              {next && !['ADVANCE_PAID', 'DISPATCHED', 'DELIVERED'].includes(next) && !(next === 'PO_RAISED' && !c.order?.purchaseOrders.length) && <Button size="sm" onClick={() => move(next)} loading={act.isPending}>Move to {humanize(next).toLowerCase()}</Button>}
+              {next && !['ADVANCE_PAID', 'DISPATCHED', 'DELIVERED'].includes(next) && !(next === 'PO_RAISED' && !c.order?.purchaseOrders.length) && <Button size="sm" onClick={() => move(next)} loading={act.isPending}>Move to {stageLabel(next).toLowerCase()}</Button>}
               {next === 'ADVANCE_PAID' && <p className="text-xs text-muted">Record the advance to move on.</p>}
               {(next === 'DISPATCHED' || next === 'DELIVERED') && <p className="text-xs text-muted">Dispatch and delivery follow the order’s delivery steps.</p>}
-              {prev && !['DISPATCHED', 'DELIVERED'].includes(c.stage) && <Button size="sm" variant="ghost" onClick={() => move(prev)}>Back to {humanize(prev).toLowerCase()}</Button>}
+              {prev && !['DISPATCHED', 'DELIVERED'].includes(c.stage) && <Button size="sm" variant="ghost" onClick={() => move(prev)}>Back to {stageLabel(prev).toLowerCase()}</Button>}
             </Card>
           )}
           {c.order && (
@@ -266,7 +266,7 @@ function CustomOrder({ id }: { id: string }) {
             <h2 className="mb-1 font-semibold">History</h2>
             <ol className="text-sm">
               {((c.stageHistory as Array<{ stage: string; at: string; by: string; note?: string | null }>) ?? []).map((h, j) => (
-                <li key={j} className="border-l-2 border-line py-1 pl-2">{humanize(h.stage)}{h.note ? `: ${h.note}` : ''}<span className="block text-xs text-muted">{dateTime(h.at)} · {h.by}</span></li>
+                <li key={j} className="border-l-2 border-line py-1 pl-2">{stageLabel(h.stage)}{h.note ? `: ${h.note}` : ''}<span className="block text-xs text-muted">{dateTime(h.at)} · {h.by}</span></li>
               ))}
             </ol>
           </Card>

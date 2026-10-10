@@ -49,6 +49,13 @@ export default function CheckoutPage() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
+  /** Keeps the number on the cart so an unfinished checkout can get one reminder (timing set in the admin). */
+  const rememberContact = () => {
+    const phone = contact.phone.replace(/[\s-]/g, '');
+    if (!/^(\+91|0)?[6-9]\d{9}$/.test(phone)) return;
+    void api('/checkout/quote', { method: 'POST', json: { phone, name: contact.name.trim() || undefined, ...(cityId ? { cityId } : {}) } }).catch(() => undefined);
+  };
+
   const quote = useCallback(async (city: string) => {
     try {
       const q = await api<CartView>('/checkout/quote', { method: 'POST', json: city ? { cityId: city } : {} });
@@ -172,7 +179,7 @@ export default function CheckoutPage() {
             <h2 id="h-contact" className="eyebrow">1 · Contact</h2>
             <div className="grid gap-4 sm:grid-cols-2">
               <FormField label="Full name" error={errors.name} required>{(id, d) => <TextInput id={id} aria-describedby={d} autoComplete="name" value={contact.name} onChange={(e) => setContact({ ...contact, name: e.target.value })} invalid={!!errors.name} />}</FormField>
-              <FormField label="Mobile number" error={errors.phone} hint="For delivery updates on WhatsApp" required>{(id, d) => <TextInput id={id} aria-describedby={d} type="tel" inputMode="tel" autoComplete="tel" value={contact.phone} onChange={(e) => setContact({ ...contact, phone: e.target.value })} invalid={!!errors.phone} />}</FormField>
+              <FormField label="Mobile number" error={errors.phone} hint="For delivery updates on WhatsApp" required>{(id, d) => <TextInput id={id} aria-describedby={d} type="tel" inputMode="tel" autoComplete="tel" value={contact.phone} onChange={(e) => setContact({ ...contact, phone: e.target.value })} onBlur={rememberContact} invalid={!!errors.phone} />}</FormField>
               <FormField label="Email" error={errors.email} hint="For your invoice">{(id, d) => <TextInput id={id} aria-describedby={d} type="email" autoComplete="email" value={contact.email} onChange={(e) => setContact({ ...contact, email: e.target.value })} />}</FormField>
             </div>
           </section>

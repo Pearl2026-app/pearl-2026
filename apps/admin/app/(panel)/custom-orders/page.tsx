@@ -5,9 +5,9 @@ import { Input, Select } from '@sahyadri/ui';
 import { DataTable, Pagination } from '@/components/data-table';
 import { PageHeader } from '@/components/shell';
 import { qs, type Page } from '@/lib/api';
-import { date, humanize, inr } from '@/lib/format';
+import { date, inr } from '@/lib/format';
 import { useCan } from '@/lib/session';
-import { STAGES } from '@/lib/custom';
+import { STAGES, stageLabel } from '@/lib/custom';
 import { useList, useListParams } from '@/lib/use-list';
 
 
@@ -34,7 +34,7 @@ function List() {
       <div className="mb-3 flex flex-wrap gap-1 text-sm" role="tablist">
         {['', ...STAGES].map((s) => (
           <button key={s || 'all'} role="tab" aria-selected={(params.stage ?? '') === s} onClick={() => set({ stage: s || undefined })} className={`rounded-full border px-3 py-1 ${(params.stage ?? '') === s ? 'border-accent bg-accent text-white' : 'border-line bg-surface'}`}>
-            {s ? humanize(s) : 'All'} {s && page?.stageCounts[s] ? `(${page.stageCounts[s]})` : ''}
+            {s ? stageLabel(s) : 'All'} {s && page?.stageCounts[s] ? `(${page.stageCounts[s]})` : ''}
           </button>
         ))}
       </div>
@@ -56,7 +56,7 @@ function List() {
           { key: 'jewelleryType', label: 'Piece' },
           { key: 'city', label: 'City', render: (r) => r.city?.name ?? '—' },
           { key: 'quotedPaise', label: 'Quote', render: (r) => inr(r.quotedPaise) },
-          { key: 'stage', label: 'Stage', render: (r) => humanize(r.stage) },
+          { key: 'stage', label: 'Stage', render: (r) => stageLabel(r.stage) },
           { key: 'ref', label: 'Enquiry / order', render: (r) => [r.enquiry?.reference, r.order?.number].filter(Boolean).join(' · ') || '—' },
         ]}
       />

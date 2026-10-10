@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { Suspense } from 'react';
 import { Catalogue, type SearchParams } from '@/components/catalogue';
@@ -22,6 +23,11 @@ export default async function CategoryPage({ params, searchParams }: { params: P
     <Container>
       <Breadcrumbs items={[{ name: 'Home', href: '/' }, { name: 'Jewellery', href: '/jewellery' }, { name: c.name }]} />
       <PageTitle eyebrow="Jewellery" title={c.name} intro={c.description} />
+      {c.slug === 'rings' && (
+        <p className="mb-6 text-sm">
+          Not sure where to start? <Link href="/ring-finder" className="text-accent underline">Try the Ring Finder</Link>: a few questions, and rings that suit you.
+        </p>
+      )}
       <Suspense>
         <Catalogue searchParams={sp} fixed={{ category: c.slug }} basePath={`/jewellery/${c.slug}`} />
       </Suspense>

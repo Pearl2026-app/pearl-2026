@@ -1,6 +1,6 @@
 'use client';
 import { clsx } from 'clsx';
-import { forwardRef, useId, type ButtonHTMLAttributes, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes, type TextareaHTMLAttributes } from 'react';
+import { forwardRef, useId, type ButtonHTMLAttributes, type HTMLAttributes, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes, type TextareaHTMLAttributes } from 'react';
 import type { Tone } from './tokens';
 
 export const cx = clsx;
@@ -154,8 +154,12 @@ export function StatusBadge({ status, label }: { status: string; label?: string 
   return <Badge tone={toneFor(status)}>{label ?? status.replace(/_/g, ' ').toLowerCase().replace(/^\w/, (c) => c.toUpperCase())}</Badge>;
 }
 
-export function Card({ children, className }: { children: ReactNode; className?: string }) {
-  return <div className={cx('rounded-md border border-line bg-surface p-4', className)}>{children}</div>;
+export function Card({ children, className, ...rest }: HTMLAttributes<HTMLDivElement>) {
+  return (
+    <div className={cx('rounded-md border border-line bg-surface p-4', className)} {...rest}>
+      {children}
+    </div>
+  );
 }
 
 export function Spinner({ label = 'Loading' }: { label?: string }) {

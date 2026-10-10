@@ -137,10 +137,10 @@ export class CheckoutController {
   @Public()
   @Post('checkout/quote')
   @HttpCode(200)
-  async quote(@CurrentUser() user: AuthUser | null, @Req() req: Request, @Body(new ZodValidationPipe(z.object({ cityId: z.string().optional(), citySlug: z.string().optional(), phone: indianMobile.optional() }))) dto: { cityId?: string; citySlug?: string; phone?: string }) {
+  async quote(@CurrentUser() user: AuthUser | null, @Req() req: Request, @Body(new ZodValidationPipe(z.object({ cityId: z.string().optional(), citySlug: z.string().optional(), phone: indianMobile.optional(), name: z.string().trim().min(2).max(120).optional() }))) dto: { cityId?: string; citySlug?: string; phone?: string; name?: string }) {
     const cart = await this.carts.resolve(user, cartToken(req), false);
     const cityId = await cityIdFrom(this.prisma, dto);
-    if (cart && (dto.phone || cityId)) await this.carts.setContact(cart, { phone: dto.phone, cityId });
+    if (cart && (dto.phone || cityId)) await this.carts.setContact(cart, { phone: dto.phone, name: dto.name, cityId });
     const fresh = cart ? await this.prisma.cart.findUnique({ where: { id: cart.id } }) : null;
     const view = await this.carts.view(fresh, user, cityId);
     return { ...view, paymentMethods: { ...('paymentMethods' in view ? view.paymentMethods : {}), online: ('paymentMethods' in view && view.paymentMethods?.online && this.payments.onlineAvailable) || false, provider: this.payments.providerName } };

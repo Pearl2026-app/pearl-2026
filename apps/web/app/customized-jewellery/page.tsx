@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { Suspense } from 'react';
 import { CustomJewelleryForm } from '@/components/custom-form';
 import { Breadcrumbs, Container, PageTitle } from '@/components/ui';
@@ -17,6 +18,7 @@ export default function CustomPage() {
             <li><strong className="text-ink">2. Get a quote.</strong> We confirm pearls, design and price, usually within a day.</li>
             <li><strong className="text-ink">3. We make it.</strong> After an advance, our craftspeople set your pearls and we deliver, insured.</li>
           </ol>
+          <p className="mt-6 text-sm">Looking for a ring that is ready now? <Link href="/ring-finder" className="text-accent underline">Try the Ring Finder</Link>.</p>
         </div>
         <div className="py-6 lg:py-10">
           <Suspense>
