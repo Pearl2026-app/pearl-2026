@@ -28,7 +28,7 @@ Each question has an assumed default, so Phase 1 can start without waiting. Ques
 
 | # | Question | Assumed default |
 |---|---|---|
-| Q13 | AI provider for the Ring Finder | Claude via the Anthropic API, behind `AiRanker`; plain results when off |
+| Q13 | AI provider for the Ring Finder | To be chosen by the client; any LLM API can sit behind `AiRanker`. Plain filtered results until one is configured |
 | Q14 | Pearl market-rate source | None yet; manual rate table only |
 | Q15 | Grades used in the rate table | AAA, AA+, AA, A |
 | Q16 | Ring sizes | Indian ring sizes 1–30, with a printable size guide |
