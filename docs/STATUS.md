@@ -40,13 +40,14 @@ Notes:
 - Tests run in a fresh per-run schema of the test database (Prisma blocks `migrate reset` when run by an agent; nothing existing is wiped).
 - Minor: the product "Related pieces" picker lists the product itself; the API ignores self-links.
 
-### Phase 2 — Storefront and enquiries
-- [ ] Public catalogue API (filters, FTS, facets), content API
-- [ ] Enquiries API (capture, routing, templates, acknowledgement, inbox, notes, convert)
-- [ ] Storefront pages (all in SITEMAP), floating WhatsApp, SEO (metadata, JSON-LD, sitemap)
-- [ ] Customized Jewellery, farms, FAQ, Careers, legal pages, contact, bulk
-- [ ] Admin enquiry inbox + WhatsApp settings
-- [ ] Enquiry capture integration test
+### Phase 2 — Storefront and enquiries ✅ (tag phase-2)
+- [x] Public catalogue API (filters, facets, full-text search with SKU ranking, city availability), content API, careers, certificate verification, sitemap data
+- [x] Enquiries API: saved before WhatsApp opens, idempotent on clientId, device fallback reference kept, routing by city and type, templates, automatic acknowledgement (click-to-chat fallback + email), inbox with stages/owner/timer/notes/CSV, scoped by role
+- [x] Storefront pages (home, jewellery, category, collection, search, product, farms, customized jewellery, contact, bulk buying, FAQ, careers, offers, gallery, verify, Our Story, About, five legal pages), floating WhatsApp, SEO (metadata, JSON-LD, sitemap.xml, robots.txt)
+- [x] Admin enquiry inbox + WhatsApp numbers, routing rules and templates
+- [x] Enquiry capture integration tests (incl. slow/failed first save)
+- [ ] Mobile Lighthouse ≥ 90 measurement → Phase 6 (pages are server-rendered with ~106 kB JS, lazy images and pre-sized WebP variants)
+- [ ] Ring Finder page → Phase 4 (per SPEC phase list)
 
 ### Phase 3 — Commerce
 - [ ] Cart (guest + merge), coupons

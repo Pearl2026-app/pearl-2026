@@ -223,8 +223,8 @@ class EnquiryInboxController {
   /** Team members an enquiry can be assigned to (scoped). */
   @Get('meta/owners')
   @Requires('ENQUIRIES', 'view')
-  owners(@CurrentUser() user: AuthUser) {
-    return this.prisma.user.findMany({
+  async owners(@CurrentUser() user: AuthUser) {
+    const items = await this.prisma.user.findMany({
       where: {
         isActive: true,
         role: { in: ['SUPER_ADMIN', 'STAFF', 'CITY_MANAGER', 'FRANCHISE'] },
@@ -233,6 +233,7 @@ class EnquiryInboxController {
       select: { id: true, name: true, role: true },
       orderBy: { name: 'asc' },
     });
+    return { items };
   }
 }
 
