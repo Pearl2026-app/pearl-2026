@@ -151,9 +151,8 @@ export function createClient(o: ClientOptions) {
     const type = res.headers.get('content-type') ?? '';
     const body = (type.includes('application/json') ? await res.json() : await res.text()) as T;
     // Cart responses carry the guest cart token; keep it so the cart survives app restarts.
-    if (body && typeof body === 'object' && path.startsWith('/cart') && typeof (body as { token?: unknown }).token === 'string') {
-      await o.store.set(CART, (body as { token: string }).token);
-    }
+    const cartToken = path.startsWith('/cart') && body && typeof body === 'object' ? (body as { token?: unknown }).token : undefined;
+    if (typeof cartToken === 'string') await o.store.set(CART, cartToken);
     return body;
   }
 

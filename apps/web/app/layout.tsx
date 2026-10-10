@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from 'next';
-import { Cormorant_Garamond, Inter } from 'next/font/google';
+import localFont from 'next/font/local';
 import { Footer } from '@/components/footer';
 import { Header } from '@/components/header';
 import { SessionProvider } from '@/components/session';
@@ -10,8 +10,17 @@ import { get } from '@/lib/server-api';
 import type { Site } from '@/lib/types';
 import './globals.css';
 
-const serif = Cormorant_Garamond({ subsets: ['latin'], weight: ['400', '500', '600'], variable: '--font-cormorant', display: 'swap' });
-const sans = Inter({ subsets: ['latin'], variable: '--font-inter', display: 'swap' });
+// Fonts ship with the site (open licence, from Fontsource): no request to Google at build or run time.
+const serif = localFont({
+  src: [
+    { path: '../node_modules/@fontsource/cormorant-garamond/files/cormorant-garamond-latin-400-normal.woff2', weight: '400' },
+    { path: '../node_modules/@fontsource/cormorant-garamond/files/cormorant-garamond-latin-500-normal.woff2', weight: '500' },
+    { path: '../node_modules/@fontsource/cormorant-garamond/files/cormorant-garamond-latin-600-normal.woff2', weight: '600' },
+  ],
+  variable: '--font-cormorant',
+  display: 'swap',
+});
+const sans = localFont({ src: '../node_modules/@fontsource-variable/inter/files/inter-latin-wght-normal.woff2', weight: '100 900', variable: '--font-inter', display: 'swap' });
 
 export const dynamic = 'force-dynamic';
 
