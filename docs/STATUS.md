@@ -14,7 +14,7 @@ Resume rule: read [SPEC.md](SPEC.md) and this file, then continue from the first
 - GSTIN, legal name and registered address for invoices (Settings → Store).
 
 ## Flagged for owner review (money, permissions, deletion)
-See [DECISIONS.md](DECISIONS.md) and [OPEN-QUESTIONS.md](OPEN-QUESTIONS.md). Cautious defaults were taken. Flagged so far: D32 (GST on delivery), D33 (no sandbox in production), D35 (only Super Admin manages logins), D38 (cost fields hidden from partners), D40 (only head office sets agreed prices), D15/D41 (automatic refunds of late payments).
+See [DECISIONS.md](DECISIONS.md) and [OPEN-QUESTIONS.md](OPEN-QUESTIONS.md). Cautious defaults were taken. Flagged so far: D32 (GST on delivery), D33 (no sandbox in production), D35 (only Super Admin manages logins), D38 (cost fields hidden from partners), D40 (only head office sets agreed prices), D15/D41 (automatic refunds of late payments), D44 (only head office quotes customized work), D46 (only head office changes pearl rates and margins).
 
 ## Checklist
 
@@ -63,13 +63,21 @@ Notes:
 Notes:
 - Found in the browser check and fixed: BullMQ rejects `:` in job ids (inline test mode did not; ids are now checked in every mode); the API started its worker before modules registered their jobs (the per-minute hold sweep was not scheduled); checking out the same cart twice was blocked by the customer's own earlier hold (the earlier unpaid order is now released); guests made needless `/me` and refresh calls (a script-readable `sp_s=1` hint cookie, holding no secret, now gates them).
 
-### Phase 4 — Operations
-- [ ] Partner panels (City Manager, Vendor, Franchise, Delivery) + delivery proof + COD
-- [ ] Customized order workflow, PO PDF
-- [ ] Pearl pricing + calculator
-- [ ] Dashboard, reports, WhatsApp analytics, CSV
-- [ ] Abandoned cart, reviews, certificates + QR, Ring Finder, push campaigns
-- [ ] e2e browse→enquire→convert→deliver
+### Phase 4 — Operations ✅ (tag phase-4)
+- [x] Partner panels: City Manager, Vendor and Franchise use the shared admin with menus and data limited by role (checked in a browser for each role); Delivery has its own mobile-first screens
+- [x] Delivery: job list, one-tap steps, proof (photo + customer code or signature; code required at or above the value in Settings), COD collected at the door, offline queue on the device (IndexedDB) that replays safely
+- [x] Customized orders: requirement → quote (cost breakdown, head office only) → advance (creates the order) → PO → production → ready → dispatch/delivery; partial payments; files; history
+- [x] Purchase orders with numbered PDF, status steps that drive production stages, PDF link emailed when sent
+- [x] Pearl pricing: rate table by grade/farm/size, margin rules, calculator with apply-to-product, live feed adapter (off until configured)
+- [x] Dashboard (cards, monthly sales and orders, recent activity, date range, role-scoped) and reports with CSV: sales, GST register, enquiries, WhatsApp analytics, partners, best sellers
+- [x] Abandoned-cart reminder (timing in Settings), Ring Finder (filter → AI rank → fallback → hand-off), push campaign management
+- [x] Reviews (requested after delivery, moderated) and certificates with QR — built in Phases 1 and 3
+- [x] End-to-end test browse → enquire → convert → deliver (API, `test/journey.test.ts`); 88 API tests
+
+Notes:
+- Found in browser checks and fixed: TanStack Query paused delivery steps while offline instead of queuing them (now always queued on the device); some browsers refuse Blobs in IndexedDB (files are stored as ArrayBuffers); franchises could not load the city list for manual orders (roles without the Cities module now read the public list); the web checkout never stored the phone on the cart, so guest carts could not be reminded.
+- A flaky test was traced to the per-number OTP limit when parallel test files sign in the same accounts; the limit is now a setting (`OTP_MAX_PER_WINDOW`, default 5) with its own test.
+- Push campaigns are recorded and counted, but phones receive nothing until Firebase keys are supplied (the admin says so).
 
 ### Phase 5 — Mobile apps
 - [ ] Customer app (Expo)

@@ -4,6 +4,7 @@ import { useRef, useState } from 'react';
 import { Button, Field, Input, Select, Switch, Textarea } from '@sahyadri/ui';
 import { api, errorText } from '@/lib/api';
 import { toPaise, toRupees } from '@/lib/format';
+import { useCan } from '@/lib/session';
 
 export type FieldType =
   | 'text'
@@ -43,9 +44,15 @@ export interface FieldDef {
 }
 
 export function useRefOptions(ref?: FieldDef['ref']) {
+  const can = useCan();
+  // Cities are public; roles without the Cities module (e.g. franchises) read the storefront's list.
+  const publicCities = ref?.path === '/admin/cities' && !can('CITIES');
   return useQuery({
-    queryKey: ['ref', ref?.path, ref?.query],
-    queryFn: () => api<{ items: Array<Record<string, unknown>> }>(`${ref!.path}?pageSize=200${ref?.query ? '&' + new URLSearchParams(ref.query) : ''}`),
+    queryKey: ['ref', ref?.path, ref?.query, publicCities],
+    queryFn: async () =>
+      publicCities
+        ? { items: (await api<{ cities: Array<Record<string, unknown>> }>('/site')).cities }
+        : api<{ items: Array<Record<string, unknown>> }>(`${ref!.path}?pageSize=200${ref?.query ? '&' + new URLSearchParams(ref.query) : ''}`),
     enabled: !!ref,
     staleTime: 60_000,
   });
