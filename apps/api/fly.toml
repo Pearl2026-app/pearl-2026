@@ -1,0 +1,55 @@
+# Fly.io: API and background worker in Mumbai (bom), from apps/api/Dockerfile.
+# Deploy from the repository root:  fly deploy --config apps/api/fly.toml --dockerfile apps/api/Dockerfile
+# Secrets (DATABASE_URL, REDIS_URL, JWT_*, APP_SECRET, RAZORPAY_*, S3_* …) are set with `fly secrets set`, never here.
+app = "sahyadri-pearls-api"
+primary_region = "bom"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[deploy]
+  # Database migrations run once per deploy, before new machines start.
+  release_command = "sh -c 'cd /repo/packages/db && npx prisma migrate deploy'"
+  strategy = "rolling"
+
+[env]
+  NODE_ENV = "production"
+  PORT = "4000"
+  QUEUE_MODE = "redis"
+  STORAGE_DRIVER = "s3"
+  S3_REGION = "ap-south-1"
+
+[processes]
+  # The API only serves requests; the worker process runs every queue and timer.
+  app = "env RUN_WORKERS=false node --enable-source-maps dist/main.js"
+  worker = "node --enable-source-maps dist/worker.js"
+
+[[services]]
+  processes = ["app"]
+  internal_port = 4000
+  protocol = "tcp"
+  auto_stop_machines = "off"
+  min_machines_running = 1
+  [[services.ports]]
+    port = 443
+    handlers = ["tls", "http"]
+  [[services.ports]]
+    port = 80
+    handlers = ["http"]
+    force_https = true
+  [[services.http_checks]]
+    interval = "15s"
+    timeout = "5s"
+    grace_period = "30s"
+    method = "get"
+    path = "/api/v1/health"
+
+[[vm]]
+  processes = ["app"]
+  size = "shared-cpu-1x"
+  memory = "1gb"
+
+[[vm]]
+  processes = ["worker"]
+  size = "shared-cpu-1x"
+  memory = "512mb"

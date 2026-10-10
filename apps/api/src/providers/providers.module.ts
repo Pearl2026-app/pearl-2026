@@ -18,7 +18,8 @@ export function buildProviders() {
   if (c.PAYMENT_PROVIDER === 'razorpay' && c.RAZORPAY_KEY_ID && c.RAZORPAY_KEY_SECRET && c.RAZORPAY_WEBHOOK_SECRET) {
     payment = new RazorpayProvider(c.RAZORPAY_KEY_ID, c.RAZORPAY_KEY_SECRET, c.RAZORPAY_WEBHOOK_SECRET);
   } else {
-    if (c.PAYMENT_PROVIDER === 'razorpay') warn('Razorpay keys missing: using the sandbox payment provider.');
+    if (c.PAYMENT_PROVIDER === 'razorpay')
+      warn(c.NODE_ENV === 'production' ? 'Razorpay keys missing: online payment is off; customers can pay cash on delivery.' : 'Razorpay keys missing: using the sandbox payment provider.');
     payment = new SandboxPaymentProvider(`sandbox:${c.appSecret}`);
   }
 
