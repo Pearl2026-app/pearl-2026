@@ -15,3 +15,4 @@ uploads/
 packages/db/.env
 apps/*/.env.local
 *.tsbuildinfo
+dump.rdb

@@ -1,6 +1,8 @@
-/* Seed data so every panel can be tested on day one. Safe to run more than once (upserts by unique keys).
- * Usage: pnpm --filter @sahyadri/db seed
- * Env: DATABASE_URL, SEED_PASSWORD (staff/partner password, default for development only), STORAGE_LOCAL_DIR
+/* Seed data. Safe to run more than once (upserts by unique keys; existing rows are never overwritten).
+ * Development: pnpm --filter @sahyadri/db seed  → sample catalogue, partners and test logins
+ *   Env: DATABASE_URL, SEED_PASSWORD (staff/partner password, development only), STORAGE_LOCAL_DIR
+ * Production:  SEED_MODE=production pnpm --filter @sahyadri/db seed  → base data and one owner login, no samples
+ *   Env: DATABASE_URL, SEED_ADMIN_EMAIL, SEED_ADMIN_PASSWORD, SEED_ADMIN_NAME, SEED_ADMIN_PHONE (optional)
  */
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
@@ -28,9 +30,7 @@ async function upsertSetting(key: string, value: unknown, description: string) {
   });
 }
 
-async function main() {
-  const pw = await hashPassword(PASSWORD);
-
+async function seedSettings() {
   // ── Settings & flags ──────────────────────────────────────────
   await upsertSetting(
     'store',
@@ -97,6 +97,121 @@ async function main() {
   ] as const) {
     await prisma.featureFlag.upsert({ where: { key }, create: { key, description, enabled: false }, update: {} });
   }
+}
+
+/** Message templates (WhatsApp, email, SMS, push). Existing ones are never overwritten. */
+async function seedTemplates() {
+  const templates: Array<[string, 'WHATSAPP' | 'EMAIL' | 'SMS' | 'PUSH', string, string?]> = [
+    ['ENQUIRY_PRODUCT', 'WHATSAPP', 'Hello Sahyadri Pearls, I am interested in {{productName}} (SKU {{sku}}). My enquiry reference is {{reference}}.'],
+    ['ENQUIRY_GENERAL', 'WHATSAPP', 'Hello Sahyadri Pearls, my enquiry reference is {{reference}}. {{message}}'],
+    ['ENQUIRY_ACK', 'WHATSAPP', 'Thank you for your enquiry {{reference}}. Our {{cityName}} team will reply shortly.'],
+    ['ENQUIRY_ACK', 'EMAIL', 'Dear {{name}},\n\nThank you for your enquiry {{reference}}. A member of our team will contact you shortly.\n\nSahyadri Pearls', 'We received your enquiry {{reference}}'],
+    ['ORDER_PLACED', 'WHATSAPP', 'Thank you {{name}}! Your order {{orderNumber}} for {{total}} is placed. Track it here: {{trackUrl}}'],
+    ['ORDER_PLACED', 'EMAIL', 'Dear {{name}},\n\nThank you for your order {{orderNumber}} ({{total}}).\nTrack it any time: {{trackUrl}}\nInvoice: {{invoiceUrl}}\n\nSahyadri Pearls', 'Order {{orderNumber}} confirmed'],
+    ['ORDER_STATUS', 'WHATSAPP', 'Your order {{orderNumber}} is now {{status}}. Track it: {{trackUrl}}'],
+    ['ORDER_STATUS', 'EMAIL', 'Dear {{name}},\n\nYour order {{orderNumber}} is now {{status}}.\nTrack it: {{trackUrl}}\n\nSahyadri Pearls', 'Order {{orderNumber}}: {{status}}'],
+    ['ORDER_STATUS', 'PUSH', 'Order {{orderNumber}} is now {{status}}.', 'Order update'],
+    ['CART_REMINDER', 'WHATSAPP', 'Hi {{name}}, your pearls are waiting in your cart: {{cartUrl}}'],
+    ['CART_REMINDER', 'EMAIL', 'Hi {{name}},\n\nYou left some pieces in your cart. Pick up where you left off: {{cartUrl}}\n\nSahyadri Pearls', 'Your cart is waiting'],
+    ['REVIEW_REQUEST', 'WHATSAPP', 'Hi {{name}}, how do you like {{productName}}? Leave a review: {{reviewUrl}}'],
+    ['REVIEW_REQUEST', 'EMAIL', 'Hi {{name}},\n\nWe hope you love {{productName}}. Tell us what you think: {{reviewUrl}}\n\nSahyadri Pearls', 'How is your {{productName}}?'],
+    ['OTP', 'SMS', '{{code}} is your Sahyadri Pearls verification code. It expires in 5 minutes.'],
+    ['OTP', 'EMAIL', 'Your Sahyadri Pearls verification code is {{code}}. It expires in 5 minutes.', 'Your verification code'],
+    ['DELIVERY_OTP', 'SMS', 'Share {{code}} with our delivery partner to receive order {{orderNumber}}.'],
+    ['DELIVERY_ASSIGNED', 'PUSH', 'New delivery: order {{orderNumber}}, {{area}}.', 'New delivery assigned'],
+    ['CUSTOM_STAGE', 'WHATSAPP', 'Hi {{name}}, an update on your customized {{item}}: it is now {{stage}}. {{quote}}'],
+    ['CUSTOM_STAGE', 'EMAIL', 'Dear {{name}},\n\nYour customized {{item}} is now {{stage}}. {{quote}}\n\nSahyadri Pearls', 'Your customized {{item}}: {{stage}}'],
+    ['PO_SENT', 'EMAIL', 'Dear {{manufacturer}},\n\nPlease find purchase order {{number}} (due {{dueDate}}): {{pdfUrl}}\nKindly confirm acceptance.\n\nSahyadri Pearls', 'Purchase order {{number}}'],
+    ['REFERRAL_REWARD', 'EMAIL', 'Hi {{name}},\n\nYour referral reward is ready. Use code {{code}} for {{amount}} off your next order.\n\nSahyadri Pearls', 'Your referral reward'],
+  ];
+  for (const [key, channel, body, subject] of templates) {
+    await prisma.messageTemplate.upsert({
+      where: { key_channel_language: { key, channel, language: 'en' } },
+      create: { key, channel, body, subject },
+      update: {},
+    });
+  }
+}
+
+async function seedPages(pages: Array<[string, string, boolean, string]>) {
+  for (const [slug, title, isLegal, body] of pages) {
+    const existing = await prisma.page.findUnique({ where: { slug } });
+    if (existing) continue;
+    const page = await prisma.page.create({ data: { slug, title, isLegal } });
+    const v = await prisma.pageVersion.create({ data: { pageId: page.id, version: 1, body } });
+    await prisma.page.update({ where: { id: page.id }, data: { currentVersionId: v.id } });
+  }
+}
+
+/** The catalogue's categories (GST 3%; HSN 7113 jewellery, 7101 loose pearls). */
+async function seedCategories(withImages: boolean) {
+  const catDefs = [
+    ['Necklaces', 'necklaces', '7113'],
+    ['Earrings', 'earrings', '7113'],
+    ['Rings', 'rings', '7113'],
+    ['Bracelets', 'bracelets', '7113'],
+    ['Pendants', 'pendants', '7113'],
+    ['Loose Pearls', 'loose-pearls', '7101'],
+  ] as const;
+  const cats: Record<string, { id: string }> = {};
+  for (const [i, [name, slug, hsn]] of catDefs.entries()) {
+    cats[slug] = await prisma.category.upsert({
+      where: { slug },
+      create: {
+        name,
+        slug,
+        description: `Pearl ${name.toLowerCase()} traced to named farms.`,
+        imageUrl: withImages ? writeMedia(`samples/category-${slug}.svg`, productSvg(slug === 'loose-pearls' ? 'loose' : slug, 'White')) : null,
+        sortOrder: i + 1,
+        gstRateBp: 300,
+        hsnCode: hsn,
+      },
+      update: {},
+    });
+  }
+  return cats;
+}
+
+/**
+ * Production setup (SEED_MODE=production): settings, feature flags, message templates, categories,
+ * draft legal pages and one Super Admin login. No sample products, partners, customers or test logins.
+ */
+async function seedProduction() {
+  const email = process.env.SEED_ADMIN_EMAIL?.trim().toLowerCase();
+  const password = process.env.SEED_ADMIN_PASSWORD ?? '';
+  const name = process.env.SEED_ADMIN_NAME?.trim() || 'Owner';
+  const phone = process.env.SEED_ADMIN_PHONE?.trim() || null;
+  if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) throw new Error('Set SEED_ADMIN_EMAIL to the owner’s email address.');
+  if (password.length < 12 || !/[A-Za-z]/.test(password) || !/\d/.test(password)) throw new Error('Set SEED_ADMIN_PASSWORD: at least 12 characters with letters and digits.');
+  if (phone && !/^\+91[6-9]\d{9}$/.test(phone)) throw new Error('SEED_ADMIN_PHONE must look like +919812345678.');
+
+  await seedSettings();
+  await seedTemplates();
+  await seedCategories(false);
+  const draft = (title: string) => `## ${title}\n\n> Draft. Replace with the approved ${title.toLowerCase()} in Admin → Pages & legal before launch.`;
+  await seedPages([
+    ['terms', 'Terms & Conditions', true, draft('Terms & Conditions')],
+    ['refund-policy', 'Refund Policy', true, draft('Refund Policy')],
+    ['privacy', 'Privacy Policy', true, draft('Privacy Policy')],
+    ['return-cancellation-policy', 'Return & Cancellation Policy', true, draft('Return & Cancellation Policy')],
+    ['shipping-policy', 'Shipping / Delivery Policy', true, draft('Shipping / Delivery Policy')],
+  ]);
+  const existing = await prisma.user.findFirst({ where: { role: 'SUPER_ADMIN' } });
+  if (existing) {
+    console.log(`A Super Admin already exists (${existing.email}); no login created.`);
+  } else {
+    await prisma.user.create({ data: { role: 'SUPER_ADMIN', name, email, phone, passwordHash: await hashPassword(password) } });
+    console.log(`Super Admin created: ${email}`);
+  }
+  console.log('Production setup complete. Add cities, WhatsApp numbers, partners and products in the admin.');
+}
+
+async function main() {
+  if (process.env.SEED_MODE === 'production') return seedProduction();
+  if (process.env.NODE_ENV === 'production') throw new Error('Refusing to load sample data with NODE_ENV=production. Use SEED_MODE=production.');
+  const pw = await hashPassword(PASSWORD);
+
+  await seedSettings();
 
   // ── Cities ───────────────────────────────────────────────────
   const pune = await prisma.city.upsert({
@@ -272,30 +387,7 @@ async function main() {
   };
 
   // ── Categories & collections ─────────────────────────────────
-  const catDefs = [
-    ['Necklaces', 'necklaces', '7113'],
-    ['Earrings', 'earrings', '7113'],
-    ['Rings', 'rings', '7113'],
-    ['Bracelets', 'bracelets', '7113'],
-    ['Pendants', 'pendants', '7113'],
-    ['Loose Pearls', 'loose-pearls', '7101'],
-  ] as const;
-  const cats: Record<string, { id: string }> = {};
-  for (const [i, [name, slug, hsn]] of catDefs.entries()) {
-    cats[slug] = await prisma.category.upsert({
-      where: { slug },
-      create: {
-        name,
-        slug,
-        description: `Pearl ${name.toLowerCase()} traced to named farms.`,
-        imageUrl: writeMedia(`samples/category-${slug}.svg`, productSvg(slug === 'loose-pearls' ? 'loose' : slug, 'White')),
-        sortOrder: i + 1,
-        gstRateBp: 300,
-        hsnCode: hsn,
-      },
-      update: {},
-    });
-  }
+  const cats = await seedCategories(true);
   const cols: Record<string, { id: string }> = {};
   for (const [i, [name, slug, desc]] of (
     [
@@ -448,36 +540,7 @@ async function main() {
   for (const r of rules) {
     await findOrCreate(() => prisma.routingRule.findFirst({ where: { name: r.name } }), () => prisma.routingRule.create({ data: r }));
   }
-  const templates: Array<[string, 'WHATSAPP' | 'EMAIL' | 'SMS' | 'PUSH', string, string?]> = [
-    ['ENQUIRY_PRODUCT', 'WHATSAPP', 'Hello Sahyadri Pearls, I am interested in {{productName}} (SKU {{sku}}). My enquiry reference is {{reference}}.'],
-    ['ENQUIRY_GENERAL', 'WHATSAPP', 'Hello Sahyadri Pearls, my enquiry reference is {{reference}}. {{message}}'],
-    ['ENQUIRY_ACK', 'WHATSAPP', 'Thank you for your enquiry {{reference}}. Our {{cityName}} team will reply shortly.'],
-    ['ENQUIRY_ACK', 'EMAIL', 'Dear {{name}},\n\nThank you for your enquiry {{reference}}. A member of our team will contact you shortly.\n\nSahyadri Pearls', 'We received your enquiry {{reference}}'],
-    ['ORDER_PLACED', 'WHATSAPP', 'Thank you {{name}}! Your order {{orderNumber}} for {{total}} is placed. Track it here: {{trackUrl}}'],
-    ['ORDER_PLACED', 'EMAIL', 'Dear {{name}},\n\nThank you for your order {{orderNumber}} ({{total}}).\nTrack it any time: {{trackUrl}}\nInvoice: {{invoiceUrl}}\n\nSahyadri Pearls', 'Order {{orderNumber}} confirmed'],
-    ['ORDER_STATUS', 'WHATSAPP', 'Your order {{orderNumber}} is now {{status}}. Track it: {{trackUrl}}'],
-    ['ORDER_STATUS', 'EMAIL', 'Dear {{name}},\n\nYour order {{orderNumber}} is now {{status}}.\nTrack it: {{trackUrl}}\n\nSahyadri Pearls', 'Order {{orderNumber}}: {{status}}'],
-    ['ORDER_STATUS', 'PUSH', 'Order {{orderNumber}} is now {{status}}.', 'Order update'],
-    ['CART_REMINDER', 'WHATSAPP', 'Hi {{name}}, your pearls are waiting in your cart: {{cartUrl}}'],
-    ['CART_REMINDER', 'EMAIL', 'Hi {{name}},\n\nYou left some pieces in your cart. Pick up where you left off: {{cartUrl}}\n\nSahyadri Pearls', 'Your cart is waiting'],
-    ['REVIEW_REQUEST', 'WHATSAPP', 'Hi {{name}}, how do you like {{productName}}? Leave a review: {{reviewUrl}}'],
-    ['REVIEW_REQUEST', 'EMAIL', 'Hi {{name}},\n\nWe hope you love {{productName}}. Tell us what you think: {{reviewUrl}}\n\nSahyadri Pearls', 'How is your {{productName}}?'],
-    ['OTP', 'SMS', '{{code}} is your Sahyadri Pearls verification code. It expires in 5 minutes.'],
-    ['OTP', 'EMAIL', 'Your Sahyadri Pearls verification code is {{code}}. It expires in 5 minutes.', 'Your verification code'],
-    ['DELIVERY_OTP', 'SMS', 'Share {{code}} with our delivery partner to receive order {{orderNumber}}.'],
-    ['DELIVERY_ASSIGNED', 'PUSH', 'New delivery: order {{orderNumber}}, {{area}}.', 'New delivery assigned'],
-    ['CUSTOM_STAGE', 'WHATSAPP', 'Hi {{name}}, an update on your customized {{item}}: it is now {{stage}}. {{quote}}'],
-    ['CUSTOM_STAGE', 'EMAIL', 'Dear {{name}},\n\nYour customized {{item}} is now {{stage}}. {{quote}}\n\nSahyadri Pearls', 'Your customized {{item}}: {{stage}}'],
-    ['PO_SENT', 'EMAIL', 'Dear {{manufacturer}},\n\nPlease find purchase order {{number}} (due {{dueDate}}): {{pdfUrl}}\nKindly confirm acceptance.\n\nSahyadri Pearls', 'Purchase order {{number}}'],
-    ['REFERRAL_REWARD', 'EMAIL', 'Hi {{name}},\n\nYour referral reward is ready. Use code {{code}} for {{amount}} off your next order.\n\nSahyadri Pearls', 'Your referral reward'],
-  ];
-  for (const [key, channel, body, subject] of templates) {
-    await prisma.messageTemplate.upsert({
-      where: { key_channel_language: { key, channel, language: 'en' } },
-      create: { key, channel, body, subject },
-      update: {},
-    });
-  }
+  await seedTemplates();
 
   // ── Content ──────────────────────────────────────────────────
   if ((await prisma.banner.count()) === 0) {
@@ -536,13 +599,7 @@ async function main() {
     ['our-story', 'Our Story', false, '## Our Story\n\nSahyadri Pearls began on the banks of the Mulshi reservoir, with a simple idea: every pearl should have a birthplace you can name.\n\nToday we work with farms in the Sahyadri hills and on the Konkan coast. We grade every pearl by hand, set it with local craftspeople, and send it to you with a certificate that traces it back to the water it grew in.'],
     ['about', 'About Us', false, '## About Sahyadri Pearls\n\nWe are a Pune-based pearl jewellery house selling through our own team, partner vendors and city franchises.\n\n**Address:** Prabhat Road, Erandwane, Pune 411004, Maharashtra'],
   ];
-  for (const [slug, title, isLegal, body] of pages) {
-    const existing = await prisma.page.findUnique({ where: { slug } });
-    if (existing) continue;
-    const page = await prisma.page.create({ data: { slug, title, isLegal } });
-    const v = await prisma.pageVersion.create({ data: { pageId: page.id, version: 1, body } });
-    await prisma.page.update({ where: { id: page.id }, data: { currentVersionId: v.id } });
-  }
+  await seedPages(pages);
   if ((await prisma.testimonial.count()) === 0)
     await prisma.testimonial.createMany({
       data: [
