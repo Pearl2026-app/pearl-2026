@@ -1,0 +1,83 @@
+# Daily database backup to S3 (India region), each one restore-tested into a throwaway database.
+# Repository secrets: PROD_DATABASE_URL, BACKUP_TARGET (s3://bucket/prefix),
+# AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY. Optional variable: BACKUP_RETENTION_DAYS (default 30).
+name: Backups
+on:
+  schedule:
+    - cron: '30 20 * * *' # 02:00 IST daily
+  workflow_dispatch:
+    inputs:
+      restore_test:
+        description: Also run the restore test
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: backups
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    runs-on: ubuntu-24.04
+    env:
+      AWS_DEFAULT_REGION: ap-south-1
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+    outputs:
+      file: ${{ steps.dump.outputs.file }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install PostgreSQL 16 client
+        run: |
+          sudo install -d /usr/share/postgresql-common/pgdg
+          sudo curl -fsSL -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc https://www.postgresql.org/media/keys/ACCC4CF8.asc
+          echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt noble-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list
+          sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client-16
+      - name: Back up
+        id: dump
+        env:
+          DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
+          BACKUP_TARGET: ${{ secrets.BACKUP_TARGET }}
+          BACKUP_RETENTION_DAYS: ${{ vars.BACKUP_RETENTION_DAYS || 30 }}
+        run: echo "file=$(./scripts/backup/backup.sh | tail -1)" >> "$GITHUB_OUTPUT"
+
+  restore-test:
+    needs: backup
+    # Every night's backup is restored into a throwaway database, so a broken backup is noticed the next morning.
+    if: github.event_name == 'schedule' || inputs.restore_test
+    runs-on: ubuntu-24.04
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: restore
+          POSTGRES_PASSWORD: restore
+          POSTGRES_DB: restore
+        ports: ['5432:5432']
+        options: --health-cmd "pg_isready -U restore" --health-interval 5s --health-retries 20
+    env:
+      AWS_DEFAULT_REGION: ap-south-1
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      SCRATCH_URL: postgresql://restore:restore@localhost:5432/restore
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install PostgreSQL 16 client
+        run: |
+          sudo install -d /usr/share/postgresql-common/pgdg
+          sudo curl -fsSL -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc https://www.postgresql.org/media/keys/ACCC4CF8.asc
+          echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt noble-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list
+          sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client-16
+      - name: Restore last night's backup into a throwaway database
+        run: ./scripts/backup/restore.sh "${{ needs.backup.outputs.file }}" "$SCRATCH_URL"
+      - name: Check the restored database
+        run: |
+          set -e
+          q() { psql "$SCRATCH_URL" -tAc "$1"; }
+          [ "$(q 'select count(*) from "_prisma_migrations"')" -ge 2 ]
+          [ "$(q "select count(*) from pg_trigger where tgname like '%append_only'")" -ge 2 ]
+          [ "$(q "select count(*) from \"User\" where role = 'SUPER_ADMIN'")" -ge 1 ]
+          echo "Restore test passed: $(q 'select count(*) from "Order"') orders, $(q 'select count(*) from "Product"') products."
