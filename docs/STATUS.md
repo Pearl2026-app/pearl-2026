@@ -3,6 +3,9 @@
 Resume rule: read [SPEC.md](SPEC.md) and this file, then continue from the first unchecked item.
 
 ## Needed from the owner
+- **GitHub write access** (blocks everything online): reconnect at https://claude.ai/connect-github and install the Claude GitHub App on the Pearl2026-app organization. Every push so far returned 403.
+- **Hosting accounts** for docs/DEPLOYMENT.md: Vercel, Fly.io, Neon or Supabase (Mumbai), Upstash Redis (Mumbai), AWS S3 (ap-south-1); a domain.
+- **Approved legal texts** (terms, refund, privacy, return & cancellation, shipping): production starts with drafts.
 - Payment gateway live keys (Razorpay assumed): `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, `RAZORPAY_WEBHOOK_SECRET`. Until then: sandbox provider + COD.
 - WhatsApp Business API approval and provider credentials (`WHATSAPP_*`). Until then: click-to-chat links + email.
 - SMS OTP provider with DLT registration (`SMS_*`). Until then: email OTP for staff, console OTP in development.
@@ -79,14 +82,16 @@ Notes:
 - A flaky test was traced to the per-number OTP limit when parallel test files sign in the same accounts; the limit is now a setting (`OTP_MAX_PER_WINDOW`, default 5) with its own test.
 - Push campaigns are recorded and counted, but phones receive nothing until Firebase keys are supplied (the admin says so).
 
-### Phase 5 — Mobile apps
+### Phase 5 — Mobile apps (in progress)
+- [x] Shared app API client (token sign-in with refresh, cart token, delivery steps) with contract tests against the API
 - [ ] Customer app (Expo)
-- [ ] Delivery app (Expo) with offline queue
+- [ ] Delivery app (Expo) with offline queue — package created, screens not built yet
 - [ ] Store release preparation (icons, splash, listing text, EAS config)
 
 ### Phase 6 — Hardening and handover
 - [ ] Security review
 - [ ] Load test (incl. unique piece under load)
-- [ ] Backups + tested restore
-- [ ] Deployment (Docker images, compose/production config)
+- [x] Backups + tested restore (scripts/backup; nightly GitHub Actions backup with restore test; restore test passed here on real data)
+- [x] Deployment kit: API/worker Docker image (built and run here), Fly.io config (Mumbai), Vercel config for website and admin (Mumbai; build checked from a clean copy), production setup seed with no sample data, docs/DEPLOYMENT.md and docs/RUNBOOK.md
+- [ ] Actual deployment — needs the owner's accounts (see below)
 - [ ] Docs: setup guide, API reference, runbook, admin user guide, training notes
