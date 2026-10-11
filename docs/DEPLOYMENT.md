@@ -4,15 +4,25 @@ How to put Sahyadri Pearls online. Everything runs in Mumbai so customer data st
 
 | Part | Service | Region |
 |---|---|---|
-| Website (`apps/web`) | Vercel | Mumbai (`bom1`) |
-| Admin and partner panels (`apps/admin`) | Vercel | Mumbai (`bom1`) |
-| API and background worker (`apps/api`) | Fly.io (Docker) | Mumbai (`bom`) |
+| Website (`apps/web`), at `/` | Vercel, service `web` | Mumbai (`bom1`) |
+| Admin and partner panels (`apps/admin`), at `/admin` | Vercel, service `admin` | Mumbai (`bom1`) |
+| API (`apps/api`), at `/api` and `/media` | Vercel, service `api` (container from `Dockerfile.api`) | Mumbai (`bom1`) |
+| Background worker (queues, reminders, timers) | Fly.io (same `Dockerfile.api` image) | Mumbai (`bom`) |
+| Database migrations | GitHub Actions (**Database migrations** workflow) | — |
 | Database | Neon or Supabase PostgreSQL 16 | AWS `ap-south-1` (Mumbai) |
 | Job queue | Upstash Redis | `ap-south-1` |
 | Photos and documents | AWS S3 | `ap-south-1` |
 | Backups | GitHub Actions → a separate S3 bucket | `ap-south-1` |
 
-Example addresses used below: `www.sahyadripearls.in` (website), `admin.sahyadripearls.in` (admin), `api.sahyadripearls.in` (API). Use your own domain.
+Everything public lives on **one address**, for example `www.sahyadripearls.in`:
+
+- `https://www.sahyadripearls.in/` is the shop.
+- `https://www.sahyadripearls.in/admin` is the admin.
+- `https://www.sahyadripearls.in/api/v1/…` is the API, used by the browser, the mobile apps and the payment/WhatsApp webhooks.
+
+The root `vercel.json` sets this up. The website's server-side page rendering reaches the API through a Vercel **binding**: Vercel injects the API's internal address into `API_INTERNAL_URL` itself, so never set that variable by hand.
+
+Use your own domain in place of `sahyadripearls.in` below.
 
 Never paste keys or passwords into chat, email or the code. They go only into each service's secret settings.
 
@@ -32,8 +42,8 @@ Never paste keys or passwords into chat, email or the code. They go only into ea
 
 ## 2. Database
 
-1. In Neon/Supabase, create the database. Copy its **connection string**: the pooled one for the app, the direct one for migrations if they differ.
-2. Keep it for step 4. Migrations run automatically on every API deploy.
+1. In Neon/Supabase, create the database.
+2. Copy two connection strings: the **pooled** one for the app and the **direct** one for migrations and backups. They may be the same.
 
 ## 3. Secrets to generate
 
@@ -45,67 +55,85 @@ openssl rand -hex 32
 
 The three values are `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET` and `APP_SECRET`. Each must be different.
 
-## 4. API and worker on Fly.io
+## 4. GitHub secret for migrations (before the first deploy)
+
+1. In GitHub, open **Settings → Secrets and variables → Actions** and add `PROD_DATABASE_URL` (the direct connection string).
+2. Then open **Actions → Database migrations → Run workflow** once. This creates the tables.
+
+From then on, every push to `main` that changes `packages/db/prisma` applies the new migrations by itself.
+
+Vercel deploys at the same time, so the old code must work with each new migration. Add first (new columns nullable or with a default), and remove in a later release.
+
+## 5. One Vercel project (website, admin and API)
+
+1. In Vercel, **Add New → Project**, pick `Pearl2026-app/pearl-2026`, and leave **Root Directory** at the repository root. Vercel reads the root `vercel.json` and finds the three services: `web`, `admin` and `api`.
+2. Under **Settings → Environment Variables** (Production), add the API's settings. The Next.js services ignore what they do not use.
+
+   | Name | Value |
+   |---|---|
+   | `DATABASE_URL` | pooled connection string |
+   | `REDIS_URL` | `rediss://…` from Upstash |
+   | `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET`, `APP_SECRET` | from step 3 |
+   | `WEB_URL` | `https://www.sahyadripearls.in` |
+   | `ADMIN_URL` | `https://www.sahyadripearls.in/admin` |
+   | `API_URL` | `https://www.sahyadripearls.in` |
+   | `RUN_WORKERS` | `false` (the worker runs on Fly, step 6) |
+   | `QUEUE_MODE` | `redis` |
+   | `STORAGE_DRIVER`, `S3_REGION`, `S3_BUCKET`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY` | `s3`, `ap-south-1`, `sahyadri-media`, … |
+   | `EMAIL_PROVIDER`, `EMAIL_FROM`, `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD` | your mail settings |
+
+   Do **not** add `API_INTERNAL_URL`, because Vercel provides it through the binding.
+3. Deploy. Then check it:
+
+   ```bash
+   curl https://<project>.vercel.app/api/v1/health   # {"ok":true}
+   ```
+
+4. Under **Settings → Domains**, add `www.sahyadripearls.in`, plus the bare domain redirecting to `www`.
+
+Sign-in cookies belong to the one domain. `COOKIE_DOMAIN` stays empty.
+
+## 6. Background worker on Fly.io
+
+The worker sends messages, runs reminders and timers, and works the job queue. It has no public address.
 
 From a copy of the repository on your computer:
 
 ```bash
 fly auth login
-fly apps create sahyadri-pearls-api
-fly secrets set --app sahyadri-pearls-api \
-  DATABASE_URL='postgresql://…' \
-  REDIS_URL='rediss://…' \
+fly apps create sahyadri-pearls-worker
+fly secrets set --app sahyadri-pearls-worker \
+  DATABASE_URL='postgresql://…' REDIS_URL='rediss://…' \
   JWT_ACCESS_SECRET='…' JWT_REFRESH_SECRET='…' APP_SECRET='…' \
-  WEB_URL='https://www.sahyadripearls.in' \
-  ADMIN_URL='https://admin.sahyadripearls.in' \
-  API_URL='https://api.sahyadripearls.in' \
+  WEB_URL='https://www.sahyadripearls.in' ADMIN_URL='https://www.sahyadripearls.in/admin' API_URL='https://www.sahyadripearls.in' \
   S3_BUCKET='sahyadri-media' S3_ACCESS_KEY_ID='…' S3_SECRET_ACCESS_KEY='…' \
   EMAIL_PROVIDER='smtp' EMAIL_FROM='Sahyadri Pearls <care@sahyadripearls.in>' SMTP_HOST='…' SMTP_PORT='587' SMTP_USER='…' SMTP_PASSWORD='…'
-fly deploy --config apps/api/fly.toml --dockerfile apps/api/Dockerfile .
-fly scale count app=1 worker=1 --app sahyadri-pearls-api
-fly certs add api.sahyadripearls.in --app sahyadri-pearls-api
+fly deploy --config apps/api/fly.toml .
+fly scale count worker=1 --app sahyadri-pearls-worker
 ```
 
-Each deploy first runs the database migrations (`release_command`), then starts the new version. Check it is healthy:
-
-```bash
-curl https://api.sahyadripearls.in/api/v1/health   # {"ok":true}
-```
+Use the **same values** as in Vercel. When you add a key later (Razorpay, WhatsApp, SMS…), set it in **both** places.
 
 ### Create the owner login (once)
 
 ```bash
-fly ssh console --app sahyadri-pearls-api -C "sh -c 'cd /repo/packages/db && SEED_MODE=production SEED_ADMIN_EMAIL=owner@sahyadripearls.in SEED_ADMIN_NAME=\"Owner\" SEED_ADMIN_PHONE=+9198xxxxxxxx SEED_ADMIN_PASSWORD=\"a long password\" npx tsx seed/seed.ts'"
+fly ssh console --app sahyadri-pearls-worker -C "sh -c 'cd /repo/packages/db && SEED_MODE=production SEED_ADMIN_EMAIL=owner@sahyadripearls.in SEED_ADMIN_NAME=\"Owner\" SEED_ADMIN_PHONE=+9198xxxxxxxx SEED_ADMIN_PASSWORD=\"a long password\" npx tsx seed/seed.ts'"
 ```
 
-This creates the settings, message templates, categories, draft legal pages and one Super Admin. It loads **no sample data**. Running it again changes nothing. The sample-data seed refuses to run in production.
+This creates the settings, message templates, categories, draft legal pages and one Super Admin. It loads **no sample data**, and running it again changes nothing. The sample-data seed refuses to run in production.
 
-## 5. Website and admin on Vercel
-
-Create **two** Vercel projects from the same GitHub repository.
-
-| Setting | Website | Admin |
-|---|---|---|
-| Root Directory | `apps/web` | `apps/admin` |
-| Framework | Next.js (from `vercel.json`) | Next.js |
-| Region | Mumbai (from `vercel.json`) | Mumbai |
-| Environment variable `API_URL` | `https://api.sahyadripearls.in` | `https://api.sahyadripearls.in` |
-| Domain | `www.sahyadripearls.in` (+ redirect the bare domain) | `admin.sahyadripearls.in` |
-
-Each site forwards `/api/v1/*` to the API from its own address. Sign-in cookies therefore belong to the site the visitor is on, and `COOKIE_DOMAIN` stays empty.
-
-## 6. DNS
+## 6a. DNS
 
 At your domain registrar:
 
-- `www`: the CNAME Vercel shows for the website.
-- `admin`: the CNAME Vercel shows for the admin.
-- `api`: the records `fly certs add` printed.
-- Bare domain: the record Vercel shows (redirects to `www`).
+- `www`: the CNAME Vercel shows.
+- Bare domain: the record Vercel shows (it redirects to `www`).
+
+The admin and the API need no records of their own.
 
 ## 7. First sign-in and setup (in the admin)
 
-1. Sign in at `https://admin.sahyadripearls.in` with the owner email and password. The code arrives by email, or by SMS once SMS is set up.
+1. Sign in at `https://www.sahyadripearls.in/admin` with the owner email and password. The code arrives by email, or by SMS once SMS is set up.
 2. Under **Settings → Store**, enter the legal name, GSTIN, registered address, phone, WhatsApp number and the app store links.
 3. Add **Cities**, then **WhatsApp numbers & routing**, then **Vendors**, **Franchises**, **Manufacturers** and **Delivery partners**.
 4. Under **Staff & partner logins**, create logins for the team.
@@ -119,19 +147,19 @@ Until the live keys are set, the site offers **cash on delivery only**. The test
 
 1. In the Razorpay dashboard, create live API keys.
 2. Add a webhook:
-   - URL: `https://api.sahyadripearls.in/api/v1/webhooks/payment`
+   - URL: `https://www.sahyadripearls.in/api/v1/webhooks/payment`
    - Events: `payment.captured`, `payment.failed`, `refund.processed`
    - Choose a webhook secret.
-3. Set the keys and redeploy:
+3. Add `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET` and `RAZORPAY_WEBHOOK_SECRET` in Vercel (**Environment Variables**, then **Redeploy**) and on Fly:
 
    ```bash
-   fly secrets set --app sahyadri-pearls-api RAZORPAY_KEY_ID='…' RAZORPAY_KEY_SECRET='…' RAZORPAY_WEBHOOK_SECRET='…'
+   fly secrets set --app sahyadri-pearls-worker RAZORPAY_KEY_ID='…' RAZORPAY_KEY_SECRET='…' RAZORPAY_WEBHOOK_SECRET='…'
    ```
-
-   (Setting secrets restarts the app.)
 4. Place a ₹1 test order on the live site, then refund it from **Admin → Orders**.
 
 ## 9. Optional services (each has a fallback until set)
+
+Set these in Vercel **and** on the Fly worker.
 
 | Service | Secrets | Without it |
 |---|---|---|
@@ -145,7 +173,7 @@ Until the live keys are set, the site offers **cash on delivery only**. The test
 
 In GitHub, open **Settings → Secrets and variables → Actions** and add:
 
-- `PROD_DATABASE_URL`: the direct (non-pooled) connection string.
+- `PROD_DATABASE_URL`: already added in step 4.
 - `BACKUP_TARGET`: `s3://sahyadri-backups/db`
 - `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`: the backups IAM user.
 
@@ -160,8 +188,9 @@ To restore for real, see [RUNBOOK.md](RUNBOOK.md) (`scripts/backup/restore.sh`, 
 
 ## 11. Launch checklist
 
-- [ ] `https://api…/api/v1/health` returns `{"ok":true}`.
-- [ ] Website and admin load over HTTPS on their own domains.
+- [ ] `https://www…/api/v1/health` returns `{"ok":true}`.
+- [ ] The website and `/admin` load over HTTPS on your domain.
+- [ ] **Database migrations** workflow green; Fly worker running (`fly status --app sahyadri-pearls-worker`).
 - [ ] Owner can sign in; Settings filled in (GSTIN, address, WhatsApp, store links).
 - [ ] Legal pages replaced with approved text.
 - [ ] At least one city, WhatsApp number and delivery partner; products with real photos.
@@ -173,7 +202,5 @@ To restore for real, see [RUNBOOK.md](RUNBOOK.md) (`scripts/backup/restore.sh`, 
 
 ## Updating the site later
 
-- Push to the main branch.
-- Vercel redeploys the website and admin by itself.
-- For the API, run `fly deploy --config apps/api/fly.toml --dockerfile apps/api/Dockerfile .`, or add the Fly GitHub Action.
-- Migrations run before the new version starts.
+- Push to the main branch. Vercel redeploys the website, admin and API by itself, and the **Database migrations** workflow applies any new migrations.
+- Then update the worker: `fly deploy --config apps/api/fly.toml .`, or add the Fly GitHub Action.

@@ -1,5 +1,7 @@
 import type { NextConfig } from 'next';
 
+// Local development only: on Vercel the root vercel.json sends /api and /media to the api service before
+// requests reach this app (bound URLs are not available at build time, when these rewrites are compiled).
 const API = process.env.API_INTERNAL_URL ?? process.env.API_URL ?? 'http://localhost:4000';
 
 const config: NextConfig = {

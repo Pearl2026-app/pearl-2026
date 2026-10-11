@@ -229,7 +229,7 @@ export default function ProductEditPage() {
                 <StatusBadge status={p.status} />
                 {p.soldAt && <Badge tone="danger">Sold {date(p.soldAt)}</Badge>}
                 {p.status === 'PUBLISHED' && (
-                  <a className="text-accent underline" href={`${process.env.NEXT_PUBLIC_WEB_URL ?? 'http://localhost:3000'}/product/${p.slug}`} target="_blank" rel="noreferrer">
+                  <a className="text-accent underline" href={`${process.env.NEXT_PUBLIC_WEB_URL ?? (process.env.NODE_ENV === 'production' ? '' : 'http://localhost:3000')}/product/${p.slug}`} target="_blank" rel="noreferrer">
                     View on site
                   </a>
                 )}

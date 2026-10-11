@@ -91,6 +91,6 @@ Notes:
 - [ ] Security review
 - [ ] Load test (incl. unique piece under load)
 - [x] Backups + tested restore (scripts/backup; nightly GitHub Actions backup with restore test; restore test passed here on real data)
-- [x] Deployment kit: API/worker Docker image (built and run here), Fly.io config (Mumbai), Vercel config for website and admin (Mumbai; build checked from a clean copy), production setup seed with no sample data, docs/DEPLOYMENT.md and docs/RUNBOOK.md
+- [x] Deployment kit: one Vercel project with services (root `vercel.json`: `web` at `/`, `admin` at `/admin`, `api` container at `/api` and `/media`; Mumbai), Fly.io worker-only config, a **Database migrations** GitHub workflow, a production setup seed with no sample data, docs/DEPLOYMENT.md and docs/RUNBOOK.md (D54–D56)
 - [ ] Actual deployment — needs the owner's accounts (see below)
 - [ ] Docs: setup guide, API reference, runbook, admin user guide, training notes

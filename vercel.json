@@ -1,0 +1,31 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "regions": ["bom1"],
+  "services": {
+    "web": {
+      "root": "apps/web",
+      "framework": "nextjs",
+      "installCommand": "cd ../.. && pnpm install --frozen-lockfile --filter @sahyadri/web...",
+      "buildCommand": "cd ../.. && pnpm --filter \"@sahyadri/web...\" build",
+      "bindings": [{ "type": "service", "service": "api", "format": "url", "env": "API_INTERNAL_URL" }]
+    },
+    "admin": {
+      "root": "apps/admin",
+      "framework": "nextjs",
+      "installCommand": "cd ../.. && pnpm install --frozen-lockfile --filter @sahyadri/admin...",
+      "buildCommand": "cd ../.. && pnpm --filter \"@sahyadri/admin...\" build"
+    },
+    "api": {
+      "root": ".",
+      "runtime": "container",
+      "entrypoint": "Dockerfile.api"
+    }
+  },
+  "rewrites": [
+    { "source": "/api/(.*)", "destination": { "service": "api" } },
+    { "source": "/media/(.*)", "destination": { "service": "api" } },
+    { "source": "/admin", "destination": { "service": "admin" } },
+    { "source": "/admin/(.*)", "destination": { "service": "admin" } },
+    { "source": "/(.*)", "destination": { "service": "web" } }
+  ]
+}

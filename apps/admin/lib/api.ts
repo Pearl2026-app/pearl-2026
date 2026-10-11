@@ -1,4 +1,5 @@
 'use client';
+import { adminPath, currentAdminPath } from './base-path';
 // Thin client for the API (proxied at /api/v1 by next.config). Cookies carry the session.
 
 export class ApiError extends Error {
@@ -35,8 +36,8 @@ export async function api<T = unknown>(path: string, init: RequestInit & { json?
     // sp_s is a script-readable hint (no secret) that a session may exist; without it there is nothing to refresh.
     const mayHaveSession = typeof document !== 'undefined' && /(?:^|; )sp_s=1/.test(document.cookie);
     if (mayHaveSession && (await refresh())) return api<T>(path, init, false);
-    if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
-      window.location.href = `/login?next=${encodeURIComponent(window.location.pathname + window.location.search)}`;
+    if (typeof window !== 'undefined' && !currentAdminPath().startsWith('/login')) {
+      window.location.href = adminPath(`/login?next=${encodeURIComponent(currentAdminPath())}`);
     }
   }
   if (!res.ok) {

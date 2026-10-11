@@ -1,0 +1,44 @@
+# Applies pending database migrations to production when they reach main.
+# Repository secret: PROD_DATABASE_URL (the direct, non-pooled connection string; also used by Backups).
+# Vercel deploys the new API at the same time, so every migration must work with the old code too:
+# add first (new columns nullable or with defaults), remove in a later release.
+name: Database migrations
+on:
+  push:
+    branches: [main]
+    paths: ['packages/db/prisma/**']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: db-migrations
+  cancel-in-progress: false
+
+jobs:
+  migrate:
+    runs-on: ubuntu-24.04
+    env:
+      DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
+    steps:
+      - name: Check the database secret
+        id: secret
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "::notice::PROD_DATABASE_URL is not set, so no migrations were applied."
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          fi
+      - if: steps.secret.outputs.ready == 'true'
+        uses: actions/checkout@v4
+      - if: steps.secret.outputs.ready == 'true'
+        uses: pnpm/action-setup@v4
+      - if: steps.secret.outputs.ready == 'true'
+        uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+      - if: steps.secret.outputs.ready == 'true'
+        run: pnpm install --frozen-lockfile --filter "@sahyadri/db..."
+      - if: steps.secret.outputs.ready == 'true'
+        run: pnpm --filter @sahyadri/db migrate:deploy

@@ -2,6 +2,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { can, type Action, type Module, type Role } from '@sahyadri/shared';
 import { api } from './api';
+import { adminPath } from './base-path';
 
 export interface Me {
   id: string;
@@ -30,7 +31,7 @@ export function useLogout() {
   return async () => {
     await api('/auth/logout', { method: 'POST' }).catch(() => undefined);
     qc.clear();
-    window.location.href = '/login';
+    window.location.href = adminPath('/login');
   };
 }
 

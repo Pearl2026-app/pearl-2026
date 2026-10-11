@@ -1,7 +1,11 @@
 import 'server-only';
 import { cookies } from 'next/headers';
 
-const API = process.env.API_INTERNAL_URL ?? process.env.API_URL ?? 'http://localhost:4000';
+/**
+ * Where server components reach the API. On Vercel, API_INTERNAL_URL is injected by the `api` service binding
+ * (root vercel.json) and is only available at request time, so it is read per call, never at module load.
+ */
+const apiBase = () => (process.env.API_INTERNAL_URL ?? process.env.API_URL ?? 'http://localhost:4000').replace(/\/+$/, '');
 
 /**
  * Pages render per request (so builds never need a running API), and public API responses are cached in
@@ -12,7 +16,7 @@ const cache = new Map<string, Entry>();
 const MAX = 500;
 
 async function fetchJson<T>(path: string, headers: Record<string, string> = {}): Promise<T | null> {
-  const res = await fetch(`${API}/api/v1${path}`, { headers, cache: 'no-store' });
+  const res = await fetch(`${apiBase()}/api/v1${path}`, { headers, cache: 'no-store' });
   if (res.status === 404) return null;
   if (!res.ok) throw new Error(`API ${path} failed: ${res.status}`);
   return (await res.json()) as T;

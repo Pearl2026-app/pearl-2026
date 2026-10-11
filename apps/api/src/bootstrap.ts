@@ -31,7 +31,15 @@ export async function createApp(opts: { logger?: boolean } = {}): Promise<INestA
   );
   app.use(cookieParser());
   app.use(contextMiddleware);
-  const origins = (c.CORS_ORIGINS ?? `${c.WEB_URL},${c.ADMIN_URL}`).split(',').map((s) => s.trim()).filter(Boolean);
+  // Browsers send only scheme://host[:port] as the origin, so an ADMIN_URL with a path (…/admin) is reduced to it.
+  const toOrigin = (s: string) => {
+    try {
+      return new URL(s).origin;
+    } catch {
+      return s;
+    }
+  };
+  const origins = [...new Set((c.CORS_ORIGINS ?? `${c.WEB_URL},${c.ADMIN_URL}`).split(',').map((s) => s.trim()).filter(Boolean).map(toOrigin))];
   app.enableCors({ origin: origins, credentials: true, allowedHeaders: ['Content-Type', 'Authorization', 'X-SP-Client', 'Idempotency-Key'] });
 
   // Public media (local storage driver). In production the CDN serves these.

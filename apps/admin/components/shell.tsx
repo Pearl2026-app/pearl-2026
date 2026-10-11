@@ -4,6 +4,7 @@ import { usePathname } from 'next/navigation';
 import { useState, type ReactNode } from 'react';
 import { ROLE_LABEL } from '@sahyadri/shared';
 import { Button, cx, Spinner } from '@sahyadri/ui';
+import { adminPath } from '@/lib/base-path';
 import { NAV } from '@/lib/nav';
 import { useMe, useLogout } from '@/lib/session';
 
@@ -15,7 +16,7 @@ export function Shell({ children }: { children: ReactNode }) {
 
   if (isLoading) return <div className="p-8"><Spinner /></div>;
   if (error || !me) {
-    if (typeof window !== 'undefined') window.location.href = `/login?next=${encodeURIComponent(pathname)}`;
+    if (typeof window !== 'undefined') window.location.href = adminPath(`/login?next=${encodeURIComponent(pathname)}`);
     return null;
   }
 
