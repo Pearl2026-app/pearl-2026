@@ -28,9 +28,25 @@ jobs:
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
     outputs:
       file: ${{ steps.dump.outputs.file }}
+      configured: ${{ steps.setup.outputs.configured }}
     steps:
-      - uses: actions/checkout@v4
+      - name: Check backups are set up
+        id: setup
+        env:
+          DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
+          BACKUP_TARGET: ${{ secrets.BACKUP_TARGET }}
+        # Before launch neither secret exists: skip with a notice. Half a setup is an error.
+        run: |
+          if [ -z "$DATABASE_URL" ] && [ -z "$BACKUP_TARGET" ]; then
+            echo "::notice::Backups are not set up yet (PROD_DATABASE_URL and BACKUP_TARGET are missing). See docs/DEPLOYMENT.md."
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          fi
+      - if: steps.setup.outputs.configured == 'true'
+        uses: actions/checkout@v4
       - name: Install PostgreSQL 16 client
+        if: steps.setup.outputs.configured == 'true'
         run: |
           sudo install -d /usr/share/postgresql-common/pgdg
           sudo curl -fsSL -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc https://www.postgresql.org/media/keys/ACCC4CF8.asc
@@ -38,16 +54,20 @@ jobs:
           sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client-16
       - name: Back up
         id: dump
+        if: steps.setup.outputs.configured == 'true'
         env:
           DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
           BACKUP_TARGET: ${{ secrets.BACKUP_TARGET }}
           BACKUP_RETENTION_DAYS: ${{ vars.BACKUP_RETENTION_DAYS || 30 }}
-        run: echo "file=$(./scripts/backup/backup.sh | tail -1)" >> "$GITHUB_OUTPUT"
+        # Run the script on its own so a failed backup fails this step (a pipe would hide it).
+        run: |
+          out="$(./scripts/backup/backup.sh)"
+          echo "file=$(printf '%s\n' "$out" | tail -1)" >> "$GITHUB_OUTPUT"
 
   restore-test:
     needs: backup
     # Every night's backup is restored into a throwaway database, so a broken backup is noticed the next morning.
-    if: github.event_name == 'schedule' || inputs.restore_test
+    if: needs.backup.outputs.configured == 'true' && (github.event_name == 'schedule' || inputs.restore_test)
     runs-on: ubuntu-24.04
     services:
       postgres:
