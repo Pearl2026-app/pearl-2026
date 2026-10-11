@@ -8,7 +8,7 @@ app = "sahyadri-pearls-worker"
 primary_region = "bom"
 
 [build]
-  dockerfile = "../../Dockerfile.api"
+  dockerfile = "../../Dockerfile.vercel"
 
 [deploy]
   strategy = "rolling"

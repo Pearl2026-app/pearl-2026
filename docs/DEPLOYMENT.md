@@ -6,8 +6,8 @@ How to put Sahyadri Pearls online. Everything runs in Mumbai so customer data st
 |---|---|---|
 | Website (`apps/web`), at `/` | Vercel, service `web` | Mumbai (`bom1`) |
 | Admin and partner panels (`apps/admin`), at `/admin` | Vercel, service `admin` | Mumbai (`bom1`) |
-| API (`apps/api`), at `/api` and `/media` | Vercel, service `api` (container from `Dockerfile.api`) | Mumbai (`bom1`) |
-| Background worker (queues, reminders, timers) | Fly.io (same `Dockerfile.api` image) | Mumbai (`bom`) |
+| API (`apps/api`), at `/api` and `/media` | Vercel, service `api` (container from `Dockerfile.vercel`) | Mumbai (`bom1`) |
+| Background worker (queues, reminders, timers) | Fly.io (same `Dockerfile.vercel` image) | Mumbai (`bom`) |
 | Database migrations | GitHub Actions (**Database migrations** workflow) | — |
 | Database | Neon or Supabase PostgreSQL 16 | AWS `ap-south-1` (Mumbai) |
 | Job queue | Upstash Redis | `ap-south-1` |
