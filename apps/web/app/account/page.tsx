@@ -1,6 +1,7 @@
 'use client';
 import { useState } from 'react';
 import { FormField, Notice, SelectInput, SubmitButton, TextInput } from '@/components/form-bits';
+import { DeleteAccount } from '@/components/delete-account';
 import { useSession } from '@/components/session';
 import { useSite } from '@/components/site-context';
 import { api, ApiError, errorText } from '@/lib/api';
@@ -13,6 +14,7 @@ export default function AccountPage() {
   const [msg, setMsg] = useState<{ tone: 'success' | 'danger'; text: string } | null>(null);
   const [fields, setFields] = useState<Record<string, string>>({});
   return (
+    <>
     <form
       className="flex max-w-xl flex-col gap-5"
       onSubmit={async (e) => {
@@ -56,5 +58,7 @@ export default function AccountPage() {
       </FormField>
       <div><SubmitButton busy={busy}>Save</SubmitButton></div>
     </form>
+    <DeleteAccount />
+    </>
   );
 }

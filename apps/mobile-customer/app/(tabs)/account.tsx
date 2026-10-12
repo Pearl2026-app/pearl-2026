@@ -1,16 +1,37 @@
 import Constants from 'expo-constants';
 import { router } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
-import { Linking, Pressable, ScrollView, Text, View } from 'react-native';
+import { Alert, Linking, Pressable, ScrollView, Text, View } from 'react-native';
+import { errorText } from '@sahyadri/api-client';
 import { waMeUrl } from '@sahyadri/shared';
-import { WEB_URL } from '@/api';
+import { client, WEB_URL } from '@/api';
 import { useSession } from '@/session';
 import { useSite } from '@/site';
 import { C } from '@/theme';
 import { Button, H1, Muted } from '@/ui';
 
 export default function Account() {
-  const { me, signOut } = useSession();
+  const { me, signOut, setMe } = useSession();
+  const deleteAccount = () =>
+    Alert.alert(
+      'Delete your account?',
+      'Your name, number, email, addresses and wishlist are erased and you are signed out on every device. Past orders and invoices are kept because tax law requires it. This cannot be undone.',
+      [
+        { text: 'Keep my account', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () =>
+            client.account
+              .deleteAccount()
+              .then(() => {
+                setMe(null);
+                Alert.alert('Account deleted', 'Your account has been deleted.');
+              })
+              .catch((e) => Alert.alert('Could not delete', errorText(e))),
+        },
+      ],
+    );
   const site = useSite();
   const web = (path: string) => () => WebBrowser.openBrowserAsync(`${WEB_URL}${path}`);
   const rows: Array<[string, () => void]> = [
@@ -54,6 +75,11 @@ export default function Account() {
         ))}
       </View>
       {me && <Button title="Sign out" variant="outline" onPress={signOut} />}
+      {me && (
+        <Pressable onPress={deleteAccount} accessibilityRole="button" style={{ paddingVertical: 10 }}>
+          <Text style={{ color: C.danger }}>Delete my account</Text>
+        </Pressable>
+      )}
       <Muted>Version {Constants.expoConfig?.version}</Muted>
     </ScrollView>
   );

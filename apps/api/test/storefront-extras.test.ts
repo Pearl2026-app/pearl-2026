@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { ADDRESS, agent, api, bearer, db, getApp, http, tokenFor } from './helpers';
+import { ADDRESS, agent, api, bearer, customerToken, db, getApp, http, tokenFor } from './helpers';
 
 let puneId: string;
 const indiaDate = (days: number) => new Date(Date.now() + 5.5 * 3600_000 + days * 86_400_000).toISOString().slice(0, 10);
@@ -116,5 +116,39 @@ describe('gift packing at checkout', () => {
     }).expect(200);
     expect(pages(plain.body as Buffer)).toBe(1);
     await http().get(api(`/admin/orders/${o.id}/packing-slip.pdf`)).set(bearer(await tokenFor('vendor'))).expect(404);
+  });
+});
+
+describe('deleting my account', () => {
+  it('erases personal details, signs out everywhere and frees the number, keeping past orders', async () => {
+    const phone = '+919811700201';
+    const token = await customerToken(phone, { name: 'Leaving Customer' });
+    const me = await http().get(api('/me')).set(bearer(token)).expect(200);
+    await http().post(api('/me/addresses')).set(bearer(token)).send({ ...ADDRESS, phone: '9811700201', cityId: puneId }).expect(201);
+    const p = await db.product.findFirstOrThrow({ where: { status: 'PUBLISHED', soldAt: null } });
+    await http().post(api('/me/wishlist')).set(bearer(token)).send({ productId: p.id }).expect(201);
+
+    await http().post(api('/me/delete-account')).set(bearer(token)).send({ confirm: 'delete' }).expect(400);
+    await http().post(api('/me/delete-account')).set(bearer(token)).send({ confirm: 'DELETE' }).expect(200);
+
+    const u = await db.user.findUniqueOrThrow({ where: { id: me.body.id }, include: { customer: { include: { addresses: true, wishlistItems: true } } } });
+    expect(u).toMatchObject({ name: 'Deleted customer', phone: null, email: null, isActive: false });
+    expect(u.customer!.wishlistItems).toHaveLength(0);
+    expect(u.customer!.addresses.every((a) => a.archivedAt && a.phone === '' && a.line1 === '—')).toBe(true);
+    await http().get(api('/me')).set(bearer(token)).expect(401);
+    expect(await db.auditLog.count({ where: { entity: 'Customer', entityId: u.customer!.id, action: 'DELETE_ACCOUNT' } })).toBe(1);
+  });
+
+  it('is refused while an order is on its way', async () => {
+    const phone = '9811700202';
+    const token = await customerToken(`+91${phone}`, { name: 'Busy Customer' });
+    const cat = await db.category.findUniqueOrThrow({ where: { slug: 'rings' } });
+    const sku = `T-DEL-${Date.now().toString(36).toUpperCase()}`;
+    const prod = await db.product.create({ data: { sku, name: 'Busy Ring', slug: sku.toLowerCase(), categoryId: cat.id, pricePaise: 500_000, status: 'PUBLISHED', stockType: 'UNIQUE', quantity: 1, images: { create: { url: '/media/x.svg', kind: 'MAIN' } } } });
+    const a = agent();
+    await a.post(api('/cart/items')).set(bearer(token)).send({ productId: prod.id, quantity: 1 }).expect(200);
+    await a.post(api('/checkout')).set(bearer(token)).send({ contact: { name: 'Busy Customer', phone }, address: { ...ADDRESS, phone }, cityId: puneId, paymentMethod: 'COD' }).expect(201);
+    const r = await http().post(api('/me/delete-account')).set(bearer(token)).send({ confirm: 'DELETE' }).expect(409);
+    expect(r.body.code).toBe('ACTIVE_ORDERS');
   });
 });

@@ -233,6 +233,11 @@ export function createClient(o: ClientOptions) {
       deleteAddress: (id: string) => request(`/me/addresses/${id}`, { method: 'DELETE' }),
       referral: <T = unknown>() => request<T>('/me/referral'),
       updateProfile: <T = unknown>(body: { name?: string; email?: string | null }) => request<T>('/me/profile', { method: 'PATCH', json: body }),
+      /** Erases personal details and signs out everywhere (past orders and invoices are kept by law). */
+      deleteAccount: async () => {
+        await request('/me/delete-account', { json: { confirm: 'DELETE' } });
+        await saveTokens(null);
+      },
     },
 
     delivery: {

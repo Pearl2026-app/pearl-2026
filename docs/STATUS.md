@@ -91,11 +91,11 @@ Notes:
 - [x] Fixed: every PDF (invoice, PO, certificate) printed a blank extra page; admin switches overlapped their labels
 - [ ] Later, needs owner decisions: try-at-home, AR try-on, gift cards, lifetime care/buy-back promises (not shown until approved)
 
-### Phase 5 — Mobile apps (in progress)
+### Phase 5 — Mobile apps ✅
 - [x] Shared app API client (token sign-in with refresh, cart token, delivery steps) with contract tests against the API
 - [x] Customer app (Expo SDK 57): home, shop with search and filters, product (gallery, spec linked to the Pearl Guide, reviews), wishlist with sharing, cart with coupons, checkout (guest or signed in, saved addresses, gift packing, COD, online payment on the website's /pay/app page returning to the app), order tracking with cancel/return, addresses, referral, returns, Ring Finder, Customized Jewellery with photos, WhatsApp enquiry saved first; push; website links open the app once APPLE_TEAM_ID / ANDROID_APP_SHA256 are set. Unit tests (links, filters, checkout form), a contract test of the whole shopper journey, Android/iOS bundles build, screens checked in a web preview. Not yet run on a physical phone here.
 - [x] Delivery app (Expo SDK 57, expo-router): phone OTP sign-in, jobs and history (kept on the phone for no-signal areas), one-tap steps, photo + code or signature proof, COD, reasons, push for new assignments, location with the proof; offline queue with 8 unit tests; Android and iOS bundles build (`expo export`); icons, splash and EAS profiles. Not yet run on a physical phone here (no device in this workspace).
-- [ ] Store release preparation (icons, splash, listing text, EAS config)
+- [x] Store release preparation: icons and splash for both apps (`scripts/brand/make-app-icons.mjs`), EAS build profiles, listing text, data-safety and privacy answers, reviewer notes (docs/STORE-LISTING.md), build and submit steps (docs/DEPLOYMENT.md §9a). **Account deletion** added (required by both stores): in the app, on the website, and the public page /delete-account (D62). Publishing needs the owner's Google Play and Apple developer accounts.
 
 ### Phase 6 — Hardening and handover
 - [ ] Security review

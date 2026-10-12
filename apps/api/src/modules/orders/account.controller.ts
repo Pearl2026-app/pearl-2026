@@ -7,7 +7,7 @@ import { addressInput, email, formatINR, wishlistShareText, waMeUrl } from '@sah
 import { AuditService } from '../../common/audit.service';
 import type { AuthUser } from '../../common/context';
 import { CurrentUser, Roles } from '../../common/decorators';
-import { badRequest, notFound } from '../../common/errors';
+import { badRequest, conflict, notFound } from '../../common/errors';
 import { listQuery, paginate } from '../../common/list';
 import { SettingsService } from '../../common/settings.service';
 import { config } from '../../config/config';
@@ -32,6 +32,34 @@ export class AccountController {
   private cid(user: AuthUser) {
     if (!user.customerId) throw notFound('Account');
     return user.customerId;
+  }
+
+  /**
+   * Delete my account (required by the app stores). Personal details are erased at once and the person is
+   * signed out everywhere. Past orders and their invoices are kept (with the billing name and address on
+   * them) because tax law requires it. Refused while an order is still on its way: delivery needs the contact.
+   */
+  @Post('delete-account')
+  @HttpCode(200)
+  async deleteAccount(@CurrentUser() user: AuthUser, @Body(new ZodValidationPipe(z.object({ confirm: z.literal('DELETE', { errorMap: () => ({ message: 'Type DELETE to confirm' }) }) }))) _dto: { confirm: 'DELETE' }) {
+    const customerId = this.cid(user);
+    const open = await this.prisma.order.count({ where: { customerId, status: { notIn: ['DELIVERED', 'CANCELLED', 'FAILED', 'RETURNED'] }, archivedAt: null } });
+    if (open) throw conflict('ACTIVE_ORDERS', 'You have an order on its way. Please wait until it is delivered or cancelled, or ask us on WhatsApp.');
+    const u = await this.prisma.user.findUniqueOrThrow({ where: { id: user.id }, select: { email: true } });
+    const now = new Date();
+    await this.prisma.$transaction(async (tx) => {
+      await tx.user.update({ where: { id: user.id }, data: { name: 'Deleted customer', email: null, phone: null, isActive: false } });
+      await tx.customer.update({ where: { id: customerId }, data: { archivedAt: now } });
+      await tx.address.updateMany({ where: { customerId }, data: { name: 'Deleted', phone: '', line1: '—', line2: null, landmark: null, area: null, label: null, archivedAt: now } });
+      await tx.wishlistItem.deleteMany({ where: { customerId } });
+      await tx.cart.updateMany({ where: { customerId }, data: { contactName: null, contactPhone: null } });
+      await tx.enquiry.updateMany({ where: { customerId }, data: { contactName: null, contactPhone: null, contactEmail: null } });
+      await tx.deviceToken.deleteMany({ where: { userId: user.id } });
+      await tx.authSession.updateMany({ where: { userId: user.id, revokedAt: null }, data: { revokedAt: now } });
+      if (u.email) await tx.newsletterSubscriber.deleteMany({ where: { email: u.email.toLowerCase() } });
+      await this.audit.record('Customer', customerId, 'DELETE_ACCOUNT', null, { erasedAt: now }, tx);
+    });
+    return { deleted: true };
   }
 
   @Patch('profile')
