@@ -208,6 +208,7 @@ enum EnquiryType {
   BULK
   RING_FINDER
   CONTACT
+  CONSULTATION // video call or store visit with an adviser
 }
 
 enum EnquiryStage {
@@ -513,6 +514,10 @@ model Franchise {
   phone       String
   email       String?
   isActive    Boolean @default(true)
+  /// Listed on the public "Visit us" page only when switched on (an address is published)
+  showInStoreList Boolean @default(false)
+  openingHours    String?
+  mapUrl          String?
 
   users     User[]
   cities    FranchiseCity[] // extra cities served, beyond the home city
@@ -1006,6 +1011,9 @@ model Order {
 
   couponCode   String?
   customerNote String?
+  /// Gift packing chosen at checkout; the message is printed on a card, never on the invoice
+  giftWrap     Boolean @default(false)
+  giftMessage  String?
   /// Where the order came from: web, app, whatsapp, instagram, phone, utm source …
   channel      String?
   attribution  Json?
@@ -1741,4 +1749,19 @@ model DeliveryLocationPing {
   createdAt         DateTime        @default(now())
 
   @@index([deliveryPartnerId, recordedAt])
+}
+
+/// Newsletter sign-ups from the website footer. Email is kept only with consent; unsubscribing keeps the
+/// row (so the address is not re-added by mistake) with unsubscribedAt set.
+model NewsletterSubscriber {
+  id               String    @id @default(cuid())
+  email            String    @unique
+  name             String?
+  source           String?
+  consentAt        DateTime  @default(now())
+  unsubscribeToken String    @unique
+  unsubscribedAt   DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }

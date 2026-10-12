@@ -44,6 +44,8 @@ export default function CheckoutPage() {
   const [cityId, setCityId] = useState('');
   const [method, setMethod] = useState<'ONLINE' | 'COD'>('ONLINE');
   const [note, setNote] = useState('');
+  const [gift, setGift] = useState(false);
+  const [giftMessage, setGiftMessage] = useState('');
   const [saveAddress, setSaveAddress] = useState(true);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
@@ -111,6 +113,7 @@ export default function CheckoutPage() {
         cityId,
         paymentMethod: method,
         note: note || null,
+        ...(gift ? { giftWrap: true, giftMessage: giftMessage.trim() || null } : {}),
         saveAddress: !!me && addressId === 'new' && saveAddress,
         ...attribution(),
       };
@@ -227,6 +230,19 @@ export default function CheckoutPage() {
               </div>
             )}
             <FormField label="Delivery note (optional)">{(id) => <TextInput id={id} value={note} onChange={(e) => setNote(e.target.value)} placeholder="Gate code, best time to deliver…" />}</FormField>
+            {site.storefront.giftWrapEnabled && (
+              <div className={`border p-4 ${gift ? 'border-accent bg-accent-soft' : 'border-line bg-surface'}`}>
+                <label className="flex min-h-11 cursor-pointer items-center gap-3 text-sm">
+                  <input type="checkbox" checked={gift} onChange={(e) => setGift(e.target.checked)} className="h-5 w-5" />
+                  <span><strong>This is a gift</strong> · free gift box and message card; no prices in the parcel</span>
+                </label>
+                {gift && (
+                  <FormField label="Message for the card (optional)" hint={`${giftMessage.length}/200`}>
+                    {(id, d) => <TextInput id={id} aria-describedby={d} value={giftMessage} maxLength={200} onChange={(e) => setGiftMessage(e.target.value)} placeholder="Happy anniversary, with love" />}
+                  </FormField>
+                )}
+              </div>
+            )}
           </section>
 
           <section aria-labelledby="h-pay" className="flex flex-col gap-3">

@@ -40,6 +40,15 @@ export const SETTING_SCHEMAS = {
   delivery_proof: z.object({ otpAbovePaise: z.number().int().nonnegative().default(5_000_000) }),
   app_links: z.object({ android: z.string().default(''), ios: z.string().default('') }),
   seo: z.object({ titleSuffix: z.string().default(' | Sahyadri Pearls'), defaultDescription: z.string().default('') }),
+  /** Storefront presentation: announcement bar, gift packing, delivery estimate, consultations. */
+  storefront: z.object({
+    /** One message per line; empty = built from the delivery and returns settings. */
+    announcement: z.string().max(600).default(''),
+    giftWrapEnabled: z.boolean().default(true),
+    deliveryMinDays: z.number().int().min(0).max(30).default(3),
+    deliveryMaxDays: z.number().int().min(0).max(60).default(5),
+    consultationsEnabled: z.boolean().default(true),
+  }),
   enquiry: z.object({
     acknowledgeAutomatically: z.boolean().default(true),
     responseTargetMinutes: z.number().int().positive().default(30),
@@ -50,7 +59,7 @@ export type SettingKey = keyof typeof SETTING_SCHEMAS;
 export type SettingValue<K extends SettingKey> = z.infer<(typeof SETTING_SCHEMAS)[K]>;
 
 /** Settings that the public site may read. */
-export const PUBLIC_SETTINGS: SettingKey[] = ['store', 'delivery', 'app_links', 'seo', 'returns'];
+export const PUBLIC_SETTINGS: SettingKey[] = ['store', 'delivery', 'app_links', 'seo', 'returns', 'storefront'];
 
 @Injectable()
 export class SettingsService {

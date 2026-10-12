@@ -34,6 +34,8 @@ export interface CreateOrderInput {
   enquiryId?: string | null;
   createdById?: string | null;
   customerNote?: string | null;
+  giftWrap?: boolean;
+  giftMessage?: string | null;
   internalNote?: string | null;
   franchiseId?: string | null;
   /** COD and manual orders sell immediately; online orders hold for 15 minutes. */
@@ -171,6 +173,8 @@ export class OrdersService implements OnModuleInit {
             totalPaise: totals.totalPaise,
             couponCode: priced.coupon?.code ?? null,
             customerNote: input.customerNote ?? null,
+            giftWrap: input.giftWrap ?? false,
+            giftMessage: input.giftWrap ? (input.giftMessage ?? null) : null,
             internalNote: input.internalNote ?? null,
             enquiryId: input.enquiryId ?? null,
             createdById: input.createdById ?? null,

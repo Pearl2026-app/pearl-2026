@@ -12,5 +12,6 @@ import { CustomModule } from './custom/custom.module';
 import { PearlPricingModule } from './pricing/pricing.module';
 import { ReportsModule } from './reports/reports.module';
 import { CampaignsModule } from './campaigns/campaigns.module';
+import { NewsletterModule } from './newsletter/newsletter.module';
 
-export const FEATURE_MODULES: any[] = [NetworkModule, CatalogueModule, ContentAdminModule, UsersModule, SettingsModule, PublicModule, EnquiriesModule, OrdersModule, DeliveryModule, CustomModule, PearlPricingModule, ReportsModule, CampaignsModule];
+export const FEATURE_MODULES: any[] = [NetworkModule, CatalogueModule, ContentAdminModule, UsersModule, SettingsModule, PublicModule, EnquiriesModule, OrdersModule, DeliveryModule, CustomModule, PearlPricingModule, ReportsModule, CampaignsModule, NewsletterModule];

@@ -81,6 +81,16 @@ Notes:
 - A flaky test was traced to the per-number OTP limit when parallel test files sign in the same accounts; the limit is now a setting (`OTP_MAX_PER_WINDOW`, default 5) with its own test.
 - Push campaigns are recorded and counted, but phones receive nothing until Firebase keys are supplied (the admin says so).
 
+### Premium storefront (added on request: benchmarked against leading Indian and international jewellery sites)
+- [x] Announcement bar (admin-editable; defaults from delivery and returns settings) and mega menu: category, pearl colour, shape, collections, price bands
+- [x] Pearl Guide: types, how we grade (AAA–A defined), lustre, surface, shape, size, necklace lengths, ring sizes, care, certificate; specification rows link to it
+- [x] Product page: size guide pop-up (rings, necklaces), pincode delivery-date estimate, returns/insured/gift trust tiles, share, "see it on a video call", recently viewed
+- [x] Gifts page (budget bands, occasions); free gift packing with a message card at checkout; **gift packing slip without prices** (admin → order)
+- [x] Book a consultation (video call or store visit) saved as a CONSULTATION enquiry for the city team; "Visit us" store list (franchises switched on in the admin)
+- [x] Newsletter sign-up with explicit consent; unsubscribe page; admin list with CSV
+- [x] Fixed: every PDF (invoice, PO, certificate) printed a blank extra page; admin switches overlapped their labels
+- [ ] Later, needs owner decisions: try-at-home, AR try-on, gift cards, lifetime care/buy-back promises (not shown until approved)
+
 ### Phase 5 — Mobile apps (in progress)
 - [x] Shared app API client (token sign-in with refresh, cart token, delivery steps) with contract tests against the API
 - [ ] Customer app (Expo)

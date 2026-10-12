@@ -20,7 +20,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { MediaService } from '../media/media.service';
 import { EnquiriesService } from './enquiries.service';
 
-const TYPES = ['PRODUCT', 'CUSTOMIZED', 'BULK', 'RING_FINDER', 'CONTACT'] as const;
+const TYPES = ['PRODUCT', 'CUSTOMIZED', 'BULK', 'RING_FINDER', 'CONTACT', 'CONSULTATION'] as const;
 const STAGES = ['NEW', 'IN_PROGRESS', 'QUOTED', 'CONVERTED', 'CLOSED'] as const;
 
 export const enquiryInput = z
@@ -42,7 +42,7 @@ export const enquiryInput = z
   })
   .superRefine((v, ctx) => {
     if (v.type === 'PRODUCT' && !v.productId) ctx.addIssue({ code: 'custom', path: ['productId'], message: 'Which piece is this about?' });
-    if ((v.type === 'BULK' || v.type === 'CONTACT') && !v.phone && !v.email)
+    if ((v.type === 'BULK' || v.type === 'CONTACT' || v.type === 'CONSULTATION') && !v.phone && !v.email)
       ctx.addIssue({ code: 'custom', path: ['phone'], message: 'Add a phone number or email so we can reply' });
   });
 
@@ -63,13 +63,70 @@ const customInput = z.object({
   source: z.string().max(80).optional(),
 });
 
+const SLOTS = { MORNING: 'Morning (10 am – 1 pm)', AFTERNOON: 'Afternoon (1 – 4 pm)', EVENING: 'Evening (4 – 7 pm)' } as const;
+const consultationInput = z
+  .object({
+    clientId: z.string().uuid().optional(),
+    mode: z.enum(['VIDEO', 'STORE']),
+    /** YYYY-MM-DD, India date */
+    date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Choose a date'),
+    slot: z.enum(['MORNING', 'AFTERNOON', 'EVENING']),
+    storeId: z.string().max(40).optional().nullable(),
+    productId: z.string().max(40).optional().nullable(),
+    name: z.string().trim().min(2).max(120),
+    phone: indianMobile,
+    email: email.optional().or(z.literal('').transform(() => undefined)),
+    citySlug: z.string().max(60).optional().nullable(),
+    notes: z.string().trim().max(1000).optional(),
+    source: z.string().max(80).optional(),
+  })
+  .superRefine((v, ctx) => {
+    if (v.mode === 'STORE' && !v.storeId) ctx.addIssue({ code: 'custom', path: ['storeId'], message: 'Choose the store you will visit' });
+  });
+
+/** Today in India as YYYY-MM-DD. */
+const indiaToday = () => new Date(Date.now() + 5.5 * 3600_000).toISOString().slice(0, 10);
+
 @ApiTags('enquiries')
 @Controller('enquiries')
 class PublicEnquiriesController {
   constructor(
     private readonly enquiries: EnquiriesService,
     private readonly media: MediaService,
+    private readonly prisma: PrismaService,
+    private readonly settings: SettingsService,
   ) {}
+
+  /** Book a video call or a store visit with an adviser. Saved as an enquiry the city team follows up. */
+  @Public()
+  @Post('consultation')
+  @Throttle({ default: { limit: limit(10), ttl: 60_000 } })
+  async consultation(@CurrentUser() user: AuthUser | null, @Body(new ZodValidationPipe(consultationInput)) d: z.infer<typeof consultationInput>) {
+    if (!(await this.settings.get('storefront')).consultationsEnabled) throw badRequest('CONSULTATIONS_OFF', 'Appointments are not open right now. Please message us on WhatsApp.');
+    const today = indiaToday();
+    const max = new Date(Date.now() + 5.5 * 3600_000 + 60 * 86_400_000).toISOString().slice(0, 10);
+    if (d.date < today || d.date > max) throw badRequest('VALIDATION_FAILED', 'Please check the highlighted fields.', { date: 'Choose a date within the next 60 days' });
+    const store = d.mode === 'STORE' ? await this.prisma.franchise.findFirst({ where: { id: d.storeId!, isActive: true, showInStoreList: true }, include: { city: true } }) : null;
+    if (d.mode === 'STORE' && !store) throw badRequest('VALIDATION_FAILED', 'Please check the highlighted fields.', { storeId: 'Choose one of our stores' });
+    const when = `${d.date}, ${SLOTS[d.slot]}`;
+    const message = d.mode === 'VIDEO' ? `Video consultation: ${when}` : `Store visit at ${store!.name}, ${store!.area}: ${when}`;
+    return this.enquiries.create(
+      {
+        clientId: d.clientId,
+        type: 'CONSULTATION',
+        productId: d.productId ?? null,
+        name: d.name,
+        phone: d.phone,
+        email: d.email,
+        cityId: store?.cityId ?? null,
+        citySlug: store ? null : d.citySlug,
+        source: d.source ?? 'consultation-form',
+        message: d.notes ? `${message}. ${d.notes}` : message,
+        payload: { mode: d.mode, date: d.date, slot: d.slot, storeId: store?.id ?? null, storeName: store?.name ?? null, notes: d.notes ?? null },
+      },
+      user,
+    );
+  }
 
   @Public()
   @Post()

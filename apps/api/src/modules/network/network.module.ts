@@ -87,6 +87,9 @@ const franchiseBase = {
   phone: phoneE164,
   email: email.optional().nullable(),
   isActive: z.boolean().optional(),
+  showInStoreList: z.boolean().optional(),
+  openingHours: optStr(200),
+  mapUrl: z.string().trim().url().max(500).optional().nullable().or(z.literal('').transform(() => null)),
   cityIds,
 };
 export const FranchisesController = crudController({

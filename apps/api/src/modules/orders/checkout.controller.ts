@@ -115,6 +115,8 @@ const checkoutInput = z.object({
   citySlug: z.string().optional(),
   paymentMethod: z.enum(['ONLINE', 'COD']),
   note: z.string().trim().max(1000).optional().nullable(),
+  giftWrap: z.boolean().optional(),
+  giftMessage: z.string().trim().max(200).optional().nullable(),
   saveAddress: z.boolean().optional(),
   source: z.string().max(80).optional(),
   utm: z.record(z.string().max(200)).optional(),
@@ -190,6 +192,9 @@ export class CheckoutController {
       channel: String(req.headers['x-sp-client'] ?? 'api'),
       attribution: { cartId: cart.id, source: dto.source ?? null, utm: dto.utm ?? null },
       customerNote: dto.note,
+      // Gift packing is free; it is offered only while the storefront setting allows it.
+      giftWrap: !!dto.giftWrap && (await this.settings.get('storefront')).giftWrapEnabled,
+      giftMessage: dto.giftMessage || null,
       convertStock: dto.paymentMethod === 'COD',
     });
     if (dto.saveAddress && customerId && !dto.addressId) {

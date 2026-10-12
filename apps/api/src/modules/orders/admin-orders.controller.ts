@@ -12,8 +12,9 @@ import { badRequest, forbidden, notFound } from '../../common/errors';
 import { between, listQuery, orderBy, paginate } from '../../common/list';
 import { enquiryScope, orderScope } from '../../common/scope';
 import { PrismaService } from '../../prisma/prisma.service';
+import { packingSlipPdf } from '../documents/pdf';
 import { InvoiceService } from './invoice.service';
-import { OrdersService } from './orders.service';
+import { formatAddress, OrdersService } from './orders.service';
 import { PaymentsService } from './payments.service';
 
 const STATUSES = ['PLACED', 'CONFIRMED', 'PACKED', 'ASSIGNED', 'PICKED_UP', 'OUT_FOR_DELIVERY', 'DELIVERED', 'CANCELLED', 'FAILED', 'RETURNED', 'REFUNDED'] as const;
@@ -204,6 +205,27 @@ export class AdminOrdersController {
   @Requires('PAYMENTS', 'edit')
   refund(@CurrentUser() user: AuthUser, @Param('id') id: string, @Body(new ZodValidationPipe(z.object({ amountPaise: paise.min(1), reason: z.string().trim().min(3).max(500), returnRequestId: z.string().optional() }))) dto: { amountPaise: number; reason: string; returnRequestId?: string }) {
     return this.payments.refund(user, id, dto);
+  }
+
+  @Get(':id/packing-slip.pdf')
+  @Requires('ORDERS', 'view')
+  async packingSlip(@CurrentUser() user: AuthUser, @Param('id') id: string, @Res() res: Response) {
+    await this.orders.find(user, id);
+    const o = await this.prisma.order.findUniqueOrThrow({ where: { id }, include: { items: true } });
+    const addr = o.addressSnapshot as Record<string, unknown>;
+    const buffer = await packingSlipPdf({
+      orderNumber: o.number,
+      placedAt: o.createdAt,
+      shipTo: { name: String(addr.name ?? o.contactName), phone: String(addr.phone ?? o.contactPhone), address: formatAddress(addr) },
+      lines: o.items.map((i) => ({ name: i.name, sku: i.sku, qty: i.quantity, totalPaise: i.lineTotalPaise })),
+      totalPaise: o.totalPaise,
+      // Same rule as the delivery app: COD is due until the cash is recorded.
+      codDuePaise: o.paymentMethod === 'COD' && o.paymentStatus !== 'COD_COLLECTED' && o.paymentStatus !== 'PAID' ? o.totalPaise : 0,
+      gift: o.giftWrap ? { message: o.giftMessage } : null,
+    });
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `inline; filename="packing-slip-${o.number}.pdf"`);
+    res.send(buffer);
   }
 
   @Get(':id/invoice.pdf')

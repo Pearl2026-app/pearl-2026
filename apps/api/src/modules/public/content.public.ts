@@ -37,13 +37,19 @@ export class PublicContentController {
   @Public()
   @Get('site')
   async site() {
-    const [store, delivery, appLinks, seo, returns, payments, blocks, cities, categories, farms, wa, legal] = await Promise.all([
+    const [store, delivery, appLinks, seo, returns, payments, storefront, stores, blocks, cities, categories, farms, wa, legal] = await Promise.all([
       this.settings.get('store'),
       this.settings.get('delivery'),
       this.settings.get('app_links'),
       this.settings.get('seo'),
       this.settings.get('returns'),
       this.settings.get('payments'),
+      this.settings.get('storefront'),
+      this.prisma.franchise.findMany({
+        where: { isActive: true, showInStoreList: true },
+        orderBy: [{ city: { sortOrder: 'asc' } }, { name: 'asc' }],
+        select: { id: true, name: true, area: true, address: true, phone: true, openingHours: true, mapUrl: true, city: { select: { name: true, slug: true } } },
+      }),
       this.prisma.contentBlock.findMany({ where: { isActive: true, key: { in: ['footer.about', 'contact.info', 'product.trust', 'bulk.intro'] } } }),
       this.prisma.city.findMany({ where: { isActive: true }, orderBy: { sortOrder: 'asc' }, select: { id: true, name: true, slug: true, state: true } }),
       this.prisma.category.findMany({ where: { isActive: true, archivedAt: null }, orderBy: { sortOrder: 'asc' }, select: { name: true, slug: true } }),
@@ -51,6 +57,14 @@ export class PublicContentController {
       this.prisma.whatsAppNumber.findMany({ where: { isActive: true }, select: { phone: true, label: true, isDefault: true, cityId: true } }),
       this.prisma.page.findMany({ where: { isLegal: true, isActive: true }, select: { slug: true, title: true } }),
     ]);
+    // Facets for the menu: only values that have something on sale.
+    const [colours, shapes, collections] = await Promise.all([
+      this.prisma.product.groupBy({ by: ['colour'], where: { AND: [publicWhere(), { soldAt: null, colour: { not: null } }] }, _count: { _all: true } }),
+      this.prisma.product.groupBy({ by: ['shape'], where: { AND: [publicWhere(), { soldAt: null, shape: { not: null } }] }, _count: { _all: true } }),
+      this.prisma.collection.findMany({ where: { isActive: true, archivedAt: null }, orderBy: { sortOrder: 'asc' }, select: { name: true, slug: true } }),
+    ]);
+    const facet = (rows: Array<{ _count: { _all: number } } & Record<string, unknown>>, key: string) =>
+      rows.filter((r) => r[key]).sort((a, b) => b._count._all - a._count._all).slice(0, 8).map((r) => String(r[key]));
     const wholesale = await this.prisma.routingRule.findFirst({ where: { isActive: true, enquiryType: 'BULK' }, orderBy: { priority: 'asc' }, include: { whatsAppNumber: true } });
     const { gstin: _g, ...publicStore } = store;
     return {
@@ -59,12 +73,15 @@ export class PublicContentController {
       appLinks,
       seo,
       returns,
+      storefront,
+      stores,
       payments: { onlineEnabled: payments.onlineEnabled, codEnabled: payments.codEnabled, codMaxPaise: payments.codMaxPaise },
       blocks: Object.fromEntries(blocks.map((b) => [b.key, { title: b.title, data: b.data }])),
       cities,
       categories,
       farms,
       legalPages: legal,
+      shop: { colours: facet(colours, 'colour'), shapes: facet(shapes, 'shape'), collections },
       whatsapp: {
         default: wa.find((w) => w.isDefault)?.phone ?? store.whatsapp,
         byCity: Object.fromEntries(wa.filter((w) => w.cityId).map((w) => [w.cityId!, w.phone])),

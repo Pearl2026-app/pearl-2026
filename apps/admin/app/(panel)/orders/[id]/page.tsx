@@ -70,6 +70,7 @@ export default function OrderPage() {
                 {s === 'CANCELLED' ? 'Cancel order' : o.status === 'ASSIGNED' && s === 'PACKED' ? 'Unassign (back to packed)' : `Mark ${ORDER_STATUS_LABEL[s].toLowerCase()}`}
               </Button>
             ))}
+            <a className="inline-flex min-h-9 items-center rounded-sm border border-line bg-surface px-3 text-sm" href={`/api/v1/admin/orders/${id}/packing-slip.pdf`} target="_blank" rel="noreferrer">{o.giftWrap ? 'Gift packing slip' : 'Packing slip'}</a>
             {o.invoice && <a className="inline-flex min-h-9 items-center rounded-sm border border-line bg-surface px-3 text-sm" href={`/api/v1/admin/orders/${id}/invoice.pdf`} target="_blank" rel="noreferrer">Invoice {o.invoice.number}</a>}
             <a className="inline-flex min-h-9 items-center rounded-sm border border-line bg-surface px-3 text-sm" href={o.trackUrl} target="_blank" rel="noreferrer">Tracking page</a>
           </>
@@ -151,6 +152,11 @@ export default function OrderPage() {
             <p className="mt-2 text-sm text-muted">{[addr.line1, addr.line2, addr.landmark, addr.area, `${addr.cityName} ${addr.pincode}`, addr.state].filter(Boolean).join(', ')}</p>
             <p className="mt-1 text-sm">City: {o.city.name}</p>
             {o.customerNote && <p className="mt-2 rounded-sm bg-surface-muted p-2 text-sm">Note: {o.customerNote}</p>}
+            {o.giftWrap && (
+              <p className="mt-2 rounded-sm border border-gold/60 bg-surface-muted p-2 text-sm">
+                <strong>Gift:</strong> pack in the gift box; no prices in the parcel (print the gift packing slip).{o.giftMessage ? <> Card message: “{o.giftMessage}”</> : ' No card message.'}
+              </p>
+            )}
             {o.enquiry && <p className="mt-2 text-sm">From enquiry <Link className="text-accent underline" href={`/enquiries/${o.enquiry.id}`}>{o.enquiry.reference}</Link></p>}
           </Card>
           {can('ORDERS', 'edit') && me.role !== 'VENDOR' && (

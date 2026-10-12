@@ -28,7 +28,10 @@ function header(doc: PDFKit.PDFDocument, title: string, store: { legalName: stri
   doc.moveTo(50, 130).lineTo(545, 130).strokeColor('#E4DDD2').stroke();
 }
 
+/** Written inside the bottom margin; without lifting the margin pdfkit would start a blank page for it. */
 function footer(doc: PDFKit.PDFDocument) {
+  const bottom = doc.page.margins.bottom;
+  doc.page.margins.bottom = 0;
   doc
     .fillColor(MUTED)
     .font('Helvetica')
@@ -36,7 +39,9 @@ function footer(doc: PDFKit.PDFDocument) {
     .text(`Developed by Sahyadri Pearls · © ${new Date().getFullYear()} Sahyadri Pearls. All Rights Reserved.`, 50, 790, {
       width: 495,
       align: 'center',
+      lineBreak: false,
     });
+  doc.page.margins.bottom = bottom;
 }
 
 export interface InvoicePdfInput {
@@ -186,3 +191,54 @@ export async function certificatePdf(c: CertificatePdfInput): Promise<Buffer> {
 }
 
 export const qrPng = (url: string) => QRCode.toBuffer(url, { margin: 1, width: 600 });
+
+export interface PackingSlipInput {
+  orderNumber: string;
+  placedAt: Date;
+  shipTo: { name: string; phone: string; address: string };
+  lines: Array<{ name: string; sku: string; qty: number; totalPaise: number }>;
+  totalPaise: number;
+  codDuePaise: number;
+  /** Gift orders print no prices; the message goes on a separate card page. */
+  gift: { message: string | null } | null;
+}
+
+/** Goes in the parcel. Gift slips carry no prices (and no COD amount: gifts that are COD show only "collect payment"). */
+export async function packingSlipPdf(s: PackingSlipInput): Promise<Buffer> {
+  const doc = new PDFDocument({ size: 'A4', margin: 50, info: { Title: `Packing slip ${s.orderNumber}`, Author: 'Sahyadri Pearls' } });
+  doc.fillColor(ACCENT).font('Times-Bold').fontSize(22).text('Sahyadri Pearls', 50, 50);
+  doc.fillColor(INK).font('Helvetica-Bold').fontSize(14).text(s.gift ? 'GIFT PACKING SLIP' : 'PACKING SLIP', 350, 52, { width: 195, align: 'right' });
+  doc.font('Helvetica').fontSize(9).fillColor(MUTED).text(`Order ${s.orderNumber} · ${s.placedAt.toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata' })}`, 350, 72, { width: 195, align: 'right' });
+  doc.moveTo(50, 110).lineTo(545, 110).strokeColor('#E4DDD2').stroke();
+  doc.fillColor(MUTED).fontSize(8.5).text('SHIP TO', 50, 125);
+  doc.fillColor(INK).font('Helvetica-Bold').fontSize(11).text(s.shipTo.name, 50, 138);
+  doc.font('Helvetica').fontSize(10).text(s.shipTo.address, { width: 300 }).text(s.shipTo.phone);
+  let y = Math.max(doc.y + 20, 210);
+  doc.fillColor(MUTED).fontSize(8.5).text('ITEM', 50, y).text('SKU', 330, y).text('QTY', 430, y);
+  if (!s.gift) doc.text('AMOUNT', 470, y, { width: 75, align: 'right' });
+  y += 16;
+  for (const l of s.lines) {
+    doc.moveTo(50, y - 4).lineTo(545, y - 4).strokeColor('#EFE9DF').stroke();
+    doc.fillColor(INK).fontSize(10).text(l.name, 50, y, { width: 270 }).text(l.sku, 330, y, { width: 95 }).text(String(l.qty), 430, y);
+    if (!s.gift) doc.text(rs(l.totalPaise), 470, y, { width: 75, align: 'right' });
+    y = Math.max(doc.y, y + 14) + 8;
+  }
+  doc.moveTo(50, y).lineTo(545, y).strokeColor('#E4DDD2').stroke();
+  y += 12;
+  if (!s.gift) {
+    doc.font('Helvetica-Bold').text('Total', 330, y).text(rs(s.totalPaise), 470, y, { width: 75, align: 'right' });
+    y += 18;
+  }
+  if (s.codDuePaise > 0) {
+    doc.font('Helvetica-Bold').fillColor('#8C5A00').text(s.gift ? 'Cash on delivery: the rider collects payment.' : `Cash on delivery: collect ${rs(s.codDuePaise)}`, 50, y);
+    y += 18;
+  }
+  doc.font('Helvetica').fillColor(MUTED).fontSize(9).text('Packed with care. Your certificate of authenticity is in the box; scan its QR code to verify it.', 50, y + 10, { width: 495 });
+  footer(doc);
+  if (s.gift) {
+    doc.addPage({ size: [420, 298], margin: 40 });
+    doc.fillColor(ACCENT).font('Times-Bold').fontSize(18).text('Sahyadri Pearls', 40, 40, { width: 340, align: 'center' });
+    doc.fillColor(INK).font('Times-Italic').fontSize(15).text(s.gift.message || 'A gift for you.', 50, 110, { width: 320, align: 'center' });
+  }
+  return collect(doc);
+}

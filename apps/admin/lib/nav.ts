@@ -48,6 +48,7 @@ export const NAV: NavGroup[] = [
       { href: '/coupons', label: 'Coupons & offers', module: 'COUPONS', roles: ['SUPER_ADMIN', 'STAFF'] },
       { href: '/notifications', label: 'Push notifications', module: 'NOTIFICATIONS' },
       { href: '/messages', label: 'Message log', module: 'NOTIFICATIONS' },
+      { href: '/newsletter', label: 'Newsletter', module: 'NOTIFICATIONS' },
     ],
   },
   {

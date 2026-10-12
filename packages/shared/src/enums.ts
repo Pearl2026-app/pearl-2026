@@ -58,7 +58,7 @@ export type ProductionStage = keyof typeof ProductionStage;
 export const PurchaseOrderStatus = e('DRAFT', 'SENT', 'ACCEPTED', 'IN_PRODUCTION', 'RECEIVED', 'CLOSED');
 export type PurchaseOrderStatus = keyof typeof PurchaseOrderStatus;
 
-export const EnquiryType = e('PRODUCT', 'CUSTOMIZED', 'BULK', 'RING_FINDER', 'CONTACT');
+export const EnquiryType = e('PRODUCT', 'CUSTOMIZED', 'BULK', 'RING_FINDER', 'CONTACT', 'CONSULTATION');
 export type EnquiryType = keyof typeof EnquiryType;
 
 export const EnquiryStage = e('NEW', 'IN_PROGRESS', 'QUOTED', 'CONVERTED', 'CLOSED');
@@ -139,6 +139,7 @@ export const ENQUIRY_TYPE_LABEL: Record<EnquiryType, string> = {
   BULK: 'Bulk / B2B',
   RING_FINDER: 'Ring Finder',
   CONTACT: 'Contact',
+  CONSULTATION: 'Consultation',
 };
 
 export const ROLE_LABEL: Record<Role, string> = {

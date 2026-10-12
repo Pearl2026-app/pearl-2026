@@ -2,9 +2,11 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { BuyActions, WishlistButton } from '@/components/buy-box';
 import { Gallery } from '@/components/gallery';
+import { DeliveryCheck, RecentlyViewed, ShareButton, SizeGuide } from '@/components/product-extras';
 import { IconFor } from '@/components/icons';
 import { Price, ProductGrid } from '@/components/product-card';
 import { Breadcrumbs, Container, SectionHeading } from '@/components/ui';
+import { sizeGuideKind, SPEC_GUIDE_ANCHOR } from '@/lib/guides';
 import { breadcrumbJsonLd, JsonLd, meta, productDescription, productJsonLd } from '@/lib/seo';
 import { cityFromCookie, get } from '@/lib/server-api';
 import type { ProductDetail, Site } from '@/lib/types';
@@ -107,8 +109,29 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
                 </li>
               ))}
           </ul>
+          {sizeGuideKind(p.category.slug) && (
+            <div className="-mb-2 flex items-center justify-between text-sm">
+              <span className="text-muted">{sizeGuideKind(p.category.slug) === 'ring' ? 'Not sure of your size?' : 'Which length suits you?'}</span>
+              <SizeGuide kind={sizeGuideKind(p.category.slug)!} />
+            </div>
+          )}
           <BuyActions p={p} />
-          <WishlistButton productId={p.id} />
+          <div className="flex flex-wrap items-center gap-x-6">
+            <WishlistButton productId={p.id} />
+            <ShareButton name={p.name} />
+            {site?.storefront.consultationsEnabled && (
+              <Link href={`/book-consultation?product=${encodeURIComponent(p.slug)}`} className="inline-flex min-h-11 items-center gap-2 text-sm text-muted hover:text-accent">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><rect x="3" y="6" width="13" height="12" rx="1" /><path d="m16 10 5-3v10l-5-3" /></svg>
+                See it on a video call
+              </Link>
+            )}
+          </div>
+          {!p.isSold && !p.priceOnRequest && <DeliveryCheck />}
+          <ul className="grid grid-cols-3 gap-2 text-center text-xs text-muted">
+            {site && site.returns.windowDays > 0 && <li className="border border-line px-2 py-3"><span className="block font-serif text-lg text-ink">{site.returns.windowDays} days</span>easy returns</li>}
+            <li className="border border-line px-2 py-3"><span className="block font-serif text-lg text-ink">Insured</span>tracked delivery</li>
+            {site?.storefront.giftWrapEnabled && <li className="border border-line px-2 py-3"><span className="block font-serif text-lg text-ink">Free</span>gift packing</li>}
+          </ul>
           {p.description && <p className="leading-relaxed text-ink/90">{p.description}</p>}
           <section aria-labelledby="spec">
             <h2 id="spec" className="eyebrow mb-3">Specification</h2>
@@ -117,7 +140,13 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
                 .filter(([, v]) => v != null && v !== '')
                 .map(([k, v]) => (
                   <div key={k} className="contents">
-                    <dt className="text-muted">{k}</dt>
+                    <dt className="text-muted">
+                      {SPEC_GUIDE_ANCHOR[k] ? (
+                        <Link href={`/pearl-guide#${SPEC_GUIDE_ANCHOR[k]}`} className="underline decoration-dotted underline-offset-4 hover:text-accent" title={`What does ${k.toLowerCase()} mean?`}>{k}</Link>
+                      ) : (
+                        k
+                      )}
+                    </dt>
                     <dd>{v}</dd>
                   </div>
                 ))}
@@ -163,6 +192,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
           <ProductGrid products={p.related.slice(0, 4)} />
         </section>
       )}
+      <RecentlyViewed p={p} />
       <JsonLd data={productJsonLd(p)} />
       <JsonLd data={breadcrumbJsonLd([{ name: 'Home', path: '/' }, { name: 'Jewellery', path: '/jewellery' }, { name: p.category.name, path: `/jewellery/${p.category.slug}` }, { name: p.name, path: `/product/${p.slug}` }])} />
     </Container>

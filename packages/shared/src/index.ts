@@ -6,3 +6,4 @@ export * from './order-state';
 export * from './whatsapp';
 export * from './validation';
 export * from './site';
+export * from './delivery';
