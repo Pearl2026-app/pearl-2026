@@ -67,13 +67,15 @@ export class OtpService {
     const ch = await this.prisma.otpChallenge.findUnique({ where: { id: challengeId } });
     const invalid = () => badRequest('OTP_INVALID', 'That code is not right or has expired. Request a new one.');
     if (!ch || !ch.purpose.startsWith(purpose) || ch.consumedAt || ch.expiresAt < new Date()) throw invalid();
-    if (ch.attempts >= config().OTP_MAX_ATTEMPTS) throw badRequest('OTP_LOCKED', 'Too many wrong attempts. Request a new code.');
+    // Reserve this attempt atomically before comparing, so parallel guesses cannot exceed the limit.
+    const reserved = await this.prisma.otpChallenge.updateMany({
+      where: { id: ch.id, consumedAt: null, attempts: { lt: config().OTP_MAX_ATTEMPTS } },
+      data: { attempts: { increment: 1 } },
+    });
+    if (reserved.count !== 1) throw badRequest('OTP_LOCKED', 'Too many wrong attempts. Request a new code.');
     const expected = Buffer.from(ch.codeHash, 'hex');
     const got = Buffer.from(this.hash(ch.id, code), 'hex');
-    if (expected.length !== got.length || !timingSafeEqual(expected, got)) {
-      await this.prisma.otpChallenge.update({ where: { id: ch.id }, data: { attempts: { increment: 1 } } });
-      throw invalid();
-    }
+    if (expected.length !== got.length || !timingSafeEqual(expected, got)) throw invalid();
     // Consume atomically so a code works once even under concurrent requests.
     const consumed = await this.prisma.otpChallenge.updateMany({
       where: { id: ch.id, consumedAt: null },

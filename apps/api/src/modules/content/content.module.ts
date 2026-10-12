@@ -22,7 +22,8 @@ const banner = z.object({
   subtitle: optStr(300),
   imageUrl: z.string().min(1).max(500),
   mobileImageUrl: optStr(500),
-  linkUrl: optStr(500),
+  // A page on this site ("/offers") or a full https address; nothing else (no javascript: or data: links).
+  linkUrl: z.string().trim().max(500).regex(/^(\/(?![/\\])|https:\/\/)/, 'Use a page like /offers or a full https:// address').optional().nullable().or(z.literal('').transform(() => null)),
   ctaLabel: optStr(40),
   sortOrder: z.number().int().optional(),
   startsAt: when,

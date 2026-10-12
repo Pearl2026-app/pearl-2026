@@ -36,3 +36,4 @@ Each question has an assumed default, so Phase 1 can start without waiting. Ques
 | Q18 | Photography, farm stories, legal page text, FAQ | Provided by the client; Phase 1 uses clearly marked sample content |
 | Q19 | Domain, brand logo files, app store developer accounts (Google Play, Apple) | Needed by Phase 5 |
 | Q20 | Delivery proof OTP threshold | ₹50,000 |
+| Q21 | Which partners may see purchase-order costs, margin rules and pearl rates? | Today City Managers see PO agreed costs, and City Managers and Franchises can read margin rules and pearl rates (PRICING view, needed for the calculator). DECISIONS D38 hides product costs from them; PERMISSION-MATRIX.md line 26 says Vendor, Franchise and Customer. Owner to decide; the code is easy to tighten either way. |

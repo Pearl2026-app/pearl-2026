@@ -131,6 +131,8 @@ export const ManufacturersController = crudController({
   model: 'manufacturer',
   entity: 'Manufacturer',
   module: 'MANUFACTURERS',
+  // City managers see their own city's manufacturers (and those not tied to a city).
+  scope: (u) => (u.role === 'CITY_MANAGER' ? { OR: [{ cityId: u.cityId ?? '__none__' }, { cityId: null }] } : {}),
   create: z.object(manufacturerBase),
   update: z.object(manufacturerBase).partial(),
   searchFields: ['name', 'contactName', 'speciality', 'phone'],

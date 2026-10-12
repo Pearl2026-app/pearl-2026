@@ -12,7 +12,7 @@ import { sendCsv } from '../../common/csv';
 import { CurrentUser, Requires } from '../../common/decorators';
 import { badRequest, forbidden, notFound } from '../../common/errors';
 import { between, listQuery, orderBy, paginate } from '../../common/list';
-import { paymentScope, returnScope } from '../../common/scope';
+import { orderScope, paymentScope, returnScope } from '../../common/scope';
 import { SettingsService } from '../../common/settings.service';
 import { config } from '../../config/config';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -163,14 +163,16 @@ export class CouponUsageController {
   /** Usage per coupon: redemptions, discount given and sales it drove. */
   @Get(':id/usage')
   @Requires('COUPONS', 'view')
-  async usage(@Param('id') id: string) {
+  async usage(@CurrentUser() user: AuthUser, @Param('id') id: string) {
     const c = await this.prisma.coupon.findUnique({ where: { id } });
     if (!c) throw notFound('Coupon');
+    // Each role sees only redemptions on orders it may see (a city manager: their city).
+    const scoped = { couponId: id, order: orderScope(user) };
     const [agg, recent] = await Promise.all([
-      this.prisma.couponRedemption.aggregate({ where: { couponId: id }, _count: { _all: true }, _sum: { discountPaise: true } }),
-      this.prisma.couponRedemption.findMany({ where: { couponId: id }, orderBy: { createdAt: 'desc' }, take: 50, include: { order: { select: { id: true, number: true, totalPaise: true, placedAt: true, contactName: true } } } }),
+      this.prisma.couponRedemption.aggregate({ where: scoped, _count: { _all: true }, _sum: { discountPaise: true } }),
+      this.prisma.couponRedemption.findMany({ where: scoped, orderBy: { createdAt: 'desc' }, take: 50, include: { order: { select: { id: true, number: true, totalPaise: true, placedAt: true, contactName: true } } } }),
     ]);
-    const sales = await this.prisma.order.aggregate({ where: { couponRedemption: { couponId: id }, paymentStatus: { in: ['PAID', 'COD_COLLECTED'] } }, _sum: { totalPaise: true } });
+    const sales = await this.prisma.order.aggregate({ where: { AND: [{ couponRedemption: { couponId: id }, paymentStatus: { in: ['PAID', 'COD_COLLECTED'] } }, orderScope(user)] }, _sum: { totalPaise: true } });
     return { redemptions: agg._count._all, discountPaise: agg._sum.discountPaise ?? 0, salesPaise: sales._sum.totalPaise ?? 0, usageLimit: c.usageLimit, recent };
   }
 }

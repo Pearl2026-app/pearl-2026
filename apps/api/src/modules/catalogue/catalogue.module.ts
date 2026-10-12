@@ -10,7 +10,7 @@ import { AuditService } from '../../common/audit.service';
 import type { AuthUser } from '../../common/context';
 import { cityLinks, crudController } from '../../common/crud';
 import { CurrentUser, Requires } from '../../common/decorators';
-import { badRequest, notFound } from '../../common/errors';
+import { badRequest, forbidden, notFound } from '../../common/errors';
 import { listQuery, orderBy, paginate } from '../../common/list';
 import { productScope } from '../../common/scope';
 import { config } from '../../config/config';
@@ -119,6 +119,8 @@ class CertificatesController {
   @Post()
   @Requires('PRODUCTS', 'edit')
   async create(@CurrentUser() user: AuthUser, @Body(new ZodValidationPipe(certCreate)) dto: z.infer<typeof certCreate>) {
+    // A certificate is the company's word on a pearl: head office issues and revokes them, never partners.
+    if (user.role !== 'SUPER_ADMIN' && user.role !== 'STAFF') throw forbidden('Only head office can issue or revoke certificates.');
     const product = await this.prisma.product.findFirst({ where: { AND: [{ id: dto.productId }, productScope(user)] }, include: { farm: true } });
     if (!product) throw notFound('Product');
     const code = dto.code ?? `CERT-${product.sku}-${Date.now().toString(36).toUpperCase()}`;
@@ -147,6 +149,8 @@ class CertificatesController {
   @HttpCode(200)
   @Requires('PRODUCTS', 'edit')
   async revoke(@CurrentUser() user: AuthUser, @Param('id') id: string) {
+    // A certificate is the company's word on a pearl: head office issues and revokes them, never partners.
+    if (user.role !== 'SUPER_ADMIN' && user.role !== 'STAFF') throw forbidden('Only head office can issue or revoke certificates.');
     const c = await this.prisma.certificate.findFirst({ where: { id, product: productScope(user) } });
     if (!c) throw notFound('Certificate');
     const r = await this.prisma.certificate.update({ where: { id }, data: { revokedAt: new Date() } });

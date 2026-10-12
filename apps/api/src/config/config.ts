@@ -5,7 +5,8 @@ const bool = z
   .transform((v) => (typeof v === 'boolean' ? v : ['1', 'true', 'yes', 'on'].includes(v.toLowerCase())));
 
 const schema = z.object({
-  NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
+  // Required, never defaulted: a deploy that forgets it must not run with development switches on.
+  NODE_ENV: z.enum(['development', 'test', 'production'], { errorMap: () => ({ message: 'Set NODE_ENV to development, test or production' }) }),
   PORT: z.coerce.number().default(4000),
   WEB_URL: z.string().url().default('http://localhost:3000'),
   ADMIN_URL: z.string().url().default('http://localhost:3001'),

@@ -98,7 +98,25 @@ Notes:
 - [x] Store release preparation: icons and splash for both apps (`scripts/brand/make-app-icons.mjs`), EAS build profiles, listing text, data-safety and privacy answers, reviewer notes (docs/STORE-LISTING.md), build and submit steps (docs/DEPLOYMENT.md §9a). **Account deletion** added (required by both stores): in the app, on the website, and the public page /delete-account (D62). Publishing needs the owner's Google Play and Apple developer accounts.
 
 ### Phase 6 — Hardening and handover
-- [ ] Security review
+- [x] Security review (sign-in and sessions, access by role and record, uploads, payments, injection, redirects, HTTP hardening, dependencies). Fixed with regression tests (`apps/api/test/security.test.ts`, `auth.test.ts`):
+  - OTP guesses in parallel exceeded the attempt limit → attempts reserved atomically
+  - partner and customer sign-in revealed which numbers have accounts → identical answers, nothing sent
+  - refresh-token race could keep a stolen session alive → atomic rotation
+  - `NODE_ENV` defaulted to development (dev switches on) → now required; sign-in codes masked in production logs and blanked in the stored message log
+  - **app payment page took the gateway key and amount from the link** (phishing) → details come from the API for the signed order link
+  - open redirect after website sign-in (`/\evil.com`) → shared `safeNextPath` with tests
+  - guest checkout phone could be used to send WhatsApp reminders to anyone → quote rate limit, one reminder per number per week, letters-only greeting
+  - late "payment failed" event could undo a capture → ignored after capture
+  - two simultaneous refunds could exceed the amount paid → per-order lock
+  - vendor CSV import changed live pieces without approval → refused for live pieces
+  - enquiry detail showed custom-order costs to partners → removed for non-head-office
+  - recording a payment needed only view rights → Payments edit, head office only
+  - vendors could issue/revoke certificates → head office only
+  - franchise could convert an enquiry into another city; city manager could clear an enquiry's city → blocked
+  - manufacturers and coupon usage not limited to the city manager's city → scoped
+  - image decompression bombs → 48 MP limit; search crashed on "-"; banner links accept only site paths or https
+  - dependencies: nodemailer 7→10, sharp 0.34→0.35, postcss and js-yaml forced to fixed versions. Remaining advisories are in build-time tools only (Expo CLI, React Native tooling, Prisma CLI), not in anything shipped to users.
+  - **Owner decision needed:** who may see PO costs, margin rules and pearl rates (OPEN-QUESTIONS Q21).
 - [ ] Load test (incl. unique piece under load)
 - [x] Backups + tested restore (scripts/backup; nightly GitHub Actions backup with restore test; restore test passed here on real data)
 - [x] Deployment kit: one Vercel project with services (root `vercel.json`: `web` at `/`, `admin` at `/admin`, `api` container at `/api` and `/media`; Mumbai), Fly.io worker-only config, a **Database migrations** GitHub workflow, a production setup seed with no sample data, docs/DEPLOYMENT.md and docs/RUNBOOK.md (D54–D56)

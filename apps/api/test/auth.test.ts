@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { api, bearer, db, drain, getApp, http, lastCode, LOGINS, PASSWORD, staffToken } from './helpers';
+import { outbox } from '../src/providers/messaging';
 
 beforeAll(async () => {
   await getApp();
@@ -56,7 +57,7 @@ describe('customer login (phone + OTP)', () => {
   it('creates a new customer with a referral link on first login', async () => {
     const phone = '+919811111111';
     const r = await http().post(api('/auth/otp/request')).send({ phone: '98111 11111' }).expect(200);
-    expect(r.body.isNewCustomer).toBe(true);
+    expect(r.body).not.toHaveProperty('isNewCustomer'); // nothing about the account before the code is proven
     await drain();
     const v = await http()
       .post(api('/auth/otp/verify'))
@@ -67,15 +68,30 @@ describe('customer login (phone + OTP)', () => {
     expect(ref?.referrer.referralCode).toBe('ASHA7K2P');
   });
 
-  it('refuses staff phone numbers on the customer login', async () => {
-    const r = await http().post(api('/auth/otp/request')).send({ phone: '+919800000001' }).expect(400);
-    expect(r.body.code).toBe('USE_PARTNER_LOGIN');
+  it('answers a staff number like any other, sends it nothing, and never signs it in as a customer', async () => {
+    const sentBefore = outbox.filter((o) => o.to === '+919800000001').length;
+    const staff = await http().post(api('/auth/otp/request')).send({ phone: '+919800000001' }).expect(200);
+    const fresh = await http().post(api('/auth/otp/request')).send({ phone: '+919811111199' }).expect(200);
+    expect(Object.keys(staff.body).sort()).toEqual(Object.keys(fresh.body).sort());
+    await drain();
+    expect(outbox.filter((o) => o.to === '+919800000001').length).toBe(sentBefore);
   });
 
   it('does not reveal whether a partner account exists', async () => {
-    const r = await http().post(api('/auth/partner/otp/request')).send({ identifier: 'nobody@example.com' }).expect(200);
-    expect(r.body.challengeId).toBeTruthy();
-    await http().post(api('/auth/partner/otp/verify')).send({ challengeId: r.body.challengeId, code: '123456' }).expect(400);
+    const unknown = await http().post(api('/auth/partner/otp/request')).send({ identifier: 'nobody@example.com' }).expect(200);
+    const known = await http().post(api('/auth/partner/otp/request')).send({ identifier: '+919800000005' }).expect(200);
+    expect(Object.keys(unknown.body).sort()).toEqual(Object.keys(known.body).sort());
+    expect(unknown.body.challengeId).toMatch(/^c[a-z0-9]{20,}$/);
+    expect(unknown.body.challengeId).not.toContain('decoy');
+    await http().post(api('/auth/partner/otp/verify')).send({ challengeId: unknown.body.challengeId, code: '123456' }).expect(400);
+  });
+
+  it('counts parallel guesses: no more than the allowed attempts per code', async () => {
+    const r = await http().post(api('/auth/otp/request')).send({ phone: '+919811111188' }).expect(200);
+    const guesses = await Promise.all(Array.from({ length: 12 }, (_, i) => http().post(api('/auth/otp/verify')).send({ challengeId: r.body.challengeId, code: String(100000 + i) })));
+    expect(guesses.every((g) => g.status === 400)).toBe(true);
+    const ch = await db.otpChallenge.findUniqueOrThrow({ where: { id: r.body.challengeId } });
+    expect(ch.attempts).toBeLessThanOrEqual(5);
   });
 });
 
@@ -89,6 +105,15 @@ describe('sessions', () => {
     await http().post(api('/auth/refresh')).send({ refreshToken: first }).expect(400); // reuse
     await http().post(api('/auth/refresh')).send({ refreshToken: r2.body.refreshToken }).expect(400); // family revoked
     await http().get(api('/me')).set(bearer(r2.body.accessToken)).expect(401);
+  });
+
+  it('treats two simultaneous refreshes with one token as reuse (no second session survives)', async () => {
+    const r = await http().post(api('/auth/otp/request')).send({ phone: '+919822222233' }).expect(200);
+    await drain();
+    const v = await http().post(api('/auth/otp/verify')).send({ challengeId: r.body.challengeId, code: lastCode('+919822222233') }).expect(200);
+    const both = await Promise.all([1, 2].map(() => http().post(api('/auth/refresh')).send({ refreshToken: v.body.refreshToken })));
+    expect(both.filter((x) => x.status === 200).length).toBeLessThanOrEqual(1);
+    for (const x of both.filter((y) => y.status === 200)) await http().get(api('/me')).set(bearer(x.body.accessToken)).expect(401);
   });
 
   it('sets httpOnly cookies for the web client and requires the client header on cookie writes', async () => {

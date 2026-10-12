@@ -19,8 +19,6 @@ export function newReferralCode(name?: string | null): string {
 }
 
 const PARTNER_ROLES: Role[] = ['VENDOR', 'FRANCHISE', 'DELIVERY_PARTNER'];
-// A real-looking challenge id for unknown accounts, so responses don't reveal who has an account.
-const decoyChallenge = () => `c${randomInt(1e9, 9e9)}decoy${randomInt(1e9, 9e9)}`;
 
 @Injectable()
 export class AuthService {
@@ -38,12 +36,12 @@ export class AuthService {
 
   // ── Customers: phone + OTP (sign up and log in are one flow) ──
   async requestCustomerOtp(phone: string) {
-    const existing = await this.prisma.user.findUnique({ where: { phone } });
-    if (existing && existing.role !== 'CUSTOMER') {
-      throw badRequest('USE_PARTNER_LOGIN', 'This number belongs to a team or partner account. Please use the partner login.');
-    }
-    const { challengeId, expiresAt } = await this.otp.issue({ destination: phone, channel: 'SMS', purpose: 'CUSTOMER_LOGIN' });
-    return { challengeId, expiresAt, sentTo: maskDestination(phone), isNewCustomer: !existing };
+    // The answer is the same for every number (new, existing or a team member's), so it reveals nothing.
+    // A team or partner number gets a real but unsent challenge; they sign in through the partner login.
+    const existing = await this.prisma.user.findUnique({ where: { phone }, select: { role: true } });
+    const isCustomerOrNew = !existing || existing.role === 'CUSTOMER';
+    const { challengeId, expiresAt } = await this.otp.issue({ destination: phone, channel: 'SMS', purpose: 'CUSTOMER_LOGIN', send: isCustomerOrNew });
+    return { challengeId, expiresAt, sentTo: maskDestination(phone) };
   }
 
   async verifyCustomerOtp(input: { challengeId: string; code: string; name?: string; email?: string; referralCode?: string }) {
@@ -97,7 +95,12 @@ export class AuthService {
     const user = await this.prisma.user.findFirst({
       where: { ...(isEmail ? { email: identifier.toLowerCase() } : { phone: identifier }), role: { in: PARTNER_ROLES }, isActive: true },
     });
-    if (!user) return { challengeId: decoyChallenge(), sentTo: maskDestination(identifier) };
+    if (!user) {
+      // Unknown account: a real challenge that is never sent and cannot unlock anything (no user behind
+      // it), with the same rate limit, so the response looks exactly like a real one.
+      const decoy = await this.otp.issue({ destination: isEmail ? identifier.toLowerCase() : identifier, channel: isEmail ? 'EMAIL' : 'SMS', purpose: 'PARTNER_LOGIN', subjectKey: 'none', send: false });
+      return { challengeId: decoy.challengeId, expiresAt: decoy.expiresAt, sentTo: maskDestination(identifier) };
+    }
     const { challengeId, expiresAt } = await this.otp.issue({
       destination: identifier,
       channel: isEmail ? 'EMAIL' : 'SMS',

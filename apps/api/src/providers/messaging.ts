@@ -80,7 +80,9 @@ export class ConsoleSms implements SmsProvider {
   readonly canSend = false;
   async send(to: string, body: string): Promise<SendResult> {
     remember({ channel: 'SMS', to, body });
-    if (process.env.NODE_ENV !== 'test') log.log(`[SMS → ${to}] ${body}`);
+    // Codes are printed only in development; in production a sign-in code must never reach the logs.
+    if (process.env.NODE_ENV === 'development') log.log(`[SMS → ${to}] ${body}`);
+    else if (process.env.NODE_ENV === 'production') log.warn(`[SMS not sent: no SMS provider configured] to ${to.replace(/.(?=.{4})/g, '•')}: ${body.replace(/\d{4,}/g, '••••••')}`);
     return { ok: true, providerMessageId: 'console' };
   }
 }
@@ -131,7 +133,7 @@ export class LogEmail implements EmailProvider {
 export class SmtpEmail implements EmailProvider {
   readonly name = 'smtp';
   readonly canSend = true;
-  private transport: nodemailer.Transporter;
+  private transport: ReturnType<typeof nodemailer.createTransport>;
   constructor(opts: { host: string; port: number; user?: string; pass?: string }, private readonly from: string) {
     this.transport = nodemailer.createTransport({
       host: opts.host,

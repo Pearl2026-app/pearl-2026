@@ -7,3 +7,4 @@ export * from './whatsapp';
 export * from './validation';
 export * from './site';
 export * from './delivery';
+export * from './redirect';

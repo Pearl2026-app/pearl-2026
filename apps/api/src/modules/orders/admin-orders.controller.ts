@@ -194,9 +194,10 @@ export class AdminOrdersController {
 
   @Post(':id/payments')
   @HttpCode(200)
-  @Requires('PAYMENTS', 'view')
+  // Recording money marks the order paid and issues the invoice: head office with the Payments edit right only.
+  @Requires('PAYMENTS', 'edit')
   recordPayment(@CurrentUser() user: AuthUser, @Param('id') id: string, @Body(new ZodValidationPipe(z.object({ method: z.enum(['COD', 'BANK_TRANSFER', 'OTHER']), amountPaise: paise, reference: z.string().max(120).optional().nullable() }))) dto: { method: 'COD'; amountPaise: number; reference?: string | null }) {
-    if (!['SUPER_ADMIN', 'STAFF', 'CITY_MANAGER'].includes(user.role)) throw forbidden();
+    if (!['SUPER_ADMIN', 'STAFF'].includes(user.role)) throw forbidden();
     return this.orders.recordPayment(user, id, dto);
   }
 
@@ -263,6 +264,10 @@ export class EnquiryConvertController {
     const cityId = dto.cityId ?? e.cityId;
     if (!cityId) throw badRequest('CITY_REQUIRED', 'Choose the city.', { cityId: 'Required' });
     if (user.role === 'CITY_MANAGER' && cityId !== user.cityId) throw badRequest('NOT_ALLOWED', 'You can only create orders in your city.');
+    if (user.role === 'FRANCHISE') {
+      const f = await this.prisma.franchise.findUnique({ where: { id: user.franchiseId ?? '' } });
+      if (cityId !== f?.cityId) throw badRequest('NOT_ALLOWED', 'You can only create orders in your city.');
+    }
     const items = dto.items ?? (e.productId ? [{ productId: e.productId, quantity: 1 }] : []);
     if (!items.length) throw badRequest('ITEMS_REQUIRED', 'Choose the piece(s) for this order.', { items: 'Required' });
     if (items.some((i) => i.unitPricePaise != null) && user.role !== 'SUPER_ADMIN' && user.role !== 'STAFF') throw forbidden('Only head office can change prices.');

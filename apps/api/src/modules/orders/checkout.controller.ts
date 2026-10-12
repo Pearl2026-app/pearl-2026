@@ -139,6 +139,7 @@ export class CheckoutController {
   @Public()
   @Post('checkout/quote')
   @HttpCode(200)
+  @Throttle({ default: { limit: limit(20), ttl: 60_000 } })
   async quote(@CurrentUser() user: AuthUser | null, @Req() req: Request, @Body(new ZodValidationPipe(z.object({ cityId: z.string().optional(), citySlug: z.string().optional(), phone: indianMobile.optional(), name: z.string().trim().min(2).max(120).optional() }))) dto: { cityId?: string; citySlug?: string; phone?: string; name?: string }) {
     const cart = await this.carts.resolve(user, cartToken(req), false);
     const cityId = await cityIdFrom(this.prisma, dto);
@@ -250,7 +251,7 @@ export class CheckoutController {
         city: { select: { name: true } },
       },
     });
-    const owner = order && user?.role === 'CUSTOMER' && order.customerId === user.customerId;
+    const owner = order && user?.role === 'CUSTOMER' && !!user.customerId && order.customerId === user.customerId;
     if (!order || (!owner && !(token && this.orders.verifyTrackingToken(number, token)))) throw notFound('Order');
     const addr = order.addressSnapshot as Record<string, string>;
     return {
@@ -272,11 +273,24 @@ export class CheckoutController {
     };
   }
 
+  /** The pending online payment for an order, for the app's payment page. Needs the signed order link. */
+  @Public()
+  @Get('track/:number/payment')
+  @Throttle({ default: { limit: limit(30), ttl: 60_000 } })
+  async pendingPayment(@CurrentUser() user: AuthUser | null, @Param('number') number: string, @Query('t') token?: string) {
+    const order = await this.prisma.order.findUnique({ where: { number }, select: { id: true, customerId: true } });
+    const owner = order && user?.role === 'CUSTOMER' && !!user.customerId && order.customerId === user.customerId;
+    if (!order || (!owner && !(token && this.orders.verifyTrackingToken(number, token)))) throw notFound('Order');
+    const checkout = await this.payments.pendingCheckout(order.id);
+    if (!checkout) throw badRequest('NOTHING_TO_PAY', 'This order has nothing waiting for payment.');
+    return checkout;
+  }
+
   @Public()
   @Get('track/:number/invoice.pdf')
   async invoice(@CurrentUser() user: AuthUser | null, @Param('number') number: string, @Res() res: Response, @Query('t') token?: string) {
     const order = await this.prisma.order.findUnique({ where: { number } });
-    const owner = order && user?.role === 'CUSTOMER' && order.customerId === user.customerId;
+    const owner = order && user?.role === 'CUSTOMER' && !!user.customerId && order.customerId === user.customerId;
     if (!order || (!owner && !(token && this.orders.verifyTrackingToken(number, token)))) throw notFound('Invoice');
     const { buffer, filename } = await this.invoices.pdf(order.id);
     res.setHeader('Content-Type', 'application/pdf');

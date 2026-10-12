@@ -45,9 +45,18 @@ export class PaymentsService {
       customer: { name: order.contactName, phone: order.contactPhone, email: order.contactEmail },
     });
     await this.prisma.payment.create({
-      data: { orderId: order.id, method: 'ONLINE', provider: po.provider, providerOrderId: po.providerOrderId, amountPaise: order.totalPaise, status: 'CREATED' },
+      // The checkout details are kept so the app's payment page can fetch them from us, never from a link.
+      data: { orderId: order.id, method: 'ONLINE', provider: po.provider, providerOrderId: po.providerOrderId, amountPaise: order.totalPaise, status: 'CREATED', raw: po.checkout as Prisma.InputJsonValue },
     });
     return po.checkout;
+  }
+
+  /** Checkout details for an order still waiting for online payment (the app's payment page). */
+  async pendingCheckout(orderId: string) {
+    const order = await this.prisma.order.findUniqueOrThrow({ where: { id: orderId } });
+    if (order.paymentMethod !== 'ONLINE' || order.paymentStatus !== 'PENDING') return null;
+    const p = await this.prisma.payment.findFirst({ where: { orderId, status: 'CREATED' }, orderBy: { createdAt: 'desc' } });
+    return p?.raw ? { ...(p.raw as Record<string, unknown>), orderNumber: order.number } : null;
   }
 
   /**
@@ -125,7 +134,8 @@ export class PaymentsService {
 
   private async failed(evt: PaymentWebhookEvent) {
     const payment = evt.providerOrderId ? await this.prisma.payment.findUnique({ where: { providerOrderId: evt.providerOrderId } }) : null;
-    if (!payment) return;
+    // An out-of-order failure for an attempt that was already captured must not undo the capture.
+    if (!payment || payment.status === 'CAPTURED') return;
     await this.prisma.$transaction(async (tx) => {
       const order = await tx.order.findUniqueOrThrow({ where: { id: payment.orderId } });
       await tx.payment.update({ where: { id: payment.id }, data: { status: 'FAILED', providerPaymentId: evt.providerPaymentId, raw: evt.raw as Prisma.InputJsonValue } });
@@ -174,27 +184,34 @@ export class PaymentsService {
   async refund(user: AuthUser, orderId: string, input: { amountPaise: number; reason: string; returnRequestId?: string | null }) {
     const order = await this.orders.find(user, orderId);
     if (user.role !== 'SUPER_ADMIN' && user.role !== 'STAFF') throw forbidden('Only head office can issue refunds.');
-    const refunded = order.refunds.filter((r) => r.status !== 'FAILED').reduce((s, r) => s + r.amountPaise, 0);
-    const paid = order.payments.filter((p) => p.status === 'CAPTURED' || p.status === 'PARTIALLY_REFUNDED' || p.status === 'REFUNDED').reduce((s, p) => s + p.amountPaise, 0);
-    if (input.amountPaise <= 0 || refunded + input.amountPaise > paid) throw badRequest('REFUND_TOO_LARGE', `You can refund at most ${formatINR(Math.max(0, paid - refunded))}.`, { amountPaise: 'Too large' });
-    const online = order.payments.find((p) => p.method === 'ONLINE' && p.status !== 'FAILED' && p.providerPaymentId);
-    let providerRefundId: string | null = null;
-    let status: 'PROCESSING' | 'COMPLETED' = 'COMPLETED';
-    if (online) {
-      const r = await this.provider.refund(online.providerPaymentId!, input.amountPaise, { orderNumber: order.number, reason: input.reason.slice(0, 200) });
-      providerRefundId = r.providerRefundId;
-      status = r.status === 'processed' ? 'COMPLETED' : 'PROCESSING';
-    }
-    const refund = await this.prisma.$transaction(async (tx) => {
-      const rf = await tx.refund.create({
-        data: { orderId, paymentId: online?.id ?? order.payments[0]?.id ?? null, returnRequestId: input.returnRequestId ?? null, amountPaise: input.amountPaise, reason: input.reason, status, providerRefundId, processedById: user.id },
-      });
-      if (status === 'COMPLETED') await this.syncRefundState(tx, orderId);
-      await tx.orderEvent.create({ data: { orderId, actorId: user.id, type: 'REFUND', message: `Refund of ${formatINR(input.amountPaise)} ${status === 'COMPLETED' ? 'completed' : 'started'}: ${input.reason}` } });
-      await this.audit.record('Refund', rf.id, 'CREATE', undefined, rf, tx);
-      return rf;
-    });
-    return refund;
+    if (input.amountPaise <= 0) throw badRequest('REFUND_TOO_LARGE', 'Enter an amount to refund.', { amountPaise: 'Too small' });
+    // One refund per order at a time: the lock makes a second, simultaneous refund wait and then re-check the
+    // remaining amount, so two refunds can never add up to more than was paid.
+    return this.prisma.$transaction(
+      async (tx) => {
+        await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${'refund:' + orderId}))`;
+        const [refunds, payments] = await Promise.all([tx.refund.findMany({ where: { orderId } }), tx.payment.findMany({ where: { orderId } })]);
+        const refunded = refunds.filter((r) => r.status !== 'FAILED').reduce((s, r) => s + r.amountPaise, 0);
+        const paid = payments.filter((p) => p.status === 'CAPTURED' || p.status === 'PARTIALLY_REFUNDED' || p.status === 'REFUNDED').reduce((s, p) => s + p.amountPaise, 0);
+        if (refunded + input.amountPaise > paid) throw badRequest('REFUND_TOO_LARGE', `You can refund at most ${formatINR(Math.max(0, paid - refunded))}.`, { amountPaise: 'Too large' });
+        const online = payments.find((p) => p.method === 'ONLINE' && p.status !== 'FAILED' && p.providerPaymentId);
+        let providerRefundId: string | null = null;
+        let status: 'PROCESSING' | 'COMPLETED' = 'COMPLETED';
+        if (online) {
+          const r = await this.provider.refund(online.providerPaymentId!, input.amountPaise, { orderNumber: order.number, reason: input.reason.slice(0, 200) });
+          providerRefundId = r.providerRefundId;
+          status = r.status === 'processed' ? 'COMPLETED' : 'PROCESSING';
+        }
+        const rf = await tx.refund.create({
+          data: { orderId, paymentId: online?.id ?? payments[0]?.id ?? null, returnRequestId: input.returnRequestId ?? null, amountPaise: input.amountPaise, reason: input.reason, status, providerRefundId, processedById: user.id },
+        });
+        if (status === 'COMPLETED') await this.syncRefundState(tx, orderId);
+        await tx.orderEvent.create({ data: { orderId, actorId: user.id, type: 'REFUND', message: `Refund of ${formatINR(input.amountPaise)} ${status === 'COMPLETED' ? 'completed' : 'started'}: ${input.reason}` } });
+        await this.audit.record('Refund', rf.id, 'CREATE', undefined, rf, tx);
+        return rf;
+      },
+      { timeout: 30_000 },
+    );
   }
 
   // ── Sandbox (development and testing only) ───────────────────────

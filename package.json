@@ -39,7 +39,10 @@
       "esbuild"
     ],
     "overrides": {
-      "@types/react": "19.2.18"
+      "@types/react": "19.2.18",
+      "sharp": "^0.35.5",
+      "postcss@<8.5.23": "^8.5.29",
+      "js-yaml@<5.4.1": "^5.4.3"
     }
   }
 }

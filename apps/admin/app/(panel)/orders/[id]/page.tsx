@@ -199,7 +199,7 @@ export default function OrderPage() {
               )}
             </Card>
           )}
-          {(['SUPER_ADMIN', 'STAFF', 'CITY_MANAGER'] as string[]).includes(me.role) && !['PAID', 'COD_COLLECTED', 'REFUNDED'].includes(o.paymentStatus) && !['CANCELLED', 'FAILED'].includes(o.status) && (
+          {isHeadOffice && can('PAYMENTS', 'edit') && !['PAID', 'COD_COLLECTED', 'REFUNDED'].includes(o.paymentStatus) && !['CANCELLED', 'FAILED'].includes(o.status) && (
             <Card className="flex flex-col gap-2">
               <h2 className="font-semibold">Record a payment</h2>
               <p className="text-xs text-muted">For cash collected, bank transfer or UPI to the shop. The full amount {inr(o.totalPaise)} is recorded.</p>

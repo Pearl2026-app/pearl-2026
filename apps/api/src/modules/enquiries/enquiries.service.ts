@@ -178,6 +178,11 @@ export class EnquiriesService {
       },
     });
     if (!e) throw notFound('Enquiry');
+    // Costs and margins of a customized request are for head office only (DECISIONS D38).
+    if (e.customRequest && user.role !== 'SUPER_ADMIN' && user.role !== 'STAFF') {
+      const { metalCostPaise: _m, labourCostPaise: _l, pearlCostPaise: _p, marginPaise: _g, ...safe } = e.customRequest;
+      return { ...e, customRequest: safe as typeof e.customRequest };
+    }
     return e;
   }
 
@@ -190,7 +195,7 @@ export class EnquiriesService {
     if (patch.stage === 'CONVERTED' && !before.convertedOrder) throw badRequest('USE_CONVERT', 'Use “Convert to order” to mark an enquiry converted.');
     // Partners cannot hand enquiries to other cities or franchises.
     if (user.role === 'FRANCHISE' && (patch.franchiseId !== undefined || patch.cityId !== undefined)) throw badRequest('NOT_ALLOWED', 'Only head office can reassign enquiries.');
-    if (user.role === 'CITY_MANAGER' && patch.cityId && patch.cityId !== user.cityId) throw badRequest('NOT_ALLOWED', 'You can only keep enquiries in your city.');
+    if (user.role === 'CITY_MANAGER' && patch.cityId !== undefined && patch.cityId !== user.cityId) throw badRequest('NOT_ALLOWED', 'You can only keep enquiries in your city.');
     if (patch.franchiseId && user.role === 'CITY_MANAGER') {
       const f = await this.prisma.franchise.findFirst({ where: { id: patch.franchiseId, cityId: user.cityId ?? '__none__' } });
       if (!f) throw badRequest('NOT_ALLOWED', 'Choose a franchise in your city.');

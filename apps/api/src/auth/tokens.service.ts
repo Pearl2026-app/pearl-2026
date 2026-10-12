@@ -63,7 +63,12 @@ export class TokensService {
       throw invalid();
     }
     if (s.expiresAt < new Date() || !s.user.isActive) throw invalid();
-    await this.prisma.authSession.update({ where: { id: s.id }, data: { revokedAt: new Date() } });
+    // Rotate atomically: if two requests race with the same token, only one wins; the other is reuse.
+    const rotated = await this.prisma.authSession.updateMany({ where: { id: s.id, revokedAt: null }, data: { revokedAt: new Date() } });
+    if (rotated.count !== 1) {
+      await this.revokeAll(s.userId);
+      throw invalid();
+    }
     return { ...(await this.createSession(s.user, meta)), user: s.user };
   }
 

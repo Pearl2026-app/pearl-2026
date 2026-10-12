@@ -167,8 +167,11 @@ export class ProductImportService {
       const sku = (r.sku ?? '').toUpperCase();
       if (seen.has(sku)) errors.push('Duplicate SKU in this file');
       seen.add(sku);
-      const existing = sku ? await this.prisma.product.findUnique({ where: { sku }, select: { id: true, vendorId: true } }) : null;
+      const existing = sku ? await this.prisma.product.findUnique({ where: { sku }, select: { id: true, vendorId: true, status: true } }) : null;
       if (existing && user.role === 'VENDOR' && existing.vendorId !== user.vendorId) errors.push('This SKU belongs to another vendor');
+      // A vendor's changes to a live piece wait for head office approval, which import cannot do.
+      if (existing && user.role === 'VENDOR' && (existing.status === 'PUBLISHED' || existing.status === 'UNPUBLISHED'))
+        errors.push('This piece is live: change it from its product page, where changes wait for approval');
       if (errors.length || !parsed.success) {
         results.push({ row: i + 1, sku, action: 'error', errors });
         continue;

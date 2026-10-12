@@ -79,6 +79,15 @@ export class AbandonedCartService implements OnModuleInit {
   async remind(c: CartRow, opts: { force?: boolean } = {}) {
     const contact = contactOf(c);
     if (!contact.phone) throw badRequest('NO_CONTACT', 'This cart has no phone number to remind.');
+    // At most one automatic reminder per number per week, whatever the number of carts: a guest cart's
+    // phone is not verified, so this caps what anyone could trigger towards someone else's number.
+    if (!opts.force) {
+      const recent = await this.prisma.cart.count({ where: { id: { not: c.id }, contactPhone: contact.phone, reminderSentAt: { gte: new Date(Date.now() - 7 * 86400_000) } } });
+      if (recent) {
+        await this.prisma.cart.updateMany({ where: { id: c.id, reminderSentAt: null }, data: { reminderSentAt: new Date() } });
+        return false;
+      }
+    }
     // Claim the cart first, so two workers never send twice.
     const claimed = await this.prisma.cart.updateMany({ where: { id: c.id, ...(opts.force ? {} : { reminderSentAt: null }) }, data: { reminderSentAt: new Date() } });
     if (!claimed.count) return false;
@@ -86,13 +95,16 @@ export class AbandonedCartService implements OnModuleInit {
     if (orderedSince && !opts.force) return false;
     await this.notifications.send({
       templateKey: 'CART_REMINDER',
-      vars: { name: (contact.name ?? 'there').split(' ')[0]!, cartUrl: this.cartUrl(c), items: c.items.map((i) => i.product.name).join(', '), total: formatINR(valueOf(c), { compact: true }) },
+      vars: { name: safeFirstName(contact.name), cartUrl: this.cartUrl(c), items: c.items.map((i) => i.product.name).join(', '), total: formatINR(valueOf(c), { compact: true }) },
       to: { whatsapp: contact.phone, email: contact.email },
       context: { cartId: c.id },
     });
     return true;
   }
 }
+
+/** First name for a greeting: letters only (no links or numbers from an unverified guest form). */
+export const safeFirstName = (name: string | null | undefined) => (name ?? '').trim().split(/\s+/)[0]!.replace(/[^\p{L}'-]/gu, '').slice(0, 20) || 'there';
 
 @ApiTags('orders')
 @Controller('admin/abandoned-carts')

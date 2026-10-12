@@ -109,6 +109,8 @@ export class NotificationsService implements OnModuleInit {
         context: result.manualLink
           ? ({ ...((row.context as object) ?? {}), manualLink: result.manualLink } as Prisma.InputJsonValue)
           : undefined,
+        // In production a one-time code is not kept in the database once its message has gone (or cannot go).
+        ...(process.env.NODE_ENV === 'production' && /(^|_)OTP$/.test(row.templateKey ?? '') && (result.ok || notConfigured) ? { body: row.body.replace(/\d{4,8}/g, '••••••') } : {}),
       },
     });
     if (row.notificationId) {

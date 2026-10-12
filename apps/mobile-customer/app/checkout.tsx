@@ -63,7 +63,7 @@ export default function Checkout() {
       if (!r.payment) return router.replace(orderPath as never);
       // Online payment happens on our website's payment page, which returns to the app.
       const back = `sahyadri://order/${encodeURIComponent(r.order.number)}?t=${encodeURIComponent(r.order.token)}`;
-      const q = new URLSearchParams({ mode: r.payment.mode, po: r.payment.orderId, a: String(r.payment.amount), n: r.order.number, return: back, ...(r.payment.key ? { key: r.payment.key } : {}), name: d.name, phone: d.phone });
+      const q = new URLSearchParams({ n: r.order.number, t: r.order.token, return: back });
       const res = await WebBrowser.openAuthSessionAsync(`${WEB_URL}/pay/app?${q}`, 'sahyadri://order');
       const status = res.type === 'success' ? new URL(res.url).searchParams.get('status') ?? '' : 'cancelled';
       router.replace(`${orderPath}&payment=${status}` as never);

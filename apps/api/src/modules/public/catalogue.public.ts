@@ -105,7 +105,8 @@ export class PublicCatalogueController {
   /** Full-text search ids, best match first. SKU prefix matches rank first. */
   private async searchIds(q: string): Promise<string[]> {
     const sku = q.toUpperCase().replace(/[^A-Z0-9-]/g, '');
-    const terms = q.replace(/[^\p{L}\p{N}\s-]/gu, ' ').trim().split(/\s+/).filter(Boolean).map((t) => `${t}:*`).join(' & ');
+    // Hyphens join words only inside a term ("near-round"); a term made of hyphens alone would break to_tsquery.
+    const terms = q.replace(/[^\p{L}\p{N}\s-]/gu, ' ').trim().split(/\s+/).map((t) => t.replace(/^-+|-+$/g, '')).filter(Boolean).map((t) => `${t}:*`).join(' & ');
     if (!terms && !sku) return [];
     const rows = await this.prisma.$queryRaw<Array<{ id: string }>>`
       SELECT id FROM "Product"

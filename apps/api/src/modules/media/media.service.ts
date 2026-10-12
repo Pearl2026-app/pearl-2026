@@ -5,6 +5,9 @@ import { badRequest } from '../../common/errors';
 import { config } from '../../config/config';
 import { STORAGE, type StorageProvider } from '../../providers/types';
 
+/** 48 megapixels: far above any camera photo, and refuses images built to exhaust memory when decoded. */
+const MAX_PIXELS = 48_000_000;
+
 export const IMAGE_WIDTHS = [400, 800, 1200, 1600] as const;
 const IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/avif', 'image/heic', 'image/heif', 'image/tiff'];
 const VIDEO_TYPES = ['video/mp4', 'video/webm', 'video/quicktime'];
@@ -36,14 +39,14 @@ export class MediaService {
   async saveImage(file: IncomingFile, folder: string, opts: { square?: boolean } = {}): Promise<UploadedImage> {
     if (!IMAGE_TYPES.includes(file.mimetype)) throw badRequest('UNSUPPORTED_FILE', 'Upload a JPG, PNG, WebP or AVIF image.');
     if (file.size > 25 * 1024 * 1024) throw badRequest('FILE_TOO_LARGE', 'Images must be under 25 MB.');
-    let meta: sharp.Metadata;
+    let meta: Awaited<ReturnType<ReturnType<typeof sharp>['metadata']>>;
     try {
-      meta = await sharp(file.buffer).metadata();
+      meta = await sharp(file.buffer, { limitInputPixels: MAX_PIXELS }).metadata();
     } catch {
       throw badRequest('UNSUPPORTED_FILE', 'That file is not a readable image.');
     }
     const id = randomUUID();
-    const base = sharp(file.buffer, { failOn: 'error' }).rotate(); // apply EXIF orientation, strip metadata
+    const base = sharp(file.buffer, { failOn: 'error', limitInputPixels: MAX_PIXELS }).rotate(); // apply EXIF orientation, strip metadata
     const srcW = meta.autoOrient?.width ?? meta.width ?? 1600;
     const srcH = meta.autoOrient?.height ?? meta.height ?? 1600;
     const variants: Record<string, string> = {};
@@ -85,7 +88,7 @@ export class MediaService {
     if (!isImage && !(isPdf || isZip || isOle)) throw badRequest('UNSUPPORTED_FILE', 'That file does not look like a PDF or Word document.');
     if (isImage) {
       try {
-        await sharp(file.buffer).metadata();
+        await sharp(file.buffer, { limitInputPixels: MAX_PIXELS }).metadata();
       } catch {
         throw badRequest('UNSUPPORTED_FILE', 'That file is not a readable image.');
       }
