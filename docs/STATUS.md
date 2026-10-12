@@ -94,7 +94,7 @@ Notes:
 ### Phase 5 — Mobile apps (in progress)
 - [x] Shared app API client (token sign-in with refresh, cart token, delivery steps) with contract tests against the API
 - [ ] Customer app (Expo)
-- [ ] Delivery app (Expo) with offline queue — package created, screens not built yet
+- [x] Delivery app (Expo SDK 57, expo-router): phone OTP sign-in, jobs and history (kept on the phone for no-signal areas), one-tap steps, photo + code or signature proof, COD, reasons, push for new assignments, location with the proof; offline queue with 8 unit tests; Android and iOS bundles build (`expo export`); icons, splash and EAS profiles. Not yet run on a physical phone here (no device in this workspace).
 - [ ] Store release preparation (icons, splash, listing text, EAS config)
 
 ### Phase 6 — Hardening and handover
