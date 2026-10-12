@@ -77,7 +77,7 @@ export default function CalculatorPage() {
         title="Price calculator"
         description={
           <>
-            Carat, grade and farm in, a suggested price out, using <Link className="text-accent underline" href="/pearl-rates">pearl rates</Link> and <Link className="text-accent underline" href="/margin-rules">margin rules</Link>. Use it to price the catalogue or answer a WhatsApp quote.
+            Carat, grade and farm in, a suggested price out, using {headOffice ? <><Link className="text-accent underline" href="/pearl-rates">pearl rates</Link> and <Link className="text-accent underline" href="/margin-rules">margin rules</Link></> : 'the pearl rates and margin rules set by head office'}. Use it to price the catalogue or answer a WhatsApp quote.
             {feed.data && <span className="block text-xs">Live rate feed: {feed.data.configured ? `on (${feed.data.name})` : 'off until a market source is confirmed'}</span>}
           </>
         }

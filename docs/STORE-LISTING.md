@@ -13,7 +13,7 @@ Text and answers for Google Play Console and App Store Connect. Replace `sahyadr
 | Category | Shopping |
 | Content rating | Everyone / 4+ (no user-generated public content, no gambling, no violence) |
 | Price | Free; in-app purchases: none (physical goods are paid through the payment gateway, which is allowed) |
-| Support email | the store email in Admin → Settings → Store |
+| Support email | the store email in Admin → Settings → Business details |
 | Privacy policy | `https://www.sahyadripearls.in/privacy` |
 | Account deletion link | `https://www.sahyadripearls.in/delete-account` |
 

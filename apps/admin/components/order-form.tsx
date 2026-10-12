@@ -24,7 +24,7 @@ export interface OrderFormValues {
   address: { name: string; phone: string; line1: string; line2: string; landmark: string; area: string; cityName: string; state: string; pincode: string };
   cityId: string;
   lines: OrderLine[];
-  paymentMethod: 'COD' | 'BANK_TRANSFER' | 'ONLINE' | 'OTHER';
+  paymentMethod: 'COD' | 'BANK_TRANSFER' | 'OTHER';
   alreadyPaid: boolean;
   paymentReference: string;
   couponCode: string;
@@ -163,11 +163,11 @@ export function OrderForm({ initial, submitLabel, onSubmit, busy, error }: { ini
         <Select aria-label="Payment method" value={v.paymentMethod} onChange={(e) => set('paymentMethod', e.target.value as OrderFormValues['paymentMethod'])}>
           <option value="COD">Cash on delivery</option>
           <option value="BANK_TRANSFER">Bank transfer / UPI to shop</option>
-          <option value="ONLINE">Online (customer pays by link)</option>
           <option value="OTHER">Other</option>
         </Select>
         <Input aria-label="Order channel" placeholder="Channel (phone, walk-in, instagram…)" value={v.channel} onChange={(e) => set('channel', e.target.value)} />
-        {v.paymentMethod !== 'ONLINE' && v.paymentMethod !== 'COD' && (
+        {/* Only head office records money (D63); anyone else leaves it to head office to record on the order. */}
+        {v.paymentMethod !== 'COD' && (me?.role === 'SUPER_ADMIN' || me?.role === 'STAFF') && !!me.permissions.PAYMENTS?.includes('edit') && (
           <>
             <Switch checked={v.alreadyPaid} onChange={(c) => set('alreadyPaid', c)} label="Already paid" />
             {v.alreadyPaid && <Input aria-label="Payment reference" placeholder="Bank / UPI reference" value={v.paymentReference} onChange={(e) => set('paymentReference', e.target.value)} />}

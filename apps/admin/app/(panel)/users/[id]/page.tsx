@@ -107,14 +107,14 @@ export default function UserPage() {
         {values.role === 'STAFF' && (
           <Card>
             <h2 className="mb-1 font-semibold">Module permissions</h2>
-            <p className="mb-3 text-sm text-muted">Tick what this person may do. Anything not ticked is hidden and refused by the server.</p>
+            <p className="mb-3 text-sm text-muted">Tick what this person may do. Anything not ticked is hidden and refused by the server. Logins and their rights are managed by the Super Admin only.</p>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead className="text-left text-xs text-muted uppercase">
                   <tr><th className="py-1">Module</th>{ACTIONS.map(([, l]) => <th key={l} className="px-2 py-1 text-center">{l}</th>)}</tr>
                 </thead>
                 <tbody>
-                  {MODULES.map((m) => (
+                  {MODULES.filter((m) => m !== 'STAFF').map((m) => (
                     <tr key={m} className="border-t border-line">
                       <td className="py-1.5">{MODULE_LABEL[m]}</td>
                       {ACTIONS.map(([k, l]) => (

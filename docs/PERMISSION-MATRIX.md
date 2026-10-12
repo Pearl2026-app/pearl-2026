@@ -33,12 +33,12 @@ V = view · C = create · E = edit · D = archive/delete · — = no access · *
 |---|---|---|---|---|---|---|---|
 | Dashboard | V | grant | V *city* | V *own* | V *own* | — | — |
 | Customers (user DB) | VCED | grant | V *city* | — | V *asg* (contact only) | — | V/E *self* |
-| Staff & partner users | VCED | grant | — | — | — | — | — |
+| Staff & partner users | VCED | — (Super Admin only, D35) | — | — | — | — | — |
 | Categories / Collections / Farms | VCED | grant | V | V | V | — | V (public) |
 | Products | VCED | grant | V *city* | VCE *own* (goes to approval) | V | — | V (published) |
 | Product approval | V/E | grant | — | — | — | — | — |
 | Orders | VCED | grant | VCE *city* | V/E *own*, status ≤ Packed | VCE *asg* | V/E *asg* (via Delivery) | VC *own* |
-| Customized orders | VCED | grant | VCE *city* | — | V *asg* | — | V *own* |
+| Customized orders | VCED | grant | VCE *city* (no costs, quote or advance) | — | — | — | V *own* |
 | Purchase orders / Manufacturers | VCED | grant | V *city* | — | — | — | — |
 | Enquiries | VCED | grant | VCE *city* | — | VCE *asg* (stage, notes, convert) | — | C (public) |
 | WhatsApp numbers / templates / routing | VCED | grant | — | — | — | — | — |
@@ -49,15 +49,21 @@ V = view · C = create · E = edit · D = archive/delete · — = no access · *
 | Cities | VCED | grant | V *city* | — | — | — | V (public) |
 | Vendors / Franchises / Delivery partners | VCED | grant | V *city* (+ assign) | V *self* | V *self* | V *self* | — |
 | Pearl pricing & calculator | VCED | grant | V calc | — | V calc | — | — |
-| Payments / COD reconciliation | VCED | grant | V *city* | — | V *asg* | C COD amount *asg* | V *own* |
-| Returns & cancellations | VCED | grant | VE *city* | — | V *asg* | E pickup *asg* | C *own* |
+| Payments / COD reconciliation | VCED (recording and refunds: head office) | grant | V *city* | — | V *asg* | V/C COD amount *asg* (at delivery) | V *own* |
+| Returns & cancellations | VCED | grant | VE *city* | — | V *asg* | — | C *own* |
 | Reviews moderation | VCED | grant | — | — | — | — | C *own* (delivered) |
-| Reports | V | grant | V *city* | V *own* | V *own* | V *own* history | — |
+| Reports | V | grant | V *city* | V *own* | V *own* | — (own history is in the jobs list) | — |
 | Settings & feature flags | VCED | grant | — | — | — | — | — |
 | Audit log | V | grant | — | — | — | — | — |
 | Commissions & settlements (flag off) | VCED | grant | — | V *own* (hidden until flag on) | — | — | — |
 
 \* Staff get only the modules and actions a Super Admin grants. No staff grant can include **Staff & partner users** with create/edit on SUPER_ADMIN accounts, **Settings → feature flags**, or **Audit log** delete. The audit log has no delete action for anyone.
+
+**Money and proof rules (apply on top of the table):**
+- Recording a payment, including "Already paid" on a staff-made order and the advance on a customized order, needs head office (Super Admin or Staff) with Payments edit. Refunds need the same (D63).
+- Staff-made and converted orders take cash on delivery, bank transfer / UPI, or other; never online, because an online payment can only start at the customer's own checkout (D63).
+- Delivered is set by the rider with proof. Head office alone may set it from the order page, and must note how the order was handed over (D64).
+- A vendor's photos and video on a live piece are changed by head office; on drafts the vendor changes them freely (D65).
 
 Customer access is always to their own records: their account, addresses, cart, wishlist, orders, invoices, returns, reviews and referral code.
 

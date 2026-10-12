@@ -141,6 +141,7 @@ export class ProductsService {
     const before = await this.find(user, id);
     const pending = (before.pendingChanges as Partial<ProductInput> | null) ?? null;
     if (!pending && before.status !== 'PENDING_APPROVAL') throw badRequest('NOTHING_TO_APPROVE', 'There is nothing waiting for approval.');
+    if (before.status === 'PENDING_APPROVAL' && !before.images.length) throw badRequest('NO_IMAGES', 'Add at least one image before publishing.');
     return this.prisma.$transaction(async (tx) => {
       const data: Prisma.ProductUncheckedUpdateInput = pending ? { ...this.toData(pending), pendingChanges: Prisma.DbNull } : {};
       if (before.status === 'PENDING_APPROVAL') {
@@ -212,6 +213,7 @@ export class ProductsService {
 
   async addImages(user: AuthUser, id: string, files: IncomingFile[], kind?: 'MAIN' | 'CAROUSEL' | 'LIFESTYLE') {
     const p = await this.find(user, id);
+    this.assertMediaEditable(user, p);
     if (!files?.length) throw badRequest('NO_FILES', 'Choose at least one image.');
     let order = p.images.length;
     const hasMain = p.images.some((i) => i.kind === 'MAIN');
@@ -231,6 +233,7 @@ export class ProductsService {
 
   async reorderImages(user: AuthUser, id: string, ids: string[]) {
     const p = await this.find(user, id);
+    this.assertMediaEditable(user, p);
     const own = new Set(p.images.map((i) => i.id));
     if (ids.some((x) => !own.has(x))) throw badRequest('INVALID_IMAGES', 'Those images do not belong to this product.');
     await this.prisma.$transaction(ids.map((imgId, i) => this.prisma.productImage.update({ where: { id: imgId }, data: { sortOrder: i } })));
@@ -240,6 +243,7 @@ export class ProductsService {
 
   async updateImage(user: AuthUser, id: string, imageId: string, patch: { alt?: string | null; kind?: 'MAIN' | 'CAROUSEL' | 'LIFESTYLE' }) {
     const p = await this.find(user, id);
+    this.assertMediaEditable(user, p);
     const img = p.images.find((i) => i.id === imageId);
     if (!img) throw notFound('Image');
     return this.prisma.$transaction(async (tx) => {
@@ -252,6 +256,7 @@ export class ProductsService {
 
   async removeImage(user: AuthUser, id: string, imageId: string) {
     const p = await this.find(user, id);
+    this.assertMediaEditable(user, p);
     const img = p.images.find((i) => i.id === imageId);
     if (!img) throw notFound('Image');
     await this.prisma.productImage.delete({ where: { id: imageId } });
@@ -261,6 +266,7 @@ export class ProductsService {
 
   async setVideo(user: AuthUser, id: string, file: IncomingFile | null) {
     const before = await this.find(user, id);
+    this.assertMediaEditable(user, before);
     const stored = file ? await this.media.saveVideo(file, `products/${id}`) : null;
     const p = await this.prisma.product.update({ where: { id }, data: { videoUrl: stored?.url ?? null } });
     await this.audit.record('Product', id, file ? 'SET_VIDEO' : 'REMOVE_VIDEO', { videoUrl: before.videoUrl }, { videoUrl: p.videoUrl });
@@ -285,6 +291,11 @@ export class ProductsService {
       }
     }
     return { uploaded: report.filter((r) => r.ok).length, failed: report.filter((r) => !r.ok).length, report };
+  }
+
+  /** A vendor's changes to a live piece wait for approval; photos and video cannot wait, so on a live piece head office changes them. */
+  private assertMediaEditable(user: AuthUser, p: { status: string }) {
+    if (user.role === 'VENDOR' && p.status === 'PUBLISHED') throw forbidden('Photos and video on a live piece are changed by head office. Ask them to make the change.');
   }
 
   assertCanEdit(user: AuthUser) {

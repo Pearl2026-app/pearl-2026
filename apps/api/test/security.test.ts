@@ -105,6 +105,62 @@ describe('enquiries and orders', () => {
   });
 });
 
+describe('money and proof (handover review)', () => {
+  const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64');
+
+  it('only head office can mark a manual or converted order as already paid', async () => {
+    const p = await piece('Paid Ring');
+    const body = { contact: { name: 'Walk In', phone: '9811700310' }, address: { ...ADDRESS, phone: '9811700310' }, cityId: puneId, items: [{ productId: p.id, quantity: 1 }], paymentMethod: 'BANK_TRANSFER', alreadyPaid: true, paymentReference: 'UPI-1' };
+    const r = await http().post(api('/admin/orders')).set(bearer(await tokenFor('puneManager'))).send(body).expect(403);
+    expect(r.body.message).toMatch(/head office/);
+    expect((await db.product.findUniqueOrThrow({ where: { id: p.id } })).soldAt).toBeNull();
+  });
+
+  it('staff-made orders cannot be set to online payment (the customer would have no way to pay)', async () => {
+    const p = await piece('Online Manual Ring');
+    await http()
+      .post(api('/admin/orders'))
+      .set(bearer(await tokenFor('superAdmin')))
+      .send({ contact: { name: 'Phone Buyer', phone: '9811700311' }, address: { ...ADDRESS, phone: '9811700311' }, cityId: puneId, items: [{ productId: p.id, quantity: 1 }], paymentMethod: 'ONLINE' })
+      .expect(400);
+  });
+
+  it('only head office records the advance on a customized order', async () => {
+    const e = await db.enquiry.create({ data: { reference: `ENQ-T4-${Date.now()}`, type: 'CUSTOMIZED', cityId: puneId, contactName: 'Custom Buyer', contactPhone: '+919811700312' } });
+    const c = await db.customRequest.create({ data: { enquiryId: e.id, cityId: puneId, jewelleryType: 'Necklace', stage: 'QUOTED', quotedPaise: 5_000_000 } });
+    await http()
+      .post(api(`/admin/custom-orders/${c.id}/stage`))
+      .set(bearer(await tokenFor('puneManager')))
+      .send({ stage: 'ADVANCE_PAID', advance: { amountPaise: 1_000_000, method: 'BANK_TRANSFER', reference: 'UPI-2', address: { ...ADDRESS, phone: '9811700312' } } })
+      .expect(403);
+  });
+
+  it('marking delivered without the rider: head office only, with a note on how it was handed over', async () => {
+    const order = await db.order.findFirstOrThrow({ where: { cityId: puneId } });
+    await http().post(api(`/admin/orders/${order.id}/status`)).set(bearer(await tokenFor('puneManager'))).send({ status: 'DELIVERED' }).expect(403);
+    const r = await http().post(api(`/admin/orders/${order.id}/status`)).set(bearer(await tokenFor('superAdmin'))).send({ status: 'DELIVERED' }).expect(400);
+    expect(r.body.code).toBe('REASON_REQUIRED');
+  });
+
+  it('approving a vendor’s new piece needs a photo, like publishing', async () => {
+    const vendor = await db.user.findUniqueOrThrow({ where: { email: 'vendor@sahyadripearls.test' } });
+    const cat = await db.category.findUniqueOrThrow({ where: { slug: 'rings' } });
+    const sku = `T-SEC-NOPIC-${Date.now().toString(36).toUpperCase()}`;
+    const p = await db.product.create({ data: { sku, name: 'No Photo Ring', slug: sku.toLowerCase(), categoryId: cat.id, pricePaise: 100_000, status: 'PENDING_APPROVAL', vendorId: vendor.vendorId } });
+    const r = await http().post(api(`/admin/products/${p.id}/approve`)).set(bearer(await tokenFor('superAdmin'))).expect(400);
+    expect(r.body.code).toBe('NO_IMAGES');
+  });
+
+  it('a vendor cannot change photos on a live piece, but can on a draft', async () => {
+    const vendor = await db.user.findUniqueOrThrow({ where: { email: 'vendor@sahyadripearls.test' } });
+    const live = await piece('Live Photo Ring', { vendorId: vendor.vendorId });
+    const token = bearer(await tokenFor('vendor'));
+    await http().post(api(`/admin/products/${live.id}/images`)).set(token).attach('files', PNG, 'a.png').expect(403);
+    const draft = await piece('Draft Photo Ring', { vendorId: vendor.vendorId, status: 'DRAFT' });
+    await http().post(api(`/admin/products/${draft.id}/images`)).set(token).attach('files', PNG, 'a.png').expect(201);
+  });
+});
+
 describe('payments for the app', () => {
   it('the payment page gets its details from the API, only with the signed order link', async () => {
     const p = await piece('Online Ring');

@@ -5,6 +5,7 @@ import type { Response } from 'express';
 import { config } from '../config/config';
 import { PrismaService } from '../prisma/prisma.service';
 import { badRequest } from '../common/errors';
+import type { Prisma } from '@sahyadri/db';
 
 export interface AccessClaims {
   sub: string;
@@ -38,9 +39,9 @@ export class TokensService {
     }
   }
 
-  async createSession(user: { id: string; role: string }, meta: { ip?: string | null; userAgent?: string | null }) {
+  async createSession(user: { id: string; role: string }, meta: { ip?: string | null; userAgent?: string | null }, db: Prisma.TransactionClient = this.prisma) {
     const refreshToken = randomBytes(32).toString('base64url');
-    const session = await this.prisma.authSession.create({
+    const session = await db.authSession.create({
       data: {
         userId: user.id,
         refreshTokenHash: sha256(refreshToken),
@@ -49,7 +50,7 @@ export class TokensService {
         expiresAt: new Date(Date.now() + config().JWT_REFRESH_TTL_DAYS * 86400_000),
       },
     });
-    await this.prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } });
+    await db.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } });
     return { accessToken: this.signAccess({ sub: user.id, sid: session.id, role: user.role }), refreshToken, sessionId: session.id };
   }
 
@@ -63,13 +64,23 @@ export class TokensService {
       throw invalid();
     }
     if (s.expiresAt < new Date() || !s.user.isActive) throw invalid();
-    // Rotate atomically: if two requests race with the same token, only one wins; the other is reuse.
-    const rotated = await this.prisma.authSession.updateMany({ where: { id: s.id, revokedAt: null }, data: { revokedAt: new Date() } });
-    if (rotated.count !== 1) {
-      await this.revokeAll(s.userId);
-      throw invalid();
-    }
-    return { ...(await this.createSession(s.user, meta)), user: s.user };
+    // Rotation and reuse-revocation hold the same per-user lock, so a racing request that loses always
+    // runs after the winner's new session is saved, and its "revoke everything" catches that session too.
+    const next = await this.prisma.$transaction(async (tx) => {
+      await this.lockUser(tx, s.userId);
+      const rotated = await tx.authSession.updateMany({ where: { id: s.id, revokedAt: null }, data: { revokedAt: new Date() } });
+      if (rotated.count !== 1) {
+        await tx.authSession.updateMany({ where: { userId: s.userId, revokedAt: null }, data: { revokedAt: new Date() } });
+        return null;
+      }
+      return this.createSession(s.user, meta, tx);
+    });
+    if (!next) throw invalid();
+    return { ...next, user: s.user };
+  }
+
+  private lockUser(tx: Prisma.TransactionClient, userId: string) {
+    return tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${'session:' + userId}))`;
   }
 
   async revoke(sessionId: string): Promise<void> {
@@ -77,7 +88,10 @@ export class TokensService {
   }
 
   async revokeAll(userId: string): Promise<void> {
-    await this.prisma.authSession.updateMany({ where: { userId, revokedAt: null }, data: { revokedAt: new Date() } });
+    await this.prisma.$transaction(async (tx) => {
+      await this.lockUser(tx, userId);
+      await tx.authSession.updateMany({ where: { userId, revokedAt: null }, data: { revokedAt: new Date() } });
+    });
   }
 
   setCookies(res: Response, tokens: { accessToken: string; refreshToken: string }): void {

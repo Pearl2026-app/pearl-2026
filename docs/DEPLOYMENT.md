@@ -134,7 +134,7 @@ The admin and the API need no records of their own.
 ## 7. First sign-in and setup (in the admin)
 
 1. Sign in at `https://www.sahyadripearls.in/admin` with the owner email and password. The code arrives by email, or by SMS once SMS is set up.
-2. Under **Settings → Store**, enter the legal name, GSTIN, registered address, phone, WhatsApp number and the app store links.
+2. Under **Settings → Business details (printed on invoices)**, enter the legal name, GSTIN, registered address, phone, WhatsApp number and the app store links.
 3. Add **Cities**, then **WhatsApp numbers & routing**, then **Vendors**, **Franchises**, **Manufacturers** and **Delivery partners**.
 4. Under **Staff & partner logins**, create logins for the team.
 5. Add **Farms**, **Collections** and **Products** with real photos (or use **Products → Import CSV**).

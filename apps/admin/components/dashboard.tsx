@@ -5,7 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import { ENQUIRY_TYPE_LABEL, ORDER_STATUS_LABEL, type EnquiryType, type OrderStatus } from '@sahyadri/shared';
 import { Card, Input, Spinner, StatusBadge } from '@sahyadri/ui';
 import { PageHeader } from './shell';
-import { api, qs } from '@/lib/api';
+import { api, errorText, qs } from '@/lib/api';
 import { ago, inr } from '@/lib/format';
 import { useMe } from '@/lib/session';
 
@@ -50,7 +50,7 @@ export function Dashboard() {
   const { data: me } = useMe();
   const [range, setRange] = useState({ from: '', to: '' });
   const params = { from: range.from ? new Date(range.from).toISOString() : undefined, to: range.to ? new Date(range.to + 'T23:59:59').toISOString() : undefined };
-  const { data, isLoading } = useQuery({ queryKey: ['/admin/dashboard', params], queryFn: () => api<Dash>(`/admin/dashboard${qs(params)}`) });
+  const { data, isLoading, error } = useQuery({ queryKey: ['/admin/dashboard', params], queryFn: () => api<Dash>(`/admin/dashboard${qs(params)}`) });
   return (
     <div>
       <PageHeader
@@ -64,7 +64,9 @@ export function Dashboard() {
           </div>
         }
       />
-      {isLoading || !data ? (
+      {error ? (
+        <p className="text-sm text-danger">The dashboard could not be loaded: {errorText(error)}</p>
+      ) : isLoading || !data ? (
         <Spinner />
       ) : (
         <>

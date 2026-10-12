@@ -222,7 +222,8 @@ export class CustomOrdersController {
 
     let orderId = r.orderId;
     if (dto.stage === 'ADVANCE_PAID') {
-      if (!headOffice(user) && user.role !== 'CITY_MANAGER') throw forbidden();
+      // Recording the advance is recording money: head office only, like every other payment.
+      if (!headOffice(user)) throw forbidden('Only head office can record the advance.');
       if (!dto.advance) throw badRequest('ADVANCE_REQUIRED', 'Record the advance payment.', { advance: 'Required' });
       if (dto.advance.amountPaise > r.quotedPaise!) throw badRequest('ADVANCE_TOO_HIGH', `The advance cannot exceed the quote of ${formatINR(r.quotedPaise!)}.`, { 'advance.amountPaise': 'Too high' });
       const contact = this.contactOf(r);

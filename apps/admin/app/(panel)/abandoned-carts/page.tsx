@@ -29,7 +29,7 @@ function List() {
     <div>
       <PageHeader
         title="Abandoned carts"
-        description={<>Carts with pieces left for over 30 minutes in the last 30 days. One reminder goes out automatically after the delay set in <Link className="text-accent underline" href="/settings">Settings → Cart reminder</Link>.</>}
+        description={<>Carts with pieces left for over 30 minutes in the last 30 days. One reminder goes out automatically after the delay set in <Link className="text-accent underline" href="/settings">Settings → Abandoned cart reminder</Link>.</>}
       />
       <div className="mb-3">
         <Select aria-label="Reminder" className="max-w-56" value={params.reminded ?? ''} onChange={(e) => set({ reminded: e.target.value || undefined })}>

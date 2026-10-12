@@ -2,21 +2,59 @@
 
 Resume rule: read [SPEC.md](SPEC.md) and this file, then continue from the first unchecked item.
 
+## Final report (12 Oct 2026)
+
+**Built and tested:**
+- website, admin and partner panels (City Manager, Vendor, Franchise, Delivery), API and workers;
+- customer app and delivery app (Expo; store listings ready);
+- deployment kit (Vercel services, Fly worker, migrations workflow), nightly backups with a restore test.
+
+**Tests and checks** (green in CI on every push):
+- 175 automated tests: API 121 (including the API-client contract tests), shared 38, the two apps 16;
+- 2 browser journeys (shop → pay → track; enquiry → order → delivered with proof);
+- load test: 50 buyers for one unique piece gave exactly one order;
+- Lighthouse mobile at least 90 in every category (docs/QUALITY.md);
+- security review fixes (Phase 6 below).
+
+**Not done, because it needs the owner** (list below):
+- the live deployment;
+- live payment, SMS, WhatsApp, email and push keys;
+- approved legal texts;
+- app store accounts;
+- the flagged decisions.
+
+**Sign in to try it** (local or staging copy with sample data only; change before going live):
+- Admin: `/admin`. Website: `/`.
+- Password for team logins: `Sahyadri@2026` (`SEED_PASSWORD`).
+- Sign-in code in development: `123456`.
+
+| Role | Login |
+|---|---|
+| Super Admin | admin@sahyadripearls.test |
+| Staff (catalogue) | staff@sahyadripearls.test |
+| City Manager | pune.manager@sahyadripearls.test · mumbai.manager@sahyadripearls.test |
+| Vendor | vendor@sahyadripearls.test (or 9800000003) · vendor2@sahyadripearls.test |
+| Franchise | franchise.pune@sahyadripearls.test (or 9800000004) · franchise.mumbai@sahyadripearls.test |
+| Delivery partner | 9800000005 (Pune) · 9800000015 (Mumbai) |
+| Customer | 9800000007 (Asha, Pune) · 9800000017 (Karan, Mumbai) |
+
+Team logins use email + password + code; partners and customers use phone (or email) + code. Task-by-task help per role: [ADMIN-GUIDE.md](ADMIN-GUIDE.md).
+
 ## Needed from the owner
 - **Hosting accounts** for docs/DEPLOYMENT.md: Vercel, Fly.io, Neon or Supabase (Mumbai), Upstash Redis (Mumbai), AWS S3 (ap-south-1); a domain.
 - **Approved legal texts** (terms, refund, privacy, return & cancellation, shipping): production starts with drafts.
 - Payment gateway live keys (Razorpay assumed): `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, `RAZORPAY_WEBHOOK_SECRET`. Until then: sandbox provider + COD.
 - WhatsApp Business API approval and provider credentials (`WHATSAPP_*`). Until then: click-to-chat links + email.
-- SMS OTP provider with DLT registration (`SMS_*`). Until then: email OTP for staff, console OTP in development.
+- SMS OTP provider with DLT registration (`SMS_*`). Until then: email OTP for staff, console OTP in development. Customer sign-in and the delivery code for high-value orders (₹50,000 and above by default) need it on the live site.
 - Email service credentials (`SMTP_*`). Until then: messages queued and visible in the admin.
 - Firebase project for push (`FCM_*`). Until then: push is logged only; WhatsApp/email carry order updates.
 - S3-compatible storage + CDN (`S3_*`, `CDN_BASE_URL`). Until then: local disk.
 - AI model provider key (`AI_*`). Until then: plain filtered Ring Finder results.
 - Hosting account in an India region, domain, Google Play and Apple developer accounts.
-- GSTIN, legal name and registered address for invoices (Settings → Store).
+- GSTIN, legal name and registered address for invoices (Admin → Settings → Business details).
 
 ## Flagged for owner review (money, permissions, deletion)
-See [DECISIONS.md](DECISIONS.md) and [OPEN-QUESTIONS.md](OPEN-QUESTIONS.md). Cautious defaults were taken. Flagged so far: D32 (GST on delivery), D33 (no sandbox in production), D35 (only Super Admin manages logins), D38 (cost fields hidden from partners), D40 (only head office sets agreed prices), D15/D41 (automatic refunds of late payments), D44 (only head office quotes customized work), D46 (only head office changes pearl rates and margins).
+See [DECISIONS.md](DECISIONS.md) and [OPEN-QUESTIONS.md](OPEN-QUESTIONS.md). Cautious defaults were taken. Flagged so far: D32 (GST on delivery), D33 (no sandbox in production), D35 (only Super Admin manages logins), D38 (cost fields hidden from partners), D40 (only head office sets agreed prices), D15/D41 (automatic refunds of late payments), D44 (only head office quotes customized work), D46 (only head office changes pearl rates and margins), D59 (pearl grade definitions), D63 (only head office records money), Q21 (who sees PO costs, margin rules and pearl rates).
 
 ## Checklist
 
@@ -123,4 +161,5 @@ Notes:
 - [x] Backups + tested restore (scripts/backup; nightly GitHub Actions backup with restore test; restore test passed here on real data)
 - [x] Deployment kit: one Vercel project with services (root `vercel.json`: `web` at `/`, `admin` at `/admin`, `api` container at `/api` and `/media`; Mumbai), Fly.io worker-only config, a **Database migrations** GitHub workflow, a production setup seed with no sample data, docs/DEPLOYMENT.md and docs/RUNBOOK.md (D54–D56)
 - [ ] Actual deployment — needs the owner's accounts (see below)
-- [ ] Docs: setup guide, API reference, runbook, admin user guide, training notes
+- [x] Docs: setup guide (README "Run it locally"), API reference (docs/api, `pnpm api:docs`), runbook, admin user guide (ADMIN-GUIDE.md, per role), training notes (TRAINING.md)
+- [x] Handover review of the guides against the code. It found partners could record money through "Already paid" and the customized-order advance, office "Mark delivered" needed no proof, staff orders could be set to an unpayable "Online", approval skipped the photo rule, vendors changed photos on live pieces, there was no certificate revoke button, a no-op permission box, a dashboard that spun for ever without the right, and a rare refresh-token race. All fixed with tests (D63–D65).

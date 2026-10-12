@@ -4,7 +4,7 @@ import type { Response } from 'express';
 import { ZodValidationPipe } from 'nestjs-zod';
 import { z } from 'zod';
 import type { Prisma } from '@sahyadri/db';
-import { addressInput, email, indianMobile, paise } from '@sahyadri/shared';
+import { addressInput, can, email, indianMobile, paise } from '@sahyadri/shared';
 import type { AuthUser } from '../../common/context';
 import { CurrentUser, Requires } from '../../common/decorators';
 import { sendCsv } from '../../common/csv';
@@ -37,12 +37,19 @@ const orderList = listQuery.extend({
   format: z.enum(['json', 'csv']).optional(),
 });
 
+/** Recording money marks an order paid and issues the invoice: head office with the Payments edit right only. */
+function assertMayRecordMoney(user: AuthUser) {
+  if (!['SUPER_ADMIN', 'STAFF'].includes(user.role) || !can({ role: user.role, staffGrants: user.grants }, 'PAYMENTS', 'edit'))
+    throw forbidden('Only head office can record a payment. Leave "Already paid" off; head office records it on the order.');
+}
+
 const manualOrder = z.object({
   contact: z.object({ name: z.string().trim().min(2).max(120), phone: indianMobile, email: email.optional().nullable() }),
   address: addressInput,
   cityId: z.string().min(1),
   items: z.array(z.object({ productId: z.string(), quantity: z.number().int().min(1).max(100), unitPricePaise: paise.optional() })).min(1).max(30),
-  paymentMethod: z.enum(['ONLINE', 'COD', 'BANK_TRANSFER', 'OTHER']),
+  // Not ONLINE: a gateway payment starts only at the customer's own checkout, so a staff-made order could never be paid that way.
+  paymentMethod: z.enum(['COD', 'BANK_TRANSFER', 'OTHER']),
   alreadyPaid: z.boolean().default(false),
   paymentReference: z.string().max(120).optional().nullable(),
   couponCode: z.string().max(30).optional().nullable(),
@@ -147,6 +154,7 @@ export class AdminOrdersController {
     }
     // Only head office may override catalogue prices on a manual order (money: cautious default).
     if (dto.items.some((i) => i.unitPricePaise != null) && user.role !== 'SUPER_ADMIN' && user.role !== 'STAFF') throw forbidden('Only head office can change prices.');
+    if (dto.alreadyPaid) assertMayRecordMoney(user);
     return this.orders.create({
       source: 'MANUAL',
       contact: dto.contact,
@@ -181,6 +189,11 @@ export class AdminOrdersController {
   @Requires('ORDERS', 'edit')
   status(@CurrentUser() user: AuthUser, @Param('id') id: string, @Body(new ZodValidationPipe(z.object({ status: z.enum(STATUSES), reason: z.string().trim().max(500).optional().nullable() }))) dto: { status: (typeof STATUSES)[number]; reason?: string | null }) {
     if (user.role === 'DELIVERY_PARTNER') throw forbidden('Use the delivery app to update deliveries.');
+    // Delivered without the rider's proof: head office only, and the handover must be described for the record.
+    if (dto.status === 'DELIVERED') {
+      if (!['SUPER_ADMIN', 'STAFF'].includes(user.role)) throw forbidden('The rider marks the order delivered with proof. Ask head office if it was handed over another way.');
+      if (!dto.reason?.trim()) throw badRequest('REASON_REQUIRED', 'Say how the order was handed over.', { reason: 'Required' });
+    }
     return this.orders.transition(user, id, dto.status, { reason: dto.reason });
   }
 
@@ -197,7 +210,7 @@ export class AdminOrdersController {
   // Recording money marks the order paid and issues the invoice: head office with the Payments edit right only.
   @Requires('PAYMENTS', 'edit')
   recordPayment(@CurrentUser() user: AuthUser, @Param('id') id: string, @Body(new ZodValidationPipe(z.object({ method: z.enum(['COD', 'BANK_TRANSFER', 'OTHER']), amountPaise: paise, reference: z.string().max(120).optional().nullable() }))) dto: { method: 'COD'; amountPaise: number; reference?: string | null }) {
-    if (!['SUPER_ADMIN', 'STAFF'].includes(user.role)) throw forbidden();
+    assertMayRecordMoney(user);
     return this.orders.recordPayment(user, id, dto);
   }
 
@@ -256,6 +269,7 @@ export class EnquiryConvertController {
     if (!e) throw notFound('Enquiry');
     if (e.stage === 'CONVERTED') throw badRequest('ALREADY_CONVERTED', 'This enquiry is already an order.');
     if (user.role === 'VENDOR' || user.role === 'DELIVERY_PARTNER') throw forbidden();
+    if (dto.alreadyPaid) assertMayRecordMoney(user);
     const contact = dto.contact ?? (e.contactPhone ? { name: e.contactName ?? e.customer?.user.name ?? 'Customer', phone: e.contactPhone, email: e.contactEmail } : null);
     if (!contact) throw badRequest('CONTACT_REQUIRED', 'Add the customer’s name and mobile number.', { 'contact.phone': 'Required' });
     const saved = e.customer?.addresses[0];

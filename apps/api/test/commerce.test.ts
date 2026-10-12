@@ -336,7 +336,7 @@ describe('returns, refunds and referral rewards', () => {
     const dp = await db.deliveryPartner.findUniqueOrThrow({ where: { phone: '+919800000005' } });
     for (const s of ['CONFIRMED', 'PACKED']) await http().post(api(`/admin/orders/${id}/status`)).set(admin).send({ status: s }).expect(200);
     await http().post(api(`/admin/orders/${id}/assign-delivery`)).set(admin).send({ deliveryPartnerId: dp.id }).expect(200);
-    for (const s of ['PICKED_UP', 'OUT_FOR_DELIVERY', 'DELIVERED']) await http().post(api(`/admin/orders/${id}/status`)).set(admin).send({ status: s }).expect(200);
+    for (const s of ['PICKED_UP', 'OUT_FOR_DELIVERY', 'DELIVERED']) await http().post(api(`/admin/orders/${id}/status`)).set(admin).send({ status: s, ...(s === 'DELIVERED' ? { reason: 'Collected at the store' } : {}) }).expect(200);
     await http().post(api(`/admin/orders/${id}/payments`)).set(admin).send({ method: 'COD', amountPaise: 1_200_000 }).expect(200);
     await drain();
     // referral rewarded on first delivery: two personal coupons

@@ -36,7 +36,8 @@ export default function OrderPage() {
   });
   if (isLoading || !o || !me) return <Spinner />;
   const addr = o.addressSnapshot as Record<string, string>;
-  const next = me.role === 'DELIVERY_PARTNER' ? [] : nextStatuses(me.role, o.status as OrderStatus).filter((s) => s !== 'ASSIGNED' && s !== 'REFUNDED');
+  // Delivered is normally set by the rider with proof; head office may record a handover the app did not (with a note).
+  const next = me.role === 'DELIVERY_PARTNER' ? [] : nextStatuses(me.role, o.status as OrderStatus).filter((s) => s !== 'ASSIGNED' && s !== 'REFUNDED' && (s !== 'DELIVERED' || me.role === 'SUPER_ADMIN' || me.role === 'STAFF'));
   const cityPartners = (partners.data?.items ?? []).filter((p: any) => p.cities?.some((c: any) => c.city.id === o.city.id));
   const isHeadOffice = me.role === 'SUPER_ADMIN' || me.role === 'STAFF';
   const paid = o.payments.filter((p: any) => ['CAPTURED', 'REFUNDED', 'PARTIALLY_REFUNDED'].includes(p.status)).reduce((s: number, p: any) => s + p.amountPaise, 0);
@@ -47,6 +48,10 @@ export default function OrderPage() {
     if (REASON_REQUIRED.includes(to)) {
       reason = window.prompt(`Reason for marking this order ${ORDER_STATUS_LABEL[to].toLowerCase()}?`);
       if (!reason) return;
+    }
+    if (to === 'DELIVERED') {
+      reason = window.prompt('The rider normally marks delivered with a photo and the customer’s code. How was this order handed over? (for example: collected at the store, with bill number)');
+      if (!reason?.trim()) return;
     }
     act.mutate({ path: '/status', json: { status: to, reason } });
   };
