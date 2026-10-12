@@ -89,4 +89,50 @@ describe('mobile API client', () => {
     expect(done.status).toBe('DELIVERED');
     await expect(r.delivery.step({ orderId: order.body.id, clientEventId: 'cl-evt-bad-0001', fields: { reason: 'x' }, action: 'failed' })).rejects.toMatchObject({ status: 400 });
   });
+  it('lets an app shopper browse, buy as a guest, sign in, see the order, enquire and save to wishlist', async () => {
+    const store = memoryStore();
+    const c = client({ store, client: 'app-customer/1.0' });
+    const home = await c.shop.home<{ featured: unknown[] }>();
+    expect(home).toHaveProperty('featured');
+    const list = await c.shop.products<{ items: Array<{ id: string; slug: string; available: boolean; priceOnRequest: boolean; isUnique: boolean }> }>({ inStock: 'true', pageSize: 60 });
+    const pick = list.items.find((p) => p.available && !p.priceOnRequest && !p.isUnique)!;
+    const detail = await c.shop.product<{ id: string; specification?: unknown; name: string }>(pick.slug);
+    expect(detail.id).toBe(pick.id);
+
+    // Guest cart by token, then checkout with cash on delivery and gift packing.
+    await c.shop.addToCart(pick.id, 1);
+    const cart = await c.shop.cart<{ items: Array<{ quantity: number }> }>();
+    expect(cart.items).toHaveLength(1);
+    const pune = await db.city.findUniqueOrThrow({ where: { slug: 'pune' } });
+    const phone = '9811700040';
+    const placed = await c.shop.checkout<{ order: { number: string; token: string }; payment: unknown }>({
+      contact: { name: 'App Buyer', phone },
+      address: { ...ADDRESS, phone },
+      cityId: pune.id,
+      paymentMethod: 'COD',
+      giftWrap: true,
+      giftMessage: 'From the app',
+    });
+    expect(placed.payment).toBeNull();
+    const tracked = await c.shop.track<{ status: string }>(placed.order.number, placed.order.token);
+    expect(tracked.status).toBe('PLACED');
+
+    // Signing in with the same phone shows the order under the account.
+    const { challengeId } = await c.auth.requestCustomerOtp(phone);
+    await drain();
+    await c.auth.verifyCustomerOtp(challengeId, lastCode(`+91${phone}`), { name: 'App Buyer' });
+    const orders = await c.account.orders<{ items: Array<{ number: string }> }>();
+    expect(orders.items.map((o) => o.number)).toContain(placed.order.number);
+    const one = await c.account.order<{ number: string; giftWrap?: boolean }>(placed.order.number);
+    expect(one.number).toBe(placed.order.number);
+
+    await c.account.addToWishlist(pick.id);
+    expect(await c.account.wishlistIds()).toContain(pick.id);
+    await c.account.removeFromWishlist(pick.id);
+    expect(await c.account.wishlistIds()).not.toContain(pick.id);
+
+    const enq = await c.shop.enquire<{ reference: string; whatsappUrl: string }>({ clientId: crypto.randomUUID(), type: 'PRODUCT', productId: pick.id });
+    expect(enq.whatsappUrl).toContain(enq.reference);
+    expect((await db.enquiry.findUniqueOrThrow({ where: { reference: enq.reference } })).source).toBe('app');
+  });
 });

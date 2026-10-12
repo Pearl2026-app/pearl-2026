@@ -37,6 +37,9 @@
       "sharp",
       "@swc/core",
       "esbuild"
-    ]
+    ],
+    "overrides": {
+      "@types/react": "19.2.18"
+    }
   }
 }

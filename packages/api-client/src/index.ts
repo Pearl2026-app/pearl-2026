@@ -184,6 +184,57 @@ export function createClient(o: ClientOptions) {
       },
     },
 
+    /** Public shop: catalogue, cart, checkout, enquiries. Works signed in or as a guest (cart token). */
+    shop: {
+      site: <T = unknown>() => request<T>('/site'),
+      home: <T = unknown>() => request<T>('/content/home'),
+      products: <T = unknown>(query: RequestOptions['query'] = {}) => request<T>('/catalogue/products', { query }),
+      filters: <T = unknown>(query: RequestOptions['query'] = {}) => request<T>('/catalogue/filters', { query }),
+      product: <T = unknown>(slug: string, city?: string) => request<T>(`/catalogue/products/${encodeURIComponent(slug)}`, { query: { city } }),
+      cart: <T = unknown>() => request<T>('/cart'),
+      addToCart: <T = unknown>(productId: string, quantity = 1) => request<T>('/cart/items', { method: 'POST', json: { productId, quantity } }),
+      setQuantity: <T = unknown>(productId: string, quantity: number) => request<T>(`/cart/items/${productId}`, { method: 'PATCH', json: { quantity } }),
+      removeFromCart: <T = unknown>(productId: string) => request<T>(`/cart/items/${productId}`, { method: 'DELETE' }),
+      applyCoupon: <T = unknown>(code: string) => request<T>('/cart/coupon', { method: 'POST', json: { code } }),
+      removeCoupon: <T = unknown>() => request<T>('/cart/coupon', { method: 'DELETE' }),
+      quote: <T = unknown>(body: Record<string, unknown>) => request<T>('/checkout/quote', { method: 'POST', json: body }),
+      checkout: <T = unknown>(body: Record<string, unknown>) => request<T>('/checkout', { method: 'POST', json: body }),
+      track: <T = unknown>(number: string, token?: string) => request<T>(`/track/${encodeURIComponent(number)}`, { query: { t: token } }),
+      enquire: <T = unknown>(body: Record<string, unknown>) => request<T>('/enquiries', { method: 'POST', json: { source: 'app', ...body } }),
+      consultation: <T = unknown>(body: Record<string, unknown>) => request<T>('/enquiries/consultation', { method: 'POST', json: { source: 'app', ...body } }),
+      ringFinder: <T = unknown>(answers: Record<string, unknown>) => request<T>('/ring-finder', { method: 'POST', json: answers }),
+      /** Customized Jewellery request with optional reference photos (React Native { uri, name, type } objects). */
+      customRequest: <T = unknown>(fields: Record<string, string>, photos: Array<{ uri: string; name: string; type: string }> = []) => {
+        const fd = new FormData();
+        for (const [k, v] of Object.entries(fields)) if (v) fd.append(k, v);
+        if (!fields.source) fd.append('source', 'app');
+        for (const p of photos) fd.append('images', p as unknown as Blob);
+        return request<T>('/enquiries/custom', { method: 'POST', form: fd });
+      },
+    },
+
+    /** The signed-in customer's own records. */
+    account: {
+      orders: <T = unknown>(page = 1) => request<T>('/me/orders', { query: { page } }),
+      order: <T = unknown>(number: string) => request<T>(`/me/orders/${encodeURIComponent(number)}`),
+      cancelUnpaid: <T = unknown>(number: string) => request<T>(`/me/orders/${encodeURIComponent(number)}/cancel-unpaid`, { method: 'POST', json: {} }),
+      requestReturn: <T = unknown>(number: string, body: { type: 'RETURN' | 'CANCELLATION'; reason: string; details?: string }) => {
+        const fd = new FormData();
+        for (const [k, v] of Object.entries(body)) if (v) fd.append(k, v);
+        return request<T>(`/me/orders/${encodeURIComponent(number)}/returns`, { method: 'POST', form: fd });
+      },
+      returns: <T = unknown>() => request<T>('/me/returns'),
+      wishlist: <T = unknown>() => request<T>('/me/wishlist'),
+      wishlistIds: () => request<string[]>('/me/wishlist/ids'),
+      addToWishlist: (productId: string) => request('/me/wishlist', { method: 'POST', json: { productId } }),
+      removeFromWishlist: (productId: string) => request(`/me/wishlist/${productId}`, { method: 'DELETE' }),
+      addresses: <T = unknown>() => request<T>('/me/addresses'),
+      addAddress: <T = unknown>(address: Record<string, unknown>) => request<T>('/me/addresses', { method: 'POST', json: address }),
+      deleteAddress: (id: string) => request(`/me/addresses/${id}`, { method: 'DELETE' }),
+      referral: <T = unknown>() => request<T>('/me/referral'),
+      updateProfile: <T = unknown>(body: { name?: string; email?: string | null }) => request<T>('/me/profile', { method: 'PATCH', json: body }),
+    },
+
     delivery: {
       jobs: <T = unknown>(view: 'active' | 'done' = 'active') => request<T>('/delivery/jobs', { query: { view } }),
       job: <T = unknown>(orderId: string) => request<T>(`/delivery/jobs/${orderId}`),
