@@ -1,5 +1,5 @@
 import { Suspense } from 'react';
-import { Catalogue, type SearchParams } from '@/components/catalogue';
+import { Catalogue, CatalogueSkeleton, type SearchParams } from '@/components/catalogue';
 import { Breadcrumbs, Container, PageTitle } from '@/components/ui';
 import { breadcrumbJsonLd, JsonLd, meta } from '@/lib/seo';
 
@@ -11,7 +11,7 @@ export default async function JewelleryPage({ searchParams }: { searchParams: Pr
     <Container>
       <Breadcrumbs items={[{ name: 'Home', href: '/' }, { name: 'Jewellery' }]} />
       <PageTitle eyebrow="The collection" title="Jewellery" intro="Every piece names the farm its pearls came from." />
-      <Suspense>
+      <Suspense fallback={<CatalogueSkeleton />}>
         <Catalogue searchParams={sp} fixed={{}} basePath="/jewellery" />
       </Suspense>
       <JsonLd data={breadcrumbJsonLd([{ name: 'Home', path: '/' }, { name: 'Jewellery', path: '/jewellery' }])} />

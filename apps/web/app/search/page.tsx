@@ -1,5 +1,5 @@
 import { Suspense } from 'react';
-import { Catalogue, type SearchParams } from '@/components/catalogue';
+import { Catalogue, CatalogueSkeleton, type SearchParams } from '@/components/catalogue';
 import { Container, PageTitle } from '@/components/ui';
 import { meta } from '@/lib/seo';
 
@@ -12,7 +12,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
     <Container>
       <PageTitle eyebrow="Search" title={q ? `Results for “${q}”` : 'Search'} intro={!q ? 'Search by product name or SKU using the search icon above.' : undefined} />
       {q && (
-        <Suspense>
+        <Suspense fallback={<CatalogueSkeleton />}>
           <Catalogue searchParams={sp} fixed={{}} basePath="/search" />
         </Suspense>
       )}

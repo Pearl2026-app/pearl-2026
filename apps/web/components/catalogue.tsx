@@ -60,6 +60,7 @@ export async function Catalogue({ searchParams, fixed, basePath }: { searchParam
           </p>
           <SortSelect />
         </div>
+        <h2 className="sr-only">Pieces</h2>
         {page.items.length ? (
           <ProductGrid products={page.items} priorityCount={4} />
         ) : (
@@ -83,6 +84,20 @@ export async function Catalogue({ searchParams, fixed, basePath }: { searchParam
             {page.page < pages && <Link href={href(page.page + 1)} className="min-h-11 border border-line px-4 py-3">Next</Link>}
           </nav>
         )}
+      </div>
+    </div>
+  );
+}
+
+/** Holds the catalogue's space while it loads, so the footer does not jump when the pieces arrive. */
+export function CatalogueSkeleton() {
+  return (
+    <div className="min-h-[150vh] lg:grid lg:grid-cols-[240px_1fr] lg:gap-12" aria-busy="true" aria-label="Loading pieces">
+      <div className="hidden lg:block" />
+      <div className="grid grid-cols-2 gap-x-4 gap-y-10 lg:grid-cols-3">
+        {Array.from({ length: 6 }, (_, i) => (
+          <div key={i} className="aspect-square animate-pulse bg-surface" />
+        ))}
       </div>
     </div>
   );

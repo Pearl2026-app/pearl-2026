@@ -16,7 +16,9 @@
     "db:generate": "pnpm --filter @sahyadri/db generate",
     "db:migrate": "pnpm --filter @sahyadri/db migrate:deploy",
     "db:seed": "pnpm --filter @sahyadri/db seed",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "e2e": "node e2e/reset-db.mjs && playwright test -c e2e",
+    "load": "node scripts/load/load.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.0",

@@ -16,3 +16,7 @@ packages/db/.env
 apps/*/.env.local
 *.tsbuildinfo
 dump.rdb
+
+# End-to-end runs
+e2e/results/
+e2e/report/

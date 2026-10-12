@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation';
 import { Suspense } from 'react';
-import { Catalogue, type SearchParams } from '@/components/catalogue';
+import { Catalogue, CatalogueSkeleton, type SearchParams } from '@/components/catalogue';
 import { Breadcrumbs, Container, PageTitle } from '@/components/ui';
 import { meta } from '@/lib/seo';
 import { get } from '@/lib/server-api';
@@ -22,7 +22,7 @@ export default async function CollectionPage({ params, searchParams }: { params:
     <Container>
       <Breadcrumbs items={[{ name: 'Home', href: '/' }, { name: 'Jewellery', href: '/jewellery' }, { name: c.name }]} />
       <PageTitle eyebrow="Collection" title={c.name} intro={c.description} />
-      <Suspense>
+      <Suspense fallback={<CatalogueSkeleton />}>
         <Catalogue searchParams={sp} fixed={{ collection: c.slug }} basePath={`/collections/${c.slug}`} />
       </Suspense>
     </Container>

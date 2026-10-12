@@ -117,7 +117,9 @@ Notes:
   - image decompression bombs → 48 MP limit; search crashed on "-"; banner links accept only site paths or https
   - dependencies: nodemailer 7→10, sharp 0.34→0.35, postcss and js-yaml forced to fixed versions. Remaining advisories are in build-time tools only (Expo CLI, React Native tooling, Prisma CLI), not in anything shipped to users.
   - **Owner decision needed:** who may see PO costs, margin rules and pearl rates (OPEN-QUESTIONS Q21).
-- [ ] Load test (incl. unique piece under load)
+- [x] Load test (`pnpm load`): 40 shoppers browsing, 127 requests/s, p95 under 55 ms, 0 errors; **50 buyers racing for one unique piece → exactly 1 order**, 49 cleanly refused (docs/QUALITY.md)
+- [x] End-to-end browser tests in CI (`pnpm e2e`): shop → pay online → track; enquire on WhatsApp → convert → assign → rider delivers with proof
+- [x] Lighthouse mobile ≥ 90 in every category on home, catalogue, category and product pages (fixed a catalogue layout shift and three accessibility issues on the way)
 - [x] Backups + tested restore (scripts/backup; nightly GitHub Actions backup with restore test; restore test passed here on real data)
 - [x] Deployment kit: one Vercel project with services (root `vercel.json`: `web` at `/`, `admin` at `/admin`, `api` container at `/api` and `/media`; Mumbai), Fly.io worker-only config, a **Database migrations** GitHub workflow, a production setup seed with no sample data, docs/DEPLOYMENT.md and docs/RUNBOOK.md (D54–D56)
 - [ ] Actual deployment — needs the owner's accounts (see below)

@@ -161,7 +161,7 @@ export function Header() {
             <BagIcon />
             {cartCount > 0 && <span className="absolute top-1.5 right-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-accent px-1 text-[11px] text-white">{cartCount}</span>}
           </Link>
-          <Link href={me ? '/account' : '/login'} className="ml-1 flex h-11 items-center gap-2 px-2 text-sm hover:text-accent">
+          <Link href={me ? '/account' : '/login'} aria-label={me ? 'My account' : 'Sign in or sign up'} className="ml-1 flex h-11 items-center gap-2 px-2 text-sm hover:text-accent">
             <UserIcon />
             <span className="hidden sm:inline">{me ? 'My Account' : 'Sign Up'}</span>
           </Link>

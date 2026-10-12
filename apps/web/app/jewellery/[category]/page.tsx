@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { Suspense } from 'react';
-import { Catalogue, type SearchParams } from '@/components/catalogue';
+import { Catalogue, CatalogueSkeleton, type SearchParams } from '@/components/catalogue';
 import { Breadcrumbs, Container, PageTitle } from '@/components/ui';
 import { breadcrumbJsonLd, JsonLd, meta } from '@/lib/seo';
 import { get } from '@/lib/server-api';
@@ -28,7 +28,7 @@ export default async function CategoryPage({ params, searchParams }: { params: P
           Not sure where to start? <Link href="/ring-finder" className="text-accent underline">Try the Ring Finder</Link>: a few questions, and rings that suit you.
         </p>
       )}
-      <Suspense>
+      <Suspense fallback={<CatalogueSkeleton />}>
         <Catalogue searchParams={sp} fixed={{ category: c.slug }} basePath={`/jewellery/${c.slug}`} />
       </Suspense>
       <JsonLd data={breadcrumbJsonLd([{ name: 'Home', path: '/' }, { name: 'Jewellery', path: '/jewellery' }, { name: c.name, path: `/jewellery/${c.slug}` }])} />

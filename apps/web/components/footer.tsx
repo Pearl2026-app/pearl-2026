@@ -92,6 +92,6 @@ function StoreLink({ href, label }: { href: string; label: string }) {
   return href ? (
     <a href={href} className={`${cls} hover:bg-ink hover:text-white`} target="_blank" rel="noopener noreferrer">{label}</a>
   ) : (
-    <span className={`${cls} cursor-default opacity-60`} title="Coming soon">{label} · soon</span>
+    <span className={`${cls} cursor-default border-dashed`} title="Coming soon">{label} · soon</span>
   );
 }
