@@ -1,2 +1,4 @@
 import { formatINR } from '@sahyadri/shared';
-export const inr = (paise: number) => formatINR(paise);
+
+/** ₹12,500 (paise shown only when not zero, as on the website). */
+export const inr = (paise: number) => formatINR(paise, { compact: true });

@@ -40,7 +40,7 @@ export async function createApp(opts: { logger?: boolean } = {}): Promise<INestA
     }
   };
   const origins = [...new Set((c.CORS_ORIGINS ?? `${c.WEB_URL},${c.ADMIN_URL}`).split(',').map((s) => s.trim()).filter(Boolean).map(toOrigin))];
-  app.enableCors({ origin: origins, credentials: true, allowedHeaders: ['Content-Type', 'Authorization', 'X-SP-Client', 'Idempotency-Key'] });
+  app.enableCors({ origin: origins, credentials: true, allowedHeaders: ['Content-Type', 'Authorization', 'X-SP-Client', 'X-Cart-Token', 'Idempotency-Key'] });
 
   // Public media (local storage driver). In production the CDN serves these.
   app.use(

@@ -169,6 +169,16 @@ Set these in Vercel **and** on the Fly worker.
 | AI for Ring Finder | `AI_PROVIDER=openai-compatible`, `AI_API_URL`, `AI_API_KEY`, `AI_MODEL` | Plain filtered results with simple reasons |
 | CDN for images | `CDN_BASE_URL` | Images are served from S3 directly |
 
+## 9a. Mobile apps
+
+1. Create an Expo account and, once, `eas init` in `apps/mobile-customer` and in `apps/mobile-delivery`.
+2. `eas build --profile production --platform all` in each app folder. The API and website addresses are in each `eas.json`.
+3. `eas submit` sends the builds to Google Play (internal testing first) and App Store Connect. This needs your Google Play developer account and Apple Developer Program membership.
+4. So that website links open the customer app, add two environment variables to the Vercel project and redeploy:
+   - `ANDROID_APP_SHA256`: the app signing certificate fingerprint (Play Console → App integrity).
+   - `APPLE_TEAM_ID`: your Apple team id (Apple Developer → Membership).
+5. Put the store links in **Admin → Settings → App store links**; the website footer then shows them.
+
 ## 10. Backups
 
 In GitHub, open **Settings → Secrets and variables → Actions** and add:
