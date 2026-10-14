@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import NetInfo from '@react-native-community/netinfo';
 import { Directory, File, Paths } from 'expo-file-system';
+import { Platform } from 'react-native';
 import { isNetworkError } from '@sahyadri/api-client';
 import { client } from './api';
 import { createQueue, type QueuedStep, type StepFile } from './queue';
@@ -37,11 +38,13 @@ export const queue = createQueue({
   },
   files: {
     keep: async (f: StepFile) => {
+      if (Platform.OS === 'web') return f; // browser preview: the photo stays in the page
       const target = new File(folder(), `${Date.now()}-${f.name}`);
       new File(f.uri).copy(target);
       return { ...f, uri: target.uri };
     },
     drop: async (f: StepFile) => {
+      if (Platform.OS === 'web') return;
       const file = new File(f.uri);
       if (file.exists) file.delete();
     },

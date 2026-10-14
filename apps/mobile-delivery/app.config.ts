@@ -26,6 +26,9 @@ const config: ExpoConfig = {
     adaptiveIcon: { foregroundImage: './assets/adaptive-icon.png', backgroundColor: '#1F4E52' },
     permissions: ['CAMERA', 'ACCESS_COARSE_LOCATION', 'ACCESS_FINE_LOCATION', 'POST_NOTIFICATIONS'],
   },
+  // Browser preview served under a path of the website (EXPO_BASE_URL, e.g. /apps/customer).
+  ...(process.env.EXPO_BASE_URL ? { experiments: { baseUrl: process.env.EXPO_BASE_URL } } : {}),
+  web: { output: 'single', favicon: './assets/icon.png' },
   plugins: [
     'expo-router',
     ['expo-splash-screen', { image: './assets/splash-icon.png', imageWidth: 200, resizeMode: 'contain', backgroundColor: '#1F4E52' }],

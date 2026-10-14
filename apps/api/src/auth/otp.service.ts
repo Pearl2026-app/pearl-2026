@@ -9,6 +9,9 @@ export type OtpPurpose = 'CUSTOMER_LOGIN' | 'PARTNER_LOGIN' | 'STAFF_LOGIN' | 'D
 
 const WINDOW_MS = 15 * 60_000;
 
+/** The sign-in code on the demo site, printed on its login pages. */
+export const DEMO_CODE = '123456';
+
 @Injectable()
 export class OtpService {
   constructor(
@@ -22,8 +25,9 @@ export class OtpService {
 
   private generate(): string {
     const c = config();
-    // A fixed code only ever applies in development (SPEC Part 10).
+    // A fixed code only ever applies in development (SPEC Part 10) or on the demo site (D66).
     if (c.NODE_ENV === 'development' && c.DEV_FIXED_OTP) return c.DEV_FIXED_OTP;
+    if (c.demoMode) return DEMO_CODE;
     return String(randomInt(0, 1_000_000)).padStart(6, '0');
   }
 

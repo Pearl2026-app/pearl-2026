@@ -19,8 +19,10 @@ const secure: KeyValueStore =
       };
 
 const extra = (Constants.expoConfig?.extra ?? {}) as { apiUrl?: string; webUrl?: string };
-export const API_URL = extra.apiUrl ?? 'http://localhost:4000/api/v1';
-export const WEB_URL = (extra.webUrl ?? 'http://localhost:3000').replace(/\/+$/, '');
+/** The browser preview served by the website itself (presentation site): talk to the site it was opened from. */
+const sameOrigin = Platform.OS === 'web' && process.env.EXPO_PUBLIC_SAME_ORIGIN === '1' && typeof window !== 'undefined';
+export const API_URL = sameOrigin ? `${window.location.origin}/api/v1` : (extra.apiUrl ?? 'http://localhost:4000/api/v1');
+export const WEB_URL = (sameOrigin ? window.location.origin : (extra.webUrl ?? 'http://localhost:3000')).replace(/\/+$/, '');
 export const WEB_HOST = new URL(WEB_URL).host;
 const API_ORIGIN = new URL(API_URL).origin;
 

@@ -15,7 +15,7 @@ RUN pnpm install --frozen-lockfile --filter "@sahyadri/api..." \
   && pnpm --filter "@sahyadri/api..." build
 
 FROM base AS runtime
-ENV NODE_ENV=production PORT=4000
+ENV NODE_ENV=production PORT=4000 STORAGE_LOCAL_DIR=/data/uploads
 COPY --from=build /repo /repo
 WORKDIR /repo/apps/api
 RUN mkdir -p /data/uploads && chown -R node:node /data

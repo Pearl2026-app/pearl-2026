@@ -12,10 +12,18 @@ const config: NextConfig = {
   outputFileTracingRoot: require('node:path').join(__dirname, '../../'),
   compress: true,
   async rewrites() {
-    return [
-      { source: '/api/v1/:path*', destination: `${API}/api/v1/:path*` },
-      { source: '/media/:path*', destination: `${API}/media/:path*` },
-    ];
+    return {
+      beforeFiles: [],
+      afterFiles: [
+        { source: '/api/v1/:path*', destination: `${API}/api/v1/:path*` },
+        { source: '/media/:path*', destination: `${API}/media/:path*` },
+      ],
+      // Browser previews of the phone apps (presentation site): every screen address opens the app's page.
+      fallback: ['customer', 'delivery'].flatMap((app) => [
+        { source: `/apps/${app}`, destination: `/apps/${app}/index.html` },
+        { source: `/apps/${app}/:path*`, destination: `/apps/${app}/index.html` },
+      ]),
+    };
   },
   async headers() {
     return [

@@ -28,6 +28,37 @@ Never paste keys or passwords into chat, email or the code. They go only into ea
 
 ---
 
+## 0. Presentation site (demo mode), the quick way
+
+For showing every platform before the real launch. It needs only the existing Vercel project and a free Neon database: no Redis, Fly, S3, email, SMS or payment keys. It runs with `DEMO_MODE=true` (DECISIONS D66):
+- sample pearls, partners and a little recent business are loaded on the first start;
+- every sign-in code is `123456`;
+- payments use the test sandbox;
+- every page carries a "Demo site" ribbon;
+- the API refuses to start if a live payment or messaging key is present.
+
+1. **Neon** (free): create a project in **AWS Asia Pacific (Mumbai)**. Under **Connection string**, turn **Connection pooling off** and copy the string.
+2. **GitHub** → **Settings → Secrets and variables → Actions** → add `PROD_DATABASE_URL` = that string. Then **Actions → Database migrations → Run workflow**, and wait for the green tick.
+3. **Vercel** → the project → **Settings → Environment Variables** (Production). Add:
+
+   | Name | Value |
+   |---|---|
+   | `DATABASE_URL` | the same Neon string |
+   | `DEMO_MODE` | `true` |
+   | `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET`, `APP_SECRET` | three different random values: run `openssl rand -hex 32` three times, or use any password generator (at least 32 characters) |
+   | `WEB_URL` | `https://<your-project>.vercel.app` |
+   | `ADMIN_URL` | `https://<your-project>.vercel.app/admin` |
+   | `API_URL` | `https://<your-project>.vercel.app` |
+
+4. **Deployments** → the latest one → **Redeploy**. The first start takes about a minute longer while the sample data loads.
+5. Open `https://<your-project>.vercel.app/platforms`: one card per platform with its link, demo sign-in and a QR code for phones.
+
+The phone apps appear in the browser at `/apps/customer` and `/apps/delivery`. The website build makes these previews (`scripts/demo/export-apps.sh`); if one cannot be built, its link opens the website or the web delivery panel instead.
+
+Uploaded photos live on the container's disk in demo mode and disappear on the next deploy. The sample photos are redrawn on every start.
+
+**From demo to the real shop:** remove `DEMO_MODE`, use a fresh database, and follow the steps below.
+
 ## 1. Accounts to create
 
 1. GitHub: the code lives in `Pearl2026-app/pearl-2026`.

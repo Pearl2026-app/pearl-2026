@@ -1,4 +1,4 @@
-import { limit } from '../../config/config';
+import { config, limit } from '../../config/config';
 import { Body, Controller, Get, Param, Post, UploadedFile, UseInterceptors } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiConsumes, ApiTags } from '@nestjs/swagger';
@@ -68,6 +68,7 @@ export class PublicContentController {
     const wholesale = await this.prisma.routingRule.findFirst({ where: { isActive: true, enquiryType: 'BULK' }, orderBy: { priority: 'asc' }, include: { whatsAppNumber: true } });
     const { gstin: _g, ...publicStore } = store;
     return {
+      demo: config().demoMode,
       store: publicStore,
       delivery,
       appLinks,

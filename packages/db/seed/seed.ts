@@ -1,6 +1,7 @@
 /* Seed data. Safe to run more than once (upserts by unique keys; existing rows are never overwritten).
  * Development: pnpm --filter @sahyadri/db seed  → sample catalogue, partners and test logins
  *   Env: DATABASE_URL, SEED_PASSWORD (staff/partner password, development only), STORAGE_LOCAL_DIR
+ * Demo site:   the API runs SEED_MODE=demo itself when DEMO_MODE=true (sample data, also in production)
  * Production:  SEED_MODE=production pnpm --filter @sahyadri/db seed  → base data and one owner login, no samples
  *   Env: DATABASE_URL, SEED_ADMIN_EMAIL, SEED_ADMIN_PASSWORD, SEED_ADMIN_NAME, SEED_ADMIN_PHONE (optional)
  */
@@ -208,7 +209,9 @@ async function seedProduction() {
 
 async function main() {
   if (process.env.SEED_MODE === 'production') return seedProduction();
-  if (process.env.NODE_ENV === 'production') throw new Error('Refusing to load sample data with NODE_ENV=production. Use SEED_MODE=production.');
+  // The demo site (DEMO_MODE, D66) is the one production setting that may hold sample data; the API runs this itself.
+  const demo = process.env.SEED_MODE === 'demo' && ['1', 'true', 'yes', 'on'].includes(String(process.env.DEMO_MODE ?? '').toLowerCase());
+  if (process.env.NODE_ENV === 'production' && !demo) throw new Error('Refusing to load sample data with NODE_ENV=production. Use SEED_MODE=production.');
   const pw = await hashPassword(PASSWORD);
 
   await seedSettings();

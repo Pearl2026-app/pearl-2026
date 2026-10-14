@@ -4,6 +4,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { Alert, Button, Field, Input, cx } from '@sahyadri/ui';
 import { api, ApiError, errorText } from '@/lib/api';
+import { useDemo } from '@/lib/session';
 
 type Step = { kind: 'credentials' } | { kind: 'otp'; challengeId: string; sentTo: string; channel?: string };
 
@@ -12,6 +13,7 @@ function LoginForm() {
   const params = useSearchParams();
   const qc = useQueryClient();
   const [mode, setMode] = useState<'team' | 'partner'>('team');
+  const demo = useDemo();
   const [step, setStep] = useState<Step>({ kind: 'credentials' });
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -69,6 +71,11 @@ function LoginForm() {
       <div className="w-full max-w-sm rounded-md border border-line bg-surface p-6 shadow-sm">
         <h1 className="font-serif text-3xl text-accent">Sahyadri Pearls</h1>
         <p className="mb-5 text-sm text-muted">Admin and partner sign-in</p>
+        {demo && (
+          <div className="mb-5 rounded-sm border border-line bg-bg p-3 text-xs">
+            <strong>Demo site.</strong> Team: admin@sahyadripearls.test (or staff@, pune.manager@) with password <code>Sahyadri@2026</code>. Partners: vendor 9800000003, franchise 9800000004, delivery 9800000005. Every code is <code>123456</code>.
+          </div>
+        )}
         {step.kind === 'credentials' && (
           <div role="tablist" className="mb-5 grid grid-cols-2 rounded-sm border border-line p-1 text-sm">
             {(['team', 'partner'] as const).map((m) => (

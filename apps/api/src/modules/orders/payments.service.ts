@@ -29,7 +29,7 @@ export class PaymentsService {
 
   /** Online payment is available only with live/test keys, or the sandbox outside production (DECISIONS D33). */
   get onlineAvailable(): boolean {
-    return this.provider.name !== 'sandbox' || config().NODE_ENV !== 'production';
+    return this.provider.name !== 'sandbox' || config().sandboxAllowed;
   }
 
   get providerName() {
@@ -217,7 +217,7 @@ export class PaymentsService {
   // ── Sandbox (development and testing only) ───────────────────────
 
   async sandboxComplete(providerOrderId: string, outcome: 'success' | 'failure') {
-    if (!(this.provider instanceof SandboxPaymentProvider) || config().NODE_ENV === 'production') throw notFound();
+    if (!(this.provider instanceof SandboxPaymentProvider) || !config().sandboxAllowed) throw notFound();
     const payment = await this.prisma.payment.findUnique({ where: { providerOrderId } });
     if (!payment) throw notFound('Payment');
     const paymentId = `sandbox_pay_${payment.id.slice(-10)}_${Date.now().toString(36)}`;

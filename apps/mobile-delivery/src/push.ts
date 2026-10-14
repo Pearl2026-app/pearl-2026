@@ -5,13 +5,14 @@ import { useEffect, useRef } from 'react';
 import { Platform } from 'react-native';
 import { client } from './api';
 
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({ shouldShowBanner: true, shouldShowList: true, shouldPlaySound: true, shouldSetBadge: false }),
-});
+if (Platform.OS !== 'web')
+  Notifications.setNotificationHandler({
+    handleNotification: async () => ({ shouldShowBanner: true, shouldShowList: true, shouldPlaySound: true, shouldSetBadge: false }),
+  });
 
 /** Asks once for permission and sends the device token to the API, so new assignments arrive as push. */
 export async function registerForPush(): Promise<void> {
-  if (!Device.isDevice) return;
+  if (Platform.OS === 'web' || !Device.isDevice) return;
   try {
     if (Platform.OS === 'android') {
       await Notifications.setNotificationChannelAsync('assignments', { name: 'New deliveries', importance: Notifications.AndroidImportance.HIGH });
@@ -26,8 +27,8 @@ export async function registerForPush(): Promise<void> {
   }
 }
 
-/** Tapping a "new delivery" notification opens that job. */
-export function useOpenFromNotification() {
+/** Tapping a "new delivery" notification opens that job. No push in the browser preview. */
+function useOpenFromNotificationNative() {
   const response = Notifications.useLastNotificationResponse();
   const handled = useRef<string | null>(null);
   useEffect(() => {
@@ -38,3 +39,5 @@ export function useOpenFromNotification() {
     router.push(`/job/${orderId}`);
   }, [response]);
 }
+
+export const useOpenFromNotification = Platform.OS === 'web' ? () => undefined : useOpenFromNotificationNative;

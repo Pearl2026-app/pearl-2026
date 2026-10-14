@@ -31,6 +31,8 @@ const schema = z.object({
   /** Codes one phone or email may request per 15 minutes. */
   OTP_MAX_PER_WINDOW: z.coerce.number().int().min(1).default(5),
   DEV_FIXED_OTP: z.string().regex(/^\d{6}$/).optional(),
+  /** Presentation site: sample data, sign-in code 123456, payment sandbox, jobs in-process. Never takes real money (D66). */
+  DEMO_MODE: bool.default(false),
   COOKIE_SECURE: bool.optional(),
   COOKIE_DOMAIN: z.string().optional(),
 
@@ -86,7 +88,7 @@ const schema = z.object({
   BACKUP_DIR: z.string().optional(),
 });
 
-export type AppConfig = z.infer<typeof schema> & { appSecret: string; cookieSecure: boolean; storageDir: string };
+export type AppConfig = z.infer<typeof schema> & { appSecret: string; cookieSecure: boolean; storageDir: string; demoMode: boolean; sandboxAllowed: boolean };
 
 let cached: AppConfig | null = null;
 
@@ -101,8 +103,19 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     if (c.DEV_FIXED_OTP) throw new Error('DEV_FIXED_OTP must not be set in production');
     if (!c.APP_SECRET) throw new Error('APP_SECRET is required in production');
   }
+  if (c.DEMO_MODE) {
+    // A demo must never reach real money or real people: refuse to start with live payment or messaging keys.
+    const live = (['RAZORPAY_KEY_SECRET', 'SMS_API_KEY', 'WHATSAPP_API_TOKEN', 'FCM_PRIVATE_KEY'] as const).filter((k) => (c as Record<string, unknown>)[k]);
+    if (live.length || c.PAYMENT_PROVIDER !== 'sandbox') throw new Error(`DEMO_MODE cannot run with live services (${[...live, ...(c.PAYMENT_PROVIDER !== 'sandbox' ? ['PAYMENT_PROVIDER'] : [])].join(', ')}). Remove them or turn DEMO_MODE off.`);
+  }
   return {
     ...c,
+    // The demo needs no Redis or separate worker: jobs run inside the API process.
+    QUEUE_MODE: c.DEMO_MODE ? ('inline' as const) : c.QUEUE_MODE,
+    RUN_WORKERS: c.DEMO_MODE ? true : c.RUN_WORKERS,
+    demoMode: c.DEMO_MODE,
+    /** The payment sandbox: outside production, or on the demo site. */
+    sandboxAllowed: c.NODE_ENV !== 'production' || c.DEMO_MODE,
     appSecret: c.APP_SECRET ?? `${c.JWT_ACCESS_SECRET}:${c.JWT_REFRESH_SECRET}`,
     cookieSecure: c.COOKIE_SECURE ?? c.NODE_ENV === 'production',
     storageDir: c.STORAGE_LOCAL_DIR ?? require('node:path').resolve(__dirname, '../../../../uploads'),

@@ -5,8 +5,8 @@
     "web": {
       "root": "apps/web",
       "framework": "nextjs",
-      "installCommand": "cd ../.. && pnpm install --frozen-lockfile --filter @sahyadri/web...",
-      "buildCommand": "cd ../.. && pnpm --filter \"@sahyadri/web...\" build",
+      "installCommand": "cd ../.. && pnpm install --frozen-lockfile --filter @sahyadri/web... --filter @sahyadri/mobile-customer... --filter @sahyadri/mobile-delivery...",
+      "buildCommand": "cd ../.. && bash scripts/demo/export-apps.sh && pnpm --filter \"@sahyadri/web...\" build",
       "bindings": [{ "type": "service", "service": "api", "format": "url", "env": "API_INTERNAL_URL" }]
     },
     "admin": {

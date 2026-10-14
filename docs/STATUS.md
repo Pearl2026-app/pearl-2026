@@ -40,6 +40,8 @@ Resume rule: read [SPEC.md](SPEC.md) and this file, then continue from the first
 
 Team logins use email + password + code; partners and customers use phone (or email) + code. Task-by-task help per role: [ADMIN-GUIDE.md](ADMIN-GUIDE.md).
 
+**Presentation site:** `DEMO_MODE=true` on Vercel with a free Neon database (DEPLOYMENT.md section 0). All platforms are listed at `/platforms`, and both phone apps can be opened in a browser at `/apps/customer` and `/apps/delivery`.
+
 ## Needed from the owner
 - **Hosting accounts** for docs/DEPLOYMENT.md: Vercel, Fly.io, Neon or Supabase (Mumbai), Upstash Redis (Mumbai), AWS S3 (ap-south-1); a domain.
 - **Approved legal texts** (terms, refund, privacy, return & cancellation, shipping): production starts with drafts.

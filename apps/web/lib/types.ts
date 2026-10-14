@@ -56,6 +56,7 @@ export interface Page<T> {
 }
 
 export interface Site {
+  demo?: boolean;
   store: { legalName: string; state: string; address: string; phone: string; email: string; whatsapp: string; mapUrl: string };
   delivery: { chargePaise: number; freeAbovePaise: number | null; promise: string };
   appLinks: { android: string; ios: string };

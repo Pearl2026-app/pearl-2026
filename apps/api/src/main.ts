@@ -2,6 +2,7 @@ import { Logger } from '@nestjs/common';
 import { SwaggerModule } from '@nestjs/swagger';
 import { buildOpenApi, createApp } from './bootstrap';
 import { config } from './config/config';
+import { prepareDemo } from './demo';
 import { JobsService } from './queue/jobs.service';
 
 async function main() {
@@ -14,6 +15,10 @@ async function main() {
   if (c.RUN_WORKERS) await app.get(JobsService).startWorker();
   await app.listen(c.PORT, '0.0.0.0');
   Logger.log(`API listening on ${c.API_URL}${docs ? ' (docs at /api/docs)' : ''}`, 'Bootstrap');
+  if (c.demoMode) {
+    Logger.warn('DEMO MODE: sample data, sign-in code 123456, payment sandbox. Not for real customers.', 'Bootstrap');
+    void prepareDemo();
+  }
 }
 
 void main();

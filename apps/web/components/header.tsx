@@ -22,6 +22,18 @@ const MOBILE_EXTRA = [
 ];
 
 /** Thin bar above the header. Messages rotate; by default they come from the delivery and returns settings. */
+/** Shown on the presentation site (DEMO_MODE) so it can never be mistaken for the real shop. */
+function DemoRibbon() {
+  return (
+    <div className="bg-ink px-4 py-1.5 text-center text-[12px] text-white">
+      Demo site · sample pieces, no real orders or payments ·{' '}
+      <a href="/platforms" className="underline">
+        All platforms
+      </a>
+    </div>
+  );
+}
+
 function Announcement() {
   const site = useSite();
   const custom = site.storefront.announcement.split('\n').map((l) => l.trim()).filter(Boolean);
@@ -114,6 +126,7 @@ export function Header() {
 
   return (
     <>
+    {site.demo && <DemoRibbon />}
     <Announcement />
     <header className="sticky top-0 z-40 border-b border-line/70 bg-bg/95 backdrop-blur" onKeyDown={(e) => e.key === 'Escape' && setMega(false)}>
       <div className="mx-auto flex h-16 max-w-7xl items-center gap-2 px-4 lg:h-20 lg:px-8">

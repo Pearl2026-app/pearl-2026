@@ -21,6 +21,12 @@ export function useMe() {
   return useQuery({ queryKey: ['me'], queryFn: () => api<Me>('/me'), staleTime: 60_000, retry: false });
 }
 
+/** True on the presentation site (DEMO_MODE): sample data, sign-in code 123456. */
+export function useDemo() {
+  const { data } = useQuery({ queryKey: ['site-demo'], queryFn: () => api<{ demo?: boolean }>('/site'), staleTime: 300_000, retry: false });
+  return !!data?.demo;
+}
+
 export function useCan() {
   const { data } = useMe();
   return (module: Module, action: Action = 'view') => !!data?.permissions?.[module]?.includes(action);

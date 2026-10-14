@@ -52,6 +52,11 @@ export class JobsService implements OnModuleDestroy {
     if (opts.jobId?.includes(':')) throw new Error(`Job id must not contain ':' (${opts.jobId})`);
     if (this.mode === 'inline') {
       if (opts.delayMs && opts.delayMs > 0) {
+        // On the demo site there is no Redis, so delayed jobs (holds expiring, reminders) run on a timer here.
+        if (config().demoMode) {
+          setTimeout(() => void this.run(name, data).catch((e) => this.log.error(`Delayed job ${name} failed: ${(e as Error).message}`)), opts.delayMs).unref();
+          return;
+        }
         this.delayed.push({ name, data, runAt: Date.now() + opts.delayMs });
         return;
       }
@@ -89,6 +94,11 @@ export class JobsService implements OnModuleDestroy {
   }
 
   async startWorker(): Promise<void> {
+    if (this.mode === 'inline' && config().demoMode) {
+      // Demo site: repeating jobs (expiring holds, reminders) on in-process timers.
+      for (const r of this.repeats) setInterval(() => void this.run(r.name, {}).catch((e) => this.log.error(`Repeat job ${r.name} failed: ${(e as Error).message}`)), r.everyMs).unref();
+      return;
+    }
     if (this.mode === 'inline' || this.worker) return;
     const q = this.getQueue();
     for (const r of this.repeats) {

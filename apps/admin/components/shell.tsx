@@ -6,12 +6,13 @@ import { ROLE_LABEL } from '@sahyadri/shared';
 import { Button, cx, Spinner } from '@sahyadri/ui';
 import { adminPath } from '@/lib/base-path';
 import { NAV } from '@/lib/nav';
-import { useMe, useLogout } from '@/lib/session';
+import { useDemo, useMe, useLogout } from '@/lib/session';
 
 export function Shell({ children }: { children: ReactNode }) {
   const { data: me, isLoading, error } = useMe();
   const pathname = usePathname();
   const logout = useLogout();
+  const demo = useDemo();
   const [open, setOpen] = useState(false);
 
   if (isLoading) return <div className="p-8"><Spinner /></div>;
@@ -54,6 +55,8 @@ export function Shell({ children }: { children: ReactNode }) {
   );
 
   return (
+    <>
+    {demo && <p className="bg-ink px-4 py-1.5 text-center text-xs text-white">Demo site · sample data, no real orders or payments</p>}
     <div className="flex min-h-screen">
       <aside className="sticky top-0 hidden h-screen w-60 shrink-0 overflow-y-auto border-r border-line bg-surface lg:block">
         <div className="border-b border-line px-4 py-4">
@@ -87,6 +90,7 @@ export function Shell({ children }: { children: ReactNode }) {
         </footer>
       </div>
     </div>
+    </>
   );
 }
 
