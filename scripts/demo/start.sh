@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Starts the presentation site inside Dockerfile.demo: database, API (demo mode), website, admin and the router.
 set -euo pipefail
+export PATH="/usr/lib/postgresql/16/bin:$PATH"
 export PGDATA=/tmp/pgdata
 if [ ! -s "$PGDATA/PG_VERSION" ]; then
   initdb -D "$PGDATA" -U demo --auth=trust >/dev/null

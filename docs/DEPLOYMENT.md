@@ -67,13 +67,15 @@ Uploaded photos live on the container's disk in demo mode and disappear on the n
 
 A free Hugging Face Docker Space runs it at no cost. The data resets when the Space restarts, and the sample data reloads by itself.
 
-1. At huggingface.co, sign up free, then choose **New Space**: SDK **Docker**, template **Blank**, visibility **Public**. Name it, for example `sahyadri-pearls`.
-2. Go to **Settings → Access Tokens → Create new token**, choose type **Write**, and copy the token.
-3. In GitHub, open the repo's **Settings → Secrets and variables → Actions**:
-   - **New repository secret** `HF_TOKEN` = the token;
-   - **Variables → New repository variable** `HF_SPACE` = `yourname/sahyadri-pearls`.
-4. **Actions → Deploy demo → Run workflow.** The Space then builds for about 10–15 minutes; its **Logs** tab shows progress.
-5. Open `https://yourname-sahyadri-pearls.hf.space/platforms`. Use this direct address: the huggingface.co page tries to show the site inside a frame, which the site does not allow.
+1. At huggingface.co, sign up free (email only). Then choose **New Space**: name `sahyadri-pearls`, SDK **Docker**, template **Blank**, visibility **Public**, then **Create Space**.
+2. In the new Space, open **Files** → **+ Add file** → **Create a new file**.
+3. Name the file `Dockerfile` and paste the contents of [`scripts/demo/space/Dockerfile`](../scripts/demo/space/Dockerfile), which is 10 lines long. Press **Commit new file to main**.
+4. The Space downloads this repository, builds for about 15 minutes, and starts. Its **Logs** tab shows progress.
+5. Open `https://<username>-sahyadri-pearls.hf.space/platforms`. Use this direct address: the huggingface.co page tries to show the site inside a frame, which the site does not allow.
+
+To pick up later code changes, open the Space's **Settings** and press **Factory rebuild**.
+
+Another way to publish: the **Deploy demo** GitHub workflow pushes this repository to the Space. It needs the `HF_TOKEN` secret (a write token) and the `HF_SPACE` variable.
 
 The Space sleeps after 48 hours without visitors and wakes on the next visit, which takes about a minute. Run **Deploy demo** again after code changes.
 
