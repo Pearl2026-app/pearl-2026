@@ -40,6 +40,8 @@ Resume rule: read [SPEC.md](SPEC.md) and this file, then continue from the first
 
 Team logins use email + password + code; partners and customers use phone (or email) + code. Task-by-task help per role: [ADMIN-GUIDE.md](ADMIN-GUIDE.md).
 
+**Vercel paused (storage limit, 13 Oct):** the cause is measured and fixed: the API image went from 2.56 GB to 1.26 GB, and only `main` deploys (RUNBOOK). The presentation runs on a free Hugging Face Space instead (DEPLOYMENT.md 0a).
+
 **Presentation site:** `DEMO_MODE=true` on Vercel with a free Neon database (DEPLOYMENT.md section 0). All platforms are listed at `/platforms`, and both phone apps can be opened in a browser at `/apps/customer` and `/apps/delivery`.
 
 ## Needed from the owner

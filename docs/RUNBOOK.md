@@ -51,3 +51,23 @@ Admin → **Staff & partner logins** → deactivate. Their sessions end immediat
 - More API capacity: Vercel scales the `api` service by itself; raise its CPU/memory in the project settings if needed.
 - Slow queues (messages late): `fly scale count worker=2 --app sahyadri-pearls-worker`.
 - Database: upgrade the Neon/Supabase plan; no code change.
+
+## Vercel paused the account (storage limit)
+
+**What happened (13 Oct 2026).** The free Hobby plan allows 10 GB of storage. It reached 19.24 GB and Vercel paused every project.
+- Each deployment stores the API's container image. That image was **2.56 GB** (measured), because it was built on the full Debian Node image.
+- Two Vercel projects were linked to the same repository.
+- Both `main` and the working branch were deployed on every push.
+
+About eight deployments filled the limit.
+
+**Fixed in the code:**
+- the API image now uses the slim base, which measures **1.26 GB**;
+- only `main` deploys (`git.deploymentEnabled` in `vercel.json`).
+
+**For the owner:**
+- keep one Vercel project and delete the other;
+- delete old deployments under **Deployments**;
+- a business site needs the **Pro** plan anyway, because Hobby is for personal, non-commercial use.
+
+**While paused:** run the presentation from the free host (DEPLOYMENT.md 0a).

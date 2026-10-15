@@ -57,6 +57,28 @@ The phone apps appear in the browser at `/apps/customer` and `/apps/delivery`. T
 
 Uploaded photos live on the container's disk in demo mode and disappear on the next deploy. The sample photos are redrawn on every start.
 
+### 0a. Presentation on a free host (Hugging Face Spaces), when Vercel is not available
+
+`Dockerfile.demo` puts everything in one container:
+- Postgres, so no Neon is needed;
+- the API in demo mode;
+- the website, the admin and both app previews;
+- a router on one port.
+
+A free Hugging Face Docker Space runs it at no cost. The data resets when the Space restarts, and the sample data reloads by itself.
+
+1. At huggingface.co, sign up free, then choose **New Space**: SDK **Docker**, template **Blank**, visibility **Public**. Name it, for example `sahyadri-pearls`.
+2. Go to **Settings → Access Tokens → Create new token**, choose type **Write**, and copy the token.
+3. In GitHub, open the repo's **Settings → Secrets and variables → Actions**:
+   - **New repository secret** `HF_TOKEN` = the token;
+   - **Variables → New repository variable** `HF_SPACE` = `yourname/sahyadri-pearls`.
+4. **Actions → Deploy demo → Run workflow.** The Space then builds for about 10–15 minutes; its **Logs** tab shows progress.
+5. Open `https://yourname-sahyadri-pearls.hf.space/platforms`. Use this direct address: the huggingface.co page tries to show the site inside a frame, which the site does not allow.
+
+The Space sleeps after 48 hours without visitors and wakes on the next visit, which takes about a minute. Run **Deploy demo** again after code changes.
+
+Local test: `docker build -f Dockerfile.demo -t sahyadri-demo . && docker run -p 7860:7860 sahyadri-demo`, then open http://localhost:7860/platforms.
+
 **From demo to the real shop:** remove `DEMO_MODE`, use a fresh database, and follow the steps below.
 
 ## 1. Accounts to create

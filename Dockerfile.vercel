@@ -2,8 +2,14 @@
 #   Vercel  — the `api` container service in vercel.json (serves HTTP; Vercel sets PORT).
 #   Fly.io  — the background worker (apps/api/fly.toml runs `node dist/worker.js`).
 # Local:  docker build -f Dockerfile.vercel -t sahyadri-api .
-# The full Debian image already has OpenSSL (needed by Prisma) and CA certificates, so no apt step.
-FROM node:22-bookworm AS base
+# The slim Debian image keeps each deployment small (Vercel stores every image: the full image was 2.6 GB).
+# Prisma needs OpenSSL and the CA list (TLS to the database); they are copied from the official full image.
+FROM node:22-bookworm AS ssl
+
+FROM node:22-bookworm-slim AS base
+COPY --from=ssl /usr/lib/x86_64-linux-gnu/libssl.so.3 /usr/lib/x86_64-linux-gnu/libcrypto.so.3 /usr/lib/x86_64-linux-gnu/
+COPY --from=ssl /usr/bin/openssl /usr/bin/openssl
+COPY --from=ssl /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
 ENV PNPM_HOME=/pnpm PATH=/pnpm:$PATH CI=1 COREPACK_ENABLE_DOWNLOAD_PROMPT=0
 RUN corepack enable && corepack prepare pnpm@9.12.0 --activate
 WORKDIR /repo

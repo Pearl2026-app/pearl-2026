@@ -1,0 +1,52 @@
+# Publishes the presentation site (Dockerfile.demo: everything in one container, demo mode) to a free
+# Hugging Face Docker Space. Run it by hand from the Actions tab. Needs, in this repository's settings:
+#   secret   HF_TOKEN  a Hugging Face access token with write access
+#   variable HF_SPACE  the Space, for example yourname/sahyadri-pearls
+name: Deploy demo
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: demo-space
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-24.04
+    env:
+      HF_TOKEN: ${{ secrets.HF_TOKEN }}
+      HF_SPACE: ${{ vars.HF_SPACE }}
+    steps:
+      - name: Check the settings
+        run: |
+          if [ -z "$HF_TOKEN" ] || [ -z "$HF_SPACE" ]; then
+            echo "::error::Add the HF_TOKEN secret and the HF_SPACE variable (Settings → Secrets and variables → Actions)."
+            exit 1
+          fi
+      - uses: actions/checkout@v4
+      - name: Prepare the Space contents
+        run: |
+          mkdir -p /tmp/space-new
+          git archive HEAD | tar -x -C /tmp/space-new
+          cd /tmp/space-new
+          # The Space builds ./Dockerfile; the demo container needs the phone apps, which the API image ignores.
+          mv Dockerfile.demo Dockerfile
+          mv Dockerfile.demo.dockerignore .dockerignore
+          cp scripts/demo/space-README.md README.md
+      - name: Publish to the Space
+        run: |
+          git lfs install
+          git clone "https://user:${HF_TOKEN}@huggingface.co/spaces/${HF_SPACE}" /tmp/space
+          cd /tmp/space
+          # Replace everything except the Space's git data with this commit's files.
+          find . -mindepth 1 -maxdepth 1 ! -name .git ! -name .gitattributes -exec rm -rf {} +
+          cp -a /tmp/space-new/. .
+          git lfs track "*.png" "*.jpg" "*.ico" "*.woff2" "*.webp"
+          git add -A
+          git -c user.name="Sahyadri Pearls" -c user.email="metaaccess4hastagcreator@gmail.com" commit -q -m "Demo from ${GITHUB_SHA::7}" || echo "Nothing changed."
+          git push origin HEAD:main
+          url="https://$(echo "${HF_SPACE/\//-}" | tr '[:upper:]_.' '[:lower:]--').hf.space/platforms"
+          echo "Published. The Space builds for about 10–15 minutes, then opens at $url" >> "$GITHUB_STEP_SUMMARY"
