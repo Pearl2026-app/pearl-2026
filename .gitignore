@@ -23,3 +23,6 @@ e2e/report/
 
 # App previews built for the presentation site
 apps/web/public/apps/
+
+# Local throwaway scripts
+*.tmp.mjs
