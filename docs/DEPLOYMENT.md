@@ -69,7 +69,7 @@ A free Hugging Face Docker Space runs it at no cost. The data resets when the Sp
 
 1. At huggingface.co, sign up free (email only). Then choose **New Space**: name `sahyadri-pearls`, SDK **Docker**, template **Blank**, visibility **Public**, then **Create Space**.
 2. In the new Space, open **Files** → **+ Add file** → **Create a new file**.
-3. Name the file `Dockerfile` and paste the contents of [`scripts/demo/space/Dockerfile`](../scripts/demo/space/Dockerfile), which is 10 lines long. Press **Commit new file to main**.
+3. Name the file `Dockerfile` and paste the contents of [`scripts/demo/space/Dockerfile`](../scripts/demo/space/Dockerfile), which is 9 lines long. Press **Commit new file to main**.
 4. The Space downloads this repository, builds for about 15 minutes, and starts. Its **Logs** tab shows progress.
 5. Open `https://<username>-sahyadri-pearls.hf.space/platforms`. Use this direct address: the huggingface.co page tries to show the site inside a frame, which the site does not allow.
 
