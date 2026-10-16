@@ -57,6 +57,17 @@ The phone apps appear in the browser at `/apps/customer` and `/apps/delivery`. T
 
 Uploaded photos live on the container's disk in demo mode and disappear on the next deploy. The sample photos are redrawn on every start.
 
+### 0b. Presentation on your own computer (free, no accounts)
+
+The same all-in-one prototype runs on any computer with **Docker Desktop**: Windows, or Mac with Intel or Apple chips.
+
+1. Install Docker Desktop from docker.com and start it.
+2. Make an empty folder and save [`scripts/demo/space/Dockerfile`](../scripts/demo/space/Dockerfile) in it as `Dockerfile`. The file downloads this repository by itself.
+3. In a terminal in that folder, run `docker build -t sahyadri .` (about 10–15 minutes the first time), then `docker run -p 7860:7860 sahyadri`.
+4. Open http://localhost:7860/platforms. Every sign-in code is `123456`.
+
+To let others open it during a presentation, run `cloudflared tunnel --url http://localhost:7860`. This is Cloudflare's free quick tunnel and needs no account. It prints a temporary public https address that works while the laptop and both commands are running.
+
 ### 0a. Presentation on a free host (Hugging Face Spaces), when Vercel is not available
 
 `Dockerfile.demo` puts everything in one container:
