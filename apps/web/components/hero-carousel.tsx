@@ -75,19 +75,19 @@ export function HeroCarousel({ slides }: { slides: Slide[] }) {
                   height={900}
                   fetchPriority={i === 0 ? 'high' : undefined}
                   loading={i === 0 ? 'eager' : 'lazy'}
-                  className="absolute inset-0 -z-10 h-full w-full object-cover object-right"
+                  className="block aspect-[4/3] w-full object-cover object-[72%_center] md:absolute md:inset-0 md:-z-10 md:aspect-auto md:h-full md:object-right"
                 />
               </picture>
-              <div className="absolute inset-0 -z-10 bg-gradient-to-t from-ink/85 via-ink/35 to-transparent md:bg-gradient-to-r md:from-ink/80 md:via-ink/30 md:to-transparent" />
-              <div className="mx-auto flex min-h-[72vh] max-w-7xl flex-col justify-end px-4 pt-24 pb-16 md:min-h-[78vh] md:justify-center md:pb-24 lg:px-8">
+              <div className="absolute inset-0 -z-10 hidden bg-gradient-to-r from-ink/80 via-ink/30 to-transparent md:block" />
+              <div className="mx-auto flex max-w-7xl flex-col px-4 pt-8 pb-16 md:min-h-[78vh] md:justify-center md:pt-24 md:pb-24 lg:px-8">
                 <div className="max-w-xl text-white">
                   {s.title && (
-                    <Title className="font-serif text-[44px] leading-[1.02] md:text-[76px]">{s.title}</Title>
+                    <Title className="font-serif text-[40px] leading-[1.05] md:text-[76px]">{s.title}</Title>
                   )}
                   {s.subtitle && <p className="mt-5 max-w-md text-lg text-white/85">{s.subtitle}</p>}
                   <Link
                     href={s.linkUrl ?? '/jewellery'}
-                    className="mt-9 inline-flex min-h-12 items-center bg-white px-9 text-[15px] tracking-wide text-ink transition-colors hover:bg-orient"
+                    className="mt-7 inline-flex min-h-12 md:mt-9 items-center bg-white px-9 text-[15px] tracking-wide text-ink transition-colors hover:bg-orient"
                   >
                     {s.ctaLabel ?? 'Shop now'}
                   </Link>
