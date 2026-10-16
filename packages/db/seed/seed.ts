@@ -10,7 +10,7 @@ import { join, resolve } from 'node:path';
 import { PrismaClient, Prisma } from '@prisma/client';
 import { hashPassword } from '../src/password';
 import { productSvg, sceneSvg } from './art';
-import { SAMPLE_PRODUCTS } from './samples';
+import { SAMPLE_BANNER_ART, SAMPLE_PRODUCTS } from './samples';
 
 const prisma = new PrismaClient();
 const PASSWORD = process.env.SEED_PASSWORD ?? 'Sahyadri@2026';
@@ -228,6 +228,30 @@ async function main() {
     create: { name: 'Mumbai', slug: 'mumbai', state: 'Maharashtra', sortOrder: 2 },
     update: {},
   });
+
+  // Delivery cities across India. Pieces are not limited by city, so all of them can be ordered anywhere; orders from
+  // a city without its own team go to head office. "Rest of India" lets anyone else check out (their town goes in
+  // the address).
+  const moreCities: Array<[name: string, slug: string, state: string]> = [
+    ['Delhi NCR', 'delhi-ncr', 'Delhi'],
+    ['Bengaluru', 'bengaluru', 'Karnataka'],
+    ['Hyderabad', 'hyderabad', 'Telangana'],
+    ['Chennai', 'chennai', 'Tamil Nadu'],
+    ['Kolkata', 'kolkata', 'West Bengal'],
+    ['Ahmedabad', 'ahmedabad', 'Gujarat'],
+    ['Jaipur', 'jaipur', 'Rajasthan'],
+    ['Lucknow', 'lucknow', 'Uttar Pradesh'],
+    ['Chandigarh', 'chandigarh', 'Chandigarh'],
+    ['Kochi', 'kochi', 'Kerala'],
+    ['Goa', 'goa', 'Goa'],
+    ['Indore', 'indore', 'Madhya Pradesh'],
+    ['Nagpur', 'nagpur', 'Maharashtra'],
+    ['Nashik', 'nashik', 'Maharashtra'],
+    ['Rest of India', 'rest-of-india', 'India'],
+  ];
+  for (const [i, [name, slug, state]] of moreCities.entries()) {
+    await prisma.city.upsert({ where: { slug }, create: { name, slug, state, sortOrder: 10 + i }, update: {} });
+  }
 
   // ── Network ──────────────────────────────────────────────────
   const vendor = await findOrCreate(
@@ -519,33 +543,19 @@ async function main() {
   await seedTemplates();
 
   // ── Content ──────────────────────────────────────────────────
-  // Draw the banner art on every run: the files live on the container's disk, which each deploy wipes,
-  // while the banner rows are created only once.
-  const heroArt = writeMedia('samples/banner-hero.svg', sceneSvg('Pearls with a birthplace', 'water'));
-  const customArt = writeMedia('samples/banner-custom.svg', sceneSvg('Made for you', 'craft'));
-  if ((await prisma.banner.count()) === 0) {
-    await prisma.banner.createMany({
-      data: [
-        {
-          placement: 'HOME_HERO',
-          title: 'Pearls with a birthplace',
-          subtitle: 'Every pearl traced to a named farm in the Sahyadri hills and the Konkan coast.',
-          imageUrl: heroArt,
-          linkUrl: '/jewellery',
-          ctaLabel: 'Explore Jewellery',
-          sortOrder: 1,
-        },
-        {
-          placement: 'HOME_HERO',
-          title: 'Made for you',
-          subtitle: 'Bridal sets and bespoke pieces, designed with our craftspeople.',
-          imageUrl: customArt,
-          linkUrl: '/customized-jewellery',
-          ctaLabel: 'Start a design',
-          sortOrder: 2,
-        },
-      ],
-    });
+  // Banners: draw the art on every run (each deploy wipes the container's disk); add any banner that is missing,
+  // matched by placement and title, and never change one the admin has edited.
+  for (const [file, svg] of SAMPLE_BANNER_ART()) writeMedia(`samples/${file}`, svg);
+  const banners = [
+    { placement: 'HOME_HERO', title: 'Pearls with a birthplace', subtitle: 'Every pearl traced to a named farm in the Sahyadri hills and the Konkan coast.', imageUrl: '/media/samples/banner-hero.svg', linkUrl: '/jewellery', ctaLabel: 'Shop now', sortOrder: 1 },
+    { placement: 'HOME_HERO', title: 'Golden pearls', subtitle: 'Rare, warm and quietly radiant.', imageUrl: '/media/samples/banner-golden.svg', linkUrl: '/jewellery?colour=Golden', ctaLabel: 'Shop golden pearls', sortOrder: 2 },
+    { placement: 'HOME_HERO', title: 'Made for you', subtitle: 'Bridal sets and bespoke pieces, designed with our craftspeople.', imageUrl: '/media/samples/banner-custom.svg', linkUrl: '/customized-jewellery', ctaLabel: 'Start a design', sortOrder: 3 },
+    { placement: 'HOME_SECONDARY', title: 'The Bridal Edit', subtitle: 'Heirloom strands for the big day.', imageUrl: '/media/samples/banner-bridal.svg', linkUrl: '/collections/bridal', ctaLabel: 'Shop bridal', sortOrder: 1 },
+    { placement: 'HOME_SECONDARY', title: 'Gifts under ₹10,000', subtitle: 'Gift-wrapped, free.', imageUrl: '/media/samples/banner-gifts.svg', linkUrl: '/gifts', ctaLabel: 'Shop gifts', sortOrder: 2 },
+    { placement: 'HOME_SECONDARY', title: 'Everyday pearls', subtitle: 'Light pieces to wear daily.', imageUrl: '/media/samples/banner-everyday.svg', linkUrl: '/collections/everyday', ctaLabel: 'Shop everyday', sortOrder: 3 },
+  ];
+  for (const b of banners) {
+    await findOrCreate(() => prisma.banner.findFirst({ where: { placement: b.placement, title: b.title } }), () => prisma.banner.create({ data: b }));
   }
   const blocks: Array<[string, Prisma.ContentBlockCreateInput['kind'], string | null, unknown]> = [
     ['home.story', 'STORY', 'From our farms', { body: 'Every Sahyadri pearl is grown on a farm we can name, by people we know. We follow each pearl from the water to your hands.', linkLabel: 'Visit our farms', linkUrl: '/our-farm', imageUrl: '/media/samples/farm-mulshi.svg' }],

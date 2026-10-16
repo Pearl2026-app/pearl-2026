@@ -40,6 +40,16 @@ export const SAMPLE_PRODUCTS: SampleProduct[] = [
 
 export const sampleSlug = (name: string) => name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 
+/** Banner artwork by file name (under samples/). The seed's banner rows point at these. */
+export const SAMPLE_BANNER_ART = (): Array<[string, string]> => [
+  ['banner-hero.svg', sceneSvg('Pearls with a birthplace', 'water')],
+  ['banner-custom.svg', sceneSvg('Made for you', 'craft')],
+  ['banner-golden.svg', sceneSvg('Golden pearls', 'gold')],
+  ['banner-bridal.svg', productSvg('necklaces', 'Cream', 0)],
+  ['banner-gifts.svg', productSvg('pendants', 'Rose', 1)],
+  ['banner-everyday.svg', productSvg('earrings', 'White', 0)],
+];
+
 const CATEGORY_SLUGS = ['necklaces', 'earrings', 'rings', 'bracelets', 'pendants', 'loose-pearls'] as const;
 const COLLECTIONS = [
   ['Bridal', 'bridal'],
@@ -72,7 +82,6 @@ export function drawSamples(storageDir: string): number {
     write(`products/${slug}-1.svg`, productSvg(kind, colour, 0));
     write(`products/${slug}-2.svg`, productSvg(kind, colour === 'White' ? 'Cream' : 'White', 1));
   }
-  write('banner-hero.svg', sceneSvg('Pearls with a birthplace', 'water'));
-  write('banner-custom.svg', sceneSvg('Made for you', 'craft'));
+  for (const [file, svg] of SAMPLE_BANNER_ART()) write(file, svg);
   return n;
 }

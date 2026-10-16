@@ -1,5 +1,6 @@
 'use client';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { cx } from '@sahyadri/ui';
 import { api, errorText } from '@/lib/api';
@@ -47,7 +48,49 @@ export function AddToCart({ p, className }: { p: ProductDetail; className?: stri
   );
 }
 
-/** The two actions. Inline on desktop; fixed within thumb reach on phones (SPEC Part 5). */
+/** Puts the piece in the cart and goes straight to checkout. */
+export function BuyNow({ p, className }: { p: ProductDetail; className?: string }) {
+  const router = useRouter();
+  const { setCartCount } = useSession();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  return (
+    <div className={className}>
+      <button
+        type="button"
+        disabled={busy}
+        onClick={async () => {
+          setBusy(true);
+          setError(null);
+          try {
+            const r = await api<{ count: number }>('/cart/items', {
+              method: 'POST',
+              json: { productId: p.id, quantity: 1 },
+            });
+            setCartCount(r.count);
+            router.push('/checkout');
+          } catch (e) {
+            // Already in the cart counts as success here; anything else is shown.
+            const msg = errorText(e);
+            if (/already/i.test(msg)) router.push('/checkout');
+            else setError(msg);
+            setBusy(false);
+          }
+        }}
+        className="inline-flex min-h-12 w-full items-center justify-center border border-ink px-5 text-[15px] font-medium text-ink transition-colors hover:bg-ink hover:text-white disabled:opacity-70"
+      >
+        {busy ? 'One moment…' : 'Buy now'}
+      </button>
+      {error && (
+        <p role="alert" className="mt-2 text-sm text-danger">
+          {error}
+        </p>
+      )}
+    </div>
+  );
+}
+
+/** The actions. Inline on desktop; Add to cart and Buy now fixed within thumb reach on phones (SPEC Part 5). */
 export function BuyActions({ p }: { p: ProductDetail }) {
   const canBuy = p.available && !p.priceOnRequest && !p.reserved && p.availableInCity;
   const enquiry = p.isSold
@@ -63,17 +106,32 @@ export function BuyActions({ p }: { p: ProductDetail }) {
   return (
     <>
       <div className="hidden flex-col gap-3 lg:flex">
-        {canBuy && <AddToCart p={p} />}
-        <EnquireButton enquiry={enquiry} label={label} variant={canBuy ? 'outline' : 'solid'} />
-      </div>
-      <div className="fixed inset-x-0 bottom-0 z-30 flex gap-2 border-t border-line bg-bg/95 p-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] backdrop-blur lg:hidden">
-        {canBuy && <AddToCart p={p} className="flex-1" />}
+        {canBuy && (
+          <div className="grid grid-cols-2 gap-3">
+            <AddToCart p={p} />
+            <BuyNow p={p} />
+          </div>
+        )}
         <EnquireButton
           enquiry={enquiry}
-          label={canBuy ? 'Enquire' : label}
+          label={label}
           variant={canBuy ? 'outline' : 'solid'}
-          className={cx(canBuy ? 'flex-1' : 'w-full')}
+          className={canBuy ? 'border-line' : undefined}
         />
+      </div>
+      {/* Phones: WhatsApp stays in the page; the sticky bar below holds the buying actions. */}
+      {canBuy && (
+        <EnquireButton enquiry={enquiry} label={label} variant="outline" className="border-line lg:hidden" />
+      )}
+      <div className="fixed inset-x-0 bottom-0 z-30 flex gap-2 border-t border-line bg-bg/95 p-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] backdrop-blur lg:hidden">
+        {canBuy ? (
+          <>
+            <AddToCart p={p} className="flex-1" />
+            <BuyNow p={p} className="flex-1" />
+          </>
+        ) : (
+          <EnquireButton enquiry={enquiry} label={label} variant="solid" className={cx('w-full')} />
+        )}
       </div>
     </>
   );

@@ -65,7 +65,7 @@ export interface Site {
   payments: { onlineEnabled: boolean; codEnabled: boolean; codMaxPaise: number };
   blocks: Record<string, { title: string | null; data: any }>;
   cities: Array<{ id: string; name: string; slug: string; state: string }>;
-  categories: Array<{ name: string; slug: string }>;
+  categories: Array<{ name: string; slug: string; imageUrl?: string | null }>;
   farms: Array<{ name: string; slug: string }>;
   legalPages: Array<{ slug: string; title: string }>;
   whatsapp: { default: string; byCity: Record<string, string>; wholesale: string | null };

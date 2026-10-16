@@ -180,9 +180,26 @@ function hash(s: string): number {
  * farm:  the lake with rows of pearl-farm floats.
  * craft: a strand draped on dark ink velvet, as in a jeweller's studio.
  */
-export function sceneSvg(title: string, tone: 'water' | 'farm' | 'craft' = 'water'): string {
+export function sceneSvg(title: string, tone: 'water' | 'farm' | 'craft' | 'gold' = 'water'): string {
   gid = 0;
   const s = hash(title) * 6;
+  if (tone === 'gold') {
+    // Golden pearls on ink velvet, lit from the right; the left half stays dark for text.
+    const v = uid('v');
+    const set: Array<[number, number, number]> = [
+      [1120, 470, 150],
+      [1360, 600, 96],
+      [1250, 760, 62],
+      [960, 690, 54],
+    ];
+    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" width="1600" height="900">${defs()}
+<defs><radialGradient id="${v}" cx="72%" cy="45%" r="75%"><stop offset="0" stop-color="#33404a"/><stop offset=".55" stop-color="#16222b"/><stop offset="1" stop-color="#0a1117"/></radialGradient></defs>
+<rect width="1600" height="900" fill="url(#${v})"/>
+<ellipse cx="1180" cy="430" rx="460" ry="320" fill="#f8e7b2" opacity=".07" filter="url(#b40)"/>
+<path d="M760 900 C 900 640, 1000 560, 1120 620 S 1400 860, 1600 760" fill="none" stroke="url(#metal)" stroke-width="3" opacity=".9"/>
+${set.map(([x, y, r]) => shadow(x, y, r, 0.6, '#000')).join('')}${[...set].sort((a, b) => a[1] - b[1]).map(([x, y, r]) => pearl(x, y, r, 'Golden')).join('')}
+${mark(1576, 880, true)}</svg>`;
+  }
   if (tone === 'craft') {
     const v = uid('v');
     const pts = curve((t) => [-60 + 1720 * t, 560 + 170 * Math.sin(Math.PI * 1.6 * t + s) - 120 * t]);

@@ -52,7 +52,7 @@ export class PublicContentController {
       }),
       this.prisma.contentBlock.findMany({ where: { isActive: true, key: { in: ['footer.about', 'contact.info', 'product.trust', 'bulk.intro'] } } }),
       this.prisma.city.findMany({ where: { isActive: true }, orderBy: { sortOrder: 'asc' }, select: { id: true, name: true, slug: true, state: true } }),
-      this.prisma.category.findMany({ where: { isActive: true, archivedAt: null }, orderBy: { sortOrder: 'asc' }, select: { name: true, slug: true } }),
+      this.prisma.category.findMany({ where: { isActive: true, archivedAt: null }, orderBy: { sortOrder: 'asc' }, select: { name: true, slug: true, imageUrl: true } }),
       this.prisma.farm.findMany({ where: { isActive: true, archivedAt: null }, orderBy: { sortOrder: 'asc' }, select: { name: true, slug: true } }),
       this.prisma.whatsAppNumber.findMany({ where: { isActive: true }, select: { phone: true, label: true, isDefault: true, cityId: true } }),
       this.prisma.page.findMany({ where: { isLegal: true, isActive: true }, select: { slug: true, title: true } }),
