@@ -37,7 +37,7 @@ export default async function HomePage() {
             {hero.mobileImageUrl && <source media="(max-width: 767px)" srcSet={hero.mobileImageUrl} />}
             <img src={hero.imageUrl} alt="" width={1600} height={900} fetchPriority="high" className="absolute inset-0 -z-10 h-full w-full object-cover" />
           </picture>
-          <div className="absolute inset-0 -z-10 bg-gradient-to-tr from-ink/80 via-ink/25 to-transparent" />
+          <div className="absolute inset-0 -z-10 bg-gradient-to-t from-ink/90 via-ink/50 to-ink/5 lg:bg-gradient-to-tr lg:from-ink/80 lg:via-ink/30 lg:to-transparent" />
           <Container className="flex min-h-[80vh] flex-col justify-end pt-24 pb-14 lg:min-h-[88vh] lg:pb-24">
             <div className="fade-in max-w-2xl text-white">
               <p className="mb-5 font-serif text-lg text-white/85 italic">Grown in the Sahyadri hills and on the Konkan coast</p>
@@ -56,9 +56,30 @@ export default async function HomePage() {
         </section>
       )}
 
+      {trust && (
+        <Container>
+          <ul className="grid grid-cols-2 gap-x-6 gap-y-6 border-b border-line py-8 lg:grid-cols-4 lg:py-10">
+            {(trust.data.items as Array<{ icon: string; title: string; text: string }>).map((t) => (
+              <li key={t.title} className="flex items-start gap-3">
+                <IconFor name={t.icon} className="mt-0.5 shrink-0 text-gold" width={24} height={24} />
+                <div>
+                  <p className="text-[15px] font-medium">{t.title}</p>
+                  <p className="text-sm text-muted">{t.text}</p>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </Container>
+      )}
+
+      <Container className="pt-16 lg:pt-20">
+        <SectionHeading title="Pieces we love" action={<ButtonLink href="/jewellery" variant="text">Shop all</ButtonLink>} />
+        <ProductGrid products={h.featured} priorityCount={2} />
+      </Container>
+
       {h.collections.length > 0 && (
-        <Container className="pt-20">
-          <SectionHeading eyebrow="Collections" title="Find your strand" action={<ButtonLink href="/jewellery" variant="text">View all</ButtonLink>} />
+        <Container className="pt-24">
+          <SectionHeading title="Find your strand" action={<ButtonLink href="/jewellery" variant="text">View all</ButtonLink>} />
           <ul className="no-scrollbar -mx-4 flex snap-x gap-4 overflow-x-auto px-4 lg:mx-0 lg:grid lg:grid-cols-3 lg:gap-8 lg:overflow-visible lg:px-0">
             {h.collections.map((c) => (
               <li key={c.slug} className="w-[78%] shrink-0 snap-start sm:w-[45%] lg:w-auto">
@@ -89,28 +110,9 @@ export default async function HomePage() {
         </section>
       )}
 
-      <Container className="pt-24">
-        <SectionHeading eyebrow="Featured" title="Pieces we love" action={<ButtonLink href="/jewellery" variant="text">Shop all</ButtonLink>} />
-        <ProductGrid products={h.featured} />
-      </Container>
-
-      {trust && (
-        <Container className="pt-24">
-          <ul className="grid grid-cols-2 gap-8 border-y border-line py-12 lg:grid-cols-4">
-            {(trust.data.items as Array<{ icon: string; title: string; text: string }>).map((t) => (
-              <li key={t.title} className="flex flex-col gap-2">
-                <IconFor name={t.icon} className="text-gold" width={28} height={28} />
-                <p className="font-serif text-xl">{t.title}</p>
-                <p className="text-sm text-muted">{t.text}</p>
-              </li>
-            ))}
-          </ul>
-        </Container>
-      )}
-
       {h.testimonials.length > 0 && (
         <Container className="pt-24">
-          <SectionHeading eyebrow="In their words" title="From our customers" />
+          <SectionHeading title="From our customers" />
           <ul className="grid gap-8 md:grid-cols-3">
             {h.testimonials.slice(0, 3).map((t) => (
               <li key={t.id} className="border-t border-gold pt-6">
@@ -141,7 +143,7 @@ export default async function HomePage() {
 
       {h.gallery.length > 0 && (
         <Container className="pt-24">
-          <SectionHeading eyebrow="Gallery" title="From the farms" action={<ButtonLink href="/gallery" variant="text">See gallery</ButtonLink>} />
+          <SectionHeading title="From the farms" action={<ButtonLink href="/gallery" variant="text">See gallery</ButtonLink>} />
           <ul className="grid grid-cols-2 gap-3 md:grid-cols-4">
             {h.gallery.slice(0, 4).map((g) => (
               <li key={g.id}>

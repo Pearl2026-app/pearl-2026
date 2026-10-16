@@ -3,12 +3,60 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { formatINR } from '@sahyadri/shared';
 import { FormField, Notice, TextInput } from '@/components/form-bits';
+import { CheckIcon } from '@/components/icons';
+import { useSite } from '@/components/site-context';
 import { PearlImage } from '@/components/pearl-image';
 import { useSession } from '@/components/session';
 import { TotalsTable } from '@/components/totals';
 import { Container, PageTitle } from '@/components/ui';
 import { api, ApiError, errorText } from '@/lib/api';
 import type { CartView } from '@/lib/types-commerce';
+
+/** How far the cart is from free delivery, shown as a short line and a bar. */
+function FreeDeliveryNudge({ subtotalPaise }: { subtotalPaise: number }) {
+  const site = useSite();
+  const free = site.delivery.freeAbovePaise;
+  if (!free) return null;
+  const left = free - subtotalPaise;
+  const pct = Math.min(100, Math.round((subtotalPaise / free) * 100));
+  return (
+    <div className="mb-5">
+      <p className="text-sm">
+        {left > 0 ? (
+          <>
+            Add <strong className="font-medium">{formatINR(left, { compact: true })}</strong> more for free insured delivery.
+          </>
+        ) : (
+          'Your order ships free: insured and tracked to your door.'
+        )}
+      </p>
+      <div className="mt-2 h-1 w-full bg-surface-muted" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct} aria-label="Progress to free delivery">
+        <div className="h-1 bg-gold transition-[width] duration-500" style={{ width: `${pct}%` }} />
+      </div>
+    </div>
+  );
+}
+
+/** What a first-time buyer wants to know before paying, next to the button that asks them to. */
+function Reassurance({ cod }: { cod: boolean }) {
+  const site = useSite();
+  const items = [
+    'Every pearl certified, with a code you can verify',
+    site.returns.windowDays > 0 ? `${site.returns.windowDays}-day returns` : null,
+    'Insured, tracked delivery',
+    `Pay by UPI, card or net banking${cod && site.payments.codEnabled ? ', or cash on delivery' : ''}`,
+  ].filter(Boolean) as string[];
+  return (
+    <ul className="mt-5 grid gap-2 border-t border-line pt-5 text-sm text-muted">
+      {items.map((t) => (
+        <li key={t} className="flex items-start gap-2">
+          <CheckIcon width={18} height={18} className="mt-0.5 shrink-0 text-gold" />
+          {t}
+        </li>
+      ))}
+    </ul>
+  );
+}
 
 export default function CartPage() {
   const [cart, setCart] = useState<CartView | null>(null);
@@ -91,6 +139,7 @@ export default function CartPage() {
           </div>
           <aside className="h-fit bg-surface p-6 lg:sticky lg:top-28">
             <h2 className="mb-4 font-serif text-2xl">Order summary</h2>
+            <FreeDeliveryNudge subtotalPaise={cart.totals?.subtotalPaise ?? 0} />
             {cart.totals && <TotalsTable t={cart.totals} couponCode={cart.coupon?.code ?? cart.couponCode} />}
             <form
               className="mt-6 flex items-end gap-2"
@@ -120,9 +169,9 @@ export default function CartPage() {
               aria-disabled={cart.issues.length > 0}
               className={`mt-6 flex min-h-12 w-full items-center justify-center bg-accent text-white ${cart.issues.length ? 'pointer-events-none opacity-50' : 'hover:bg-accent-hover'}`}
             >
-              Check out
+              Check out securely
             </Link>
-            <p className="mt-3 text-center text-xs text-muted">Secure payment · Cash on delivery available</p>
+            <Reassurance cod={cart.paymentMethods?.cod ?? true} />
           </aside>
         </div>
       )}

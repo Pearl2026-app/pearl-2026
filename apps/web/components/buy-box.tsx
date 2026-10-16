@@ -14,6 +14,21 @@ export function AddToCart({ p, className }: { p: ProductDetail; className?: stri
   const { setCartCount } = useSession();
   const [state, setState] = useState<'idle' | 'busy' | 'added'>('idle');
   const [error, setError] = useState<string | null>(null);
+  // Once the piece is in the cart, the next step (checking out) becomes the main button.
+  if (state === 'added')
+    return (
+      <div className={className}>
+        <Link href="/checkout" className="inline-flex min-h-12 w-full items-center justify-center bg-accent px-5 text-[15px] font-medium text-white transition-colors hover:bg-accent-hover">
+          Check out now
+        </Link>
+        <p role="status" className="mt-2 hidden text-center text-sm text-muted lg:block">
+          Added to your cart.{' '}
+          <button className="text-accent underline underline-offset-2" onClick={() => router.push('/cart')}>
+            View cart
+          </button>
+        </p>
+      </div>
+    );
   return (
     <div className={className}>
       <button
@@ -33,13 +48,8 @@ export function AddToCart({ p, className }: { p: ProductDetail; className?: stri
         }}
         className="inline-flex min-h-12 w-full items-center justify-center bg-accent px-5 text-[15px] font-medium text-white transition-colors hover:bg-accent-hover disabled:opacity-70"
       >
-        {state === 'busy' ? 'Adding…' : state === 'added' ? 'Added to cart' : 'Add to Cart'}
+        {state === 'busy' ? 'Adding…' : 'Add to cart'}
       </button>
-      {state === 'added' && (
-        <button className="mt-2 w-full text-center text-sm text-accent underline" onClick={() => router.push('/cart')}>
-          View cart and check out
-        </button>
-      )}
       {error && <p role="alert" className="mt-2 text-sm text-danger">{error}</p>}
     </div>
   );
