@@ -71,8 +71,8 @@ describe('journey: browse → enquire → convert → deliver', () => {
     const trackToken = order.body.trackUrl?.match(/t=([^&]+)/)?.[1] ?? (await http().get(api(`/admin/orders/${orderId}`)).set(bearer(pune))).body.trackUrl.match(/t=([^&]+)/)[1];
     const track = await http().get(api(`/track/${o.number}?t=${trackToken}`)).expect(200);
     expect(track.body.status).toBe('DELIVERED');
-    // The vendor (not assigned) cannot see the order at all.
-    await http().get(api(`/admin/orders/${orderId}`)).set(bearer(await tokenFor('vendor'))).expect(404);
+    // A vendor the order was not sent to (Mumbai, for a Pune address) cannot see it at all.
+    await http().get(api(`/admin/orders/${orderId}`)).set(bearer(await tokenFor('vendor2'))).expect(404);
     // Reports pick it up as an Instagram enquiry that converted.
     const wa = await http().get(api('/admin/reports/whatsapp')).set(bearer(pune)).expect(200);
     expect(wa.body.rows.find((r: { dimension: string; value: string }) => r.dimension === 'Product' && r.value.includes(sku))).toMatchObject({ enquiries: 1, orders: 1 });

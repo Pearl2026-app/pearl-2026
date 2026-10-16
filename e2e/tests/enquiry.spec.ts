@@ -41,8 +41,8 @@ test('an enquiry becomes an order that is delivered with proof', async ({ page, 
 
   await admin.getByRole('button', { name: 'Mark confirmed' }).click();
   await admin.getByRole('button', { name: 'Mark packed' }).click();
-  await admin.getByLabel('Delivery partner').selectOption({ index: 1 });
-  await admin.getByRole('button', { name: 'Assign' }).click();
+  await admin.getByRole('radio', { name: 'Vikram Pawar' }).check();
+  await admin.getByRole('button', { name: 'Assign delivery partner' }).click();
   await expect(admin.getByText('Delivery partner: ')).toBeVisible();
 
   // 3. The rider picks it up and delivers it with a photo, the customer's code and the cash.

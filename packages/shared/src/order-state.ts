@@ -17,9 +17,12 @@ export const ORDER_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
 
 /** Transitions each partner role may make. Admin roles may make any valid transition. */
 const ROLE_TRANSITIONS: Partial<Record<Role, Array<[OrderStatus, OrderStatus]>>> = {
+  // The vendor an order is sent to confirms, packs and hands it to one of its delivery partners.
   VENDOR: [
     ['PLACED', 'CONFIRMED'],
     ['CONFIRMED', 'PACKED'],
+    ['PACKED', 'ASSIGNED'],
+    ['FAILED', 'ASSIGNED'],
   ],
   FRANCHISE: [
     ['PLACED', 'CONFIRMED'],

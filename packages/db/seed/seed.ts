@@ -8,9 +8,10 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { PrismaClient, Prisma } from '@prisma/client';
+import { pickNearestVendor } from '@sahyadri/shared';
 import { hashPassword } from '../src/password';
 import { productSvg, sceneSvg } from './art';
-import { SAMPLE_BANNER_ART, SAMPLE_PRODUCTS } from './samples';
+import { photo, SAMPLE_BANNER_ART, SAMPLE_PHOTOS, SAMPLE_PRODUCTS, sampleSlug } from './samples';
 
 const prisma = new PrismaClient();
 const PASSWORD = process.env.SEED_PASSWORD ?? 'Sahyadri@2026';
@@ -57,17 +58,33 @@ async function seedSettings() {
   );
   await upsertSetting(
     'delivery',
-    { chargePaise: rupees(150), freeAbovePaise: rupees(5000), promise: 'Insured delivery in 3–5 working days' },
+    {
+      chargePaise: rupees(150),
+      freeAbovePaise: rupees(5000),
+      promise: 'Insured delivery in 3–5 working days',
+    },
     'Delivery charge (GST-inclusive) and free-delivery threshold. Cities can override the charge.',
   );
-  await upsertSetting('returns', { windowDays: 7, customizedReturnable: false }, 'Return window after delivery.');
+  await upsertSetting(
+    'returns',
+    { windowDays: 7, customizedReturnable: false },
+    'Return window after delivery.',
+  );
   await upsertSetting(
     'referral',
     { enabled: true, referrerRewardPaise: rupees(500), refereeRewardPaise: rupees(500), rewardValidDays: 90 },
     'Referral rewards, issued as personal coupons after the first order is delivered.',
   );
-  await upsertSetting('cart_reminder', { enabled: true, delayMinutes: 120 }, 'Abandoned-cart WhatsApp reminder timing.');
-  await upsertSetting('review_request', { enabled: true, delayDays: 3 }, 'Days after delivery to ask for a review.');
+  await upsertSetting(
+    'cart_reminder',
+    { enabled: true, delayMinutes: 120 },
+    'Abandoned-cart WhatsApp reminder timing.',
+  );
+  await upsertSetting(
+    'review_request',
+    { enabled: true, delayDays: 3 },
+    'Days after delivery to ask for a review.',
+  );
   await upsertSetting(
     'delivery_proof',
     { otpAbovePaise: rupees(50000) },
@@ -97,34 +114,107 @@ async function seedSettings() {
     ['pearl_rate_feed', 'Live pearl market-rate feed'],
     ['ai_ring_finder', 'AI ranking and explanations in the Ring Finder'],
   ] as const) {
-    await prisma.featureFlag.upsert({ where: { key }, create: { key, description, enabled: false }, update: {} });
+    await prisma.featureFlag.upsert({
+      where: { key },
+      create: { key, description, enabled: false },
+      update: {},
+    });
   }
 }
 
 /** Message templates (WhatsApp, email, SMS, push). Existing ones are never overwritten. */
 async function seedTemplates() {
   const templates: Array<[string, 'WHATSAPP' | 'EMAIL' | 'SMS' | 'PUSH', string, string?]> = [
-    ['ENQUIRY_PRODUCT', 'WHATSAPP', 'Hello Sahyadri Pearls, I am interested in {{productName}} (SKU {{sku}}). My enquiry reference is {{reference}}.'],
-    ['ENQUIRY_GENERAL', 'WHATSAPP', 'Hello Sahyadri Pearls, my enquiry reference is {{reference}}. {{message}}'],
-    ['ENQUIRY_ACK', 'WHATSAPP', 'Thank you for your enquiry {{reference}}. Our {{cityName}} team will reply shortly.'],
-    ['ENQUIRY_ACK', 'EMAIL', 'Dear {{name}},\n\nThank you for your enquiry {{reference}}. A member of our team will contact you shortly.\n\nSahyadri Pearls', 'We received your enquiry {{reference}}'],
-    ['ORDER_PLACED', 'WHATSAPP', 'Thank you {{name}}! Your order {{orderNumber}} for {{total}} is placed. Track it here: {{trackUrl}}'],
-    ['ORDER_PLACED', 'EMAIL', 'Dear {{name}},\n\nThank you for your order {{orderNumber}} ({{total}}).\nTrack it any time: {{trackUrl}}\nInvoice: {{invoiceUrl}}\n\nSahyadri Pearls', 'Order {{orderNumber}} confirmed'],
+    [
+      'ENQUIRY_PRODUCT',
+      'WHATSAPP',
+      'Hello Sahyadri Pearls, I am interested in {{productName}} (SKU {{sku}}). My enquiry reference is {{reference}}.',
+    ],
+    [
+      'ENQUIRY_GENERAL',
+      'WHATSAPP',
+      'Hello Sahyadri Pearls, my enquiry reference is {{reference}}. {{message}}',
+    ],
+    [
+      'ENQUIRY_ACK',
+      'WHATSAPP',
+      'Thank you for your enquiry {{reference}}. Our {{cityName}} team will reply shortly.',
+    ],
+    [
+      'ENQUIRY_ACK',
+      'EMAIL',
+      'Dear {{name}},\n\nThank you for your enquiry {{reference}}. A member of our team will contact you shortly.\n\nSahyadri Pearls',
+      'We received your enquiry {{reference}}',
+    ],
+    [
+      'ORDER_PLACED',
+      'WHATSAPP',
+      'Thank you {{name}}! Your order {{orderNumber}} for {{total}} is placed. Track it here: {{trackUrl}}',
+    ],
+    [
+      'ORDER_PLACED',
+      'EMAIL',
+      'Dear {{name}},\n\nThank you for your order {{orderNumber}} ({{total}}).\nTrack it any time: {{trackUrl}}\nInvoice: {{invoiceUrl}}\n\nSahyadri Pearls',
+      'Order {{orderNumber}} confirmed',
+    ],
     ['ORDER_STATUS', 'WHATSAPP', 'Your order {{orderNumber}} is now {{status}}. Track it: {{trackUrl}}'],
-    ['ORDER_STATUS', 'EMAIL', 'Dear {{name}},\n\nYour order {{orderNumber}} is now {{status}}.\nTrack it: {{trackUrl}}\n\nSahyadri Pearls', 'Order {{orderNumber}}: {{status}}'],
+    [
+      'ORDER_STATUS',
+      'EMAIL',
+      'Dear {{name}},\n\nYour order {{orderNumber}} is now {{status}}.\nTrack it: {{trackUrl}}\n\nSahyadri Pearls',
+      'Order {{orderNumber}}: {{status}}',
+    ],
     ['ORDER_STATUS', 'PUSH', 'Order {{orderNumber}} is now {{status}}.', 'Order update'],
     ['CART_REMINDER', 'WHATSAPP', 'Hi {{name}}, your pearls are waiting in your cart: {{cartUrl}}'],
-    ['CART_REMINDER', 'EMAIL', 'Hi {{name}},\n\nYou left some pieces in your cart. Pick up where you left off: {{cartUrl}}\n\nSahyadri Pearls', 'Your cart is waiting'],
-    ['REVIEW_REQUEST', 'WHATSAPP', 'Hi {{name}}, how do you like {{productName}}? Leave a review: {{reviewUrl}}'],
-    ['REVIEW_REQUEST', 'EMAIL', 'Hi {{name}},\n\nWe hope you love {{productName}}. Tell us what you think: {{reviewUrl}}\n\nSahyadri Pearls', 'How is your {{productName}}?'],
+    [
+      'CART_REMINDER',
+      'EMAIL',
+      'Hi {{name}},\n\nYou left some pieces in your cart. Pick up where you left off: {{cartUrl}}\n\nSahyadri Pearls',
+      'Your cart is waiting',
+    ],
+    [
+      'REVIEW_REQUEST',
+      'WHATSAPP',
+      'Hi {{name}}, how do you like {{productName}}? Leave a review: {{reviewUrl}}',
+    ],
+    [
+      'REVIEW_REQUEST',
+      'EMAIL',
+      'Hi {{name}},\n\nWe hope you love {{productName}}. Tell us what you think: {{reviewUrl}}\n\nSahyadri Pearls',
+      'How is your {{productName}}?',
+    ],
     ['OTP', 'SMS', '{{code}} is your Sahyadri Pearls verification code. It expires in 5 minutes.'],
-    ['OTP', 'EMAIL', 'Your Sahyadri Pearls verification code is {{code}}. It expires in 5 minutes.', 'Your verification code'],
+    [
+      'OTP',
+      'EMAIL',
+      'Your Sahyadri Pearls verification code is {{code}}. It expires in 5 minutes.',
+      'Your verification code',
+    ],
     ['DELIVERY_OTP', 'SMS', 'Share {{code}} with our delivery partner to receive order {{orderNumber}}.'],
     ['DELIVERY_ASSIGNED', 'PUSH', 'New delivery: order {{orderNumber}}, {{area}}.', 'New delivery assigned'],
-    ['CUSTOM_STAGE', 'WHATSAPP', 'Hi {{name}}, an update on your customized {{item}}: it is now {{stage}}. {{quote}}'],
-    ['CUSTOM_STAGE', 'EMAIL', 'Dear {{name}},\n\nYour customized {{item}} is now {{stage}}. {{quote}}\n\nSahyadri Pearls', 'Your customized {{item}}: {{stage}}'],
-    ['PO_SENT', 'EMAIL', 'Dear {{manufacturer}},\n\nPlease find purchase order {{number}} (due {{dueDate}}): {{pdfUrl}}\nKindly confirm acceptance.\n\nSahyadri Pearls', 'Purchase order {{number}}'],
-    ['REFERRAL_REWARD', 'EMAIL', 'Hi {{name}},\n\nYour referral reward is ready. Use code {{code}} for {{amount}} off your next order.\n\nSahyadri Pearls', 'Your referral reward'],
+    [
+      'CUSTOM_STAGE',
+      'WHATSAPP',
+      'Hi {{name}}, an update on your customized {{item}}: it is now {{stage}}. {{quote}}',
+    ],
+    [
+      'CUSTOM_STAGE',
+      'EMAIL',
+      'Dear {{name}},\n\nYour customized {{item}} is now {{stage}}. {{quote}}\n\nSahyadri Pearls',
+      'Your customized {{item}}: {{stage}}',
+    ],
+    [
+      'PO_SENT',
+      'EMAIL',
+      'Dear {{manufacturer}},\n\nPlease find purchase order {{number}} (due {{dueDate}}): {{pdfUrl}}\nKindly confirm acceptance.\n\nSahyadri Pearls',
+      'Purchase order {{number}}',
+    ],
+    [
+      'REFERRAL_REWARD',
+      'EMAIL',
+      'Hi {{name}},\n\nYour referral reward is ready. Use code {{code}} for {{amount}} off your next order.\n\nSahyadri Pearls',
+      'Your referral reward',
+    ],
   ];
   for (const [key, channel, body, subject] of templates) {
     await prisma.messageTemplate.upsert({
@@ -163,7 +253,12 @@ async function seedCategories(withImages: boolean) {
         name,
         slug,
         description: `Pearl ${name.toLowerCase()} traced to named farms.`,
-        imageUrl: withImages ? writeMedia(`samples/category-${slug}.svg`, productSvg(slug === 'loose-pearls' ? 'loose' : slug, 'White')) : null,
+        imageUrl: withImages
+          ? writeMedia(
+              `samples/category-${slug}.svg`,
+              productSvg(slug === 'loose-pearls' ? 'loose' : slug, 'White'),
+            )
+          : null,
         sortOrder: i + 1,
         gstRateBp: 300,
         hsnCode: hsn,
@@ -183,26 +278,37 @@ async function seedProduction() {
   const password = process.env.SEED_ADMIN_PASSWORD ?? '';
   const name = process.env.SEED_ADMIN_NAME?.trim() || 'Owner';
   const phone = process.env.SEED_ADMIN_PHONE?.trim() || null;
-  if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) throw new Error('Set SEED_ADMIN_EMAIL to the owner’s email address.');
-  if (password.length < 12 || !/[A-Za-z]/.test(password) || !/\d/.test(password)) throw new Error('Set SEED_ADMIN_PASSWORD: at least 12 characters with letters and digits.');
-  if (phone && !/^\+91[6-9]\d{9}$/.test(phone)) throw new Error('SEED_ADMIN_PHONE must look like +919812345678.');
+  if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email))
+    throw new Error('Set SEED_ADMIN_EMAIL to the owner’s email address.');
+  if (password.length < 12 || !/[A-Za-z]/.test(password) || !/\d/.test(password))
+    throw new Error('Set SEED_ADMIN_PASSWORD: at least 12 characters with letters and digits.');
+  if (phone && !/^\+91[6-9]\d{9}$/.test(phone))
+    throw new Error('SEED_ADMIN_PHONE must look like +919812345678.');
 
   await seedSettings();
   await seedTemplates();
   await seedCategories(false);
-  const draft = (title: string) => `## ${title}\n\n> Draft. Replace with the approved ${title.toLowerCase()} in Admin → Pages & legal before launch.`;
+  const draft = (title: string) =>
+    `## ${title}\n\n> Draft. Replace with the approved ${title.toLowerCase()} in Admin → Pages & legal before launch.`;
   await seedPages([
     ['terms', 'Terms & Conditions', true, draft('Terms & Conditions')],
     ['refund-policy', 'Refund Policy', true, draft('Refund Policy')],
     ['privacy', 'Privacy Policy', true, draft('Privacy Policy')],
-    ['return-cancellation-policy', 'Return & Cancellation Policy', true, draft('Return & Cancellation Policy')],
+    [
+      'return-cancellation-policy',
+      'Return & Cancellation Policy',
+      true,
+      draft('Return & Cancellation Policy'),
+    ],
     ['shipping-policy', 'Shipping / Delivery Policy', true, draft('Shipping / Delivery Policy')],
   ]);
   const existing = await prisma.user.findFirst({ where: { role: 'SUPER_ADMIN' } });
   if (existing) {
     console.log(`A Super Admin already exists (${existing.email}); no login created.`);
   } else {
-    await prisma.user.create({ data: { role: 'SUPER_ADMIN', name, email, phone, passwordHash: await hashPassword(password) } });
+    await prisma.user.create({
+      data: { role: 'SUPER_ADMIN', name, email, phone, passwordHash: await hashPassword(password) },
+    });
     console.log(`Super Admin created: ${email}`);
   }
   console.log('Production setup complete. Add cities, WhatsApp numbers, partners and products in the admin.');
@@ -211,8 +317,11 @@ async function seedProduction() {
 async function main() {
   if (process.env.SEED_MODE === 'production') return seedProduction();
   // The demo site (DEMO_MODE, D66) is the one production setting that may hold sample data; the API runs this itself.
-  const demo = process.env.SEED_MODE === 'demo' && ['1', 'true', 'yes', 'on'].includes(String(process.env.DEMO_MODE ?? '').toLowerCase());
-  if (process.env.NODE_ENV === 'production' && !demo) throw new Error('Refusing to load sample data with NODE_ENV=production. Use SEED_MODE=production.');
+  const demo =
+    process.env.SEED_MODE === 'demo' &&
+    ['1', 'true', 'yes', 'on'].includes(String(process.env.DEMO_MODE ?? '').toLowerCase());
+  if (process.env.NODE_ENV === 'production' && !demo)
+    throw new Error('Refusing to load sample data with NODE_ENV=production. Use SEED_MODE=production.');
   const pw = await hashPassword(PASSWORD);
 
   await seedSettings();
@@ -250,7 +359,11 @@ async function main() {
     ['Rest of India', 'rest-of-india', 'India'],
   ];
   for (const [i, [name, slug, state]] of moreCities.entries()) {
-    await prisma.city.upsert({ where: { slug }, create: { name, slug, state, sortOrder: 10 + i }, update: {} });
+    await prisma.city.upsert({
+      where: { slug },
+      create: { name, slug, state, sortOrder: 10 + i },
+      update: {},
+    });
   }
 
   // ── Network ──────────────────────────────────────────────────
@@ -314,37 +427,277 @@ async function main() {
       }),
   );
   for (const m of [
-    { name: 'Zaveri Craftworks', contactName: 'Hitesh Zaveri', phone: '+919800000021', cityId: mumbai.id, speciality: 'Gold settings, bridal sets' },
-    { name: 'Pune Silver Studio', contactName: 'Sameer Joshi', phone: '+919800000022', cityId: pune.id, speciality: 'Silver and oxidised settings' },
+    {
+      name: 'Zaveri Craftworks',
+      contactName: 'Hitesh Zaveri',
+      phone: '+919800000021',
+      cityId: mumbai.id,
+      speciality: 'Gold settings, bridal sets',
+    },
+    {
+      name: 'Pune Silver Studio',
+      contactName: 'Sameer Joshi',
+      phone: '+919800000022',
+      cityId: pune.id,
+      speciality: 'Silver and oxidised settings',
+    },
   ]) {
-    await findOrCreate(() => prisma.manufacturer.findFirst({ where: { name: m.name } }), () => prisma.manufacturer.create({ data: m }));
+    await findOrCreate(
+      () => prisma.manufacturer.findFirst({ where: { name: m.name } }),
+      () => prisma.manufacturer.create({ data: m }),
+    );
   }
   const dp = await prisma.deliveryPartner.upsert({
     where: { phone: '+919800000005' },
-    create: { name: 'Vikram Pawar', phone: '+919800000005', vehicleInfo: 'Two-wheeler MH12', cities: { create: [{ cityId: pune.id }] } },
+    create: {
+      name: 'Vikram Pawar',
+      phone: '+919800000005',
+      vehicleInfo: 'Two-wheeler MH12',
+      cities: { create: [{ cityId: pune.id }] },
+    },
     update: {},
   });
   const dp2 = await prisma.deliveryPartner.upsert({
     where: { phone: '+919800000015' },
-    create: { name: 'Suresh Naik', phone: '+919800000015', vehicleInfo: 'Two-wheeler MH02', cities: { create: [{ cityId: mumbai.id }] } },
+    create: {
+      name: 'Suresh Naik',
+      phone: '+919800000015',
+      vehicleInfo: 'Two-wheeler MH02',
+      cities: { create: [{ cityId: mumbai.id }] },
+    },
     update: {},
   });
 
+  // ── Vendor routing: every order goes to the vendor nearest the customer's PIN code, which then hands it to one of
+  // its own delivery partners. Fill in what earlier sample data lacked, never overwriting an admin's edits.
+  const citySlug = async (slug: string) => (await prisma.city.findUniqueOrThrow({ where: { slug } })).id;
+  const [delhiId, bengaluruId] = [await citySlug('delhi-ncr'), await citySlug('bengaluru')];
+  await prisma.vendor.updateMany({
+    where: { id: vendor.id, pincode: null },
+    data: { pincode: '411005', address: 'Shivajinagar, Pune 411005' },
+  });
+  await prisma.vendor.updateMany({
+    where: { id: vendor2.id, pincode: null },
+    data: { pincode: '400050', address: 'Bandra West, Mumbai 400050' },
+  });
+  const vendor3 = await findOrCreate(
+    () => prisma.vendor.findFirst({ where: { name: 'Delhi Pearl Atelier' } }),
+    () =>
+      prisma.vendor.create({
+        data: {
+          name: 'Delhi Pearl Atelier',
+          contactName: 'Kavya Malhotra',
+          phone: '+919800000023',
+          email: 'vendor3@sahyadripearls.test',
+          address: 'Karol Bagh, New Delhi 110005',
+          pincode: '110005',
+          cities: { create: [{ cityId: delhiId }] },
+        },
+      }),
+  );
+  const vendor4 = await findOrCreate(
+    () => prisma.vendor.findFirst({ where: { name: 'Bengaluru Pearl Co.' } }),
+    () =>
+      prisma.vendor.create({
+        data: {
+          name: 'Bengaluru Pearl Co.',
+          contactName: 'Arjun Rao',
+          phone: '+919800000024',
+          email: 'vendor4@sahyadripearls.test',
+          address: 'Jayanagar, Bengaluru 560011',
+          pincode: '560011',
+          cities: { create: [{ cityId: bengaluruId }] },
+        },
+      }),
+  );
+  await prisma.deliveryPartner.updateMany({
+    where: { id: dp.id, vendorId: null },
+    data: { vendorId: vendor.id },
+  });
+  await prisma.deliveryPartner.updateMany({
+    where: { id: dp2.id, vendorId: null },
+    data: { vendorId: vendor2.id },
+  });
+  const riders: Array<{
+    name: string;
+    phone: string;
+    vehicleInfo: string;
+    cityId: string;
+    vendorId: string;
+    isAvailable: boolean;
+  }> = [
+    {
+      name: 'Amit Jadhav',
+      phone: '+919800000025',
+      vehicleInfo: 'Two-wheeler MH12',
+      cityId: pune.id,
+      vendorId: vendor.id,
+      isAvailable: true,
+    },
+    {
+      name: 'Sanjay More',
+      phone: '+919800000028',
+      vehicleInfo: 'Two-wheeler MH14',
+      cityId: pune.id,
+      vendorId: vendor.id,
+      isAvailable: false,
+    },
+    {
+      name: 'Rahul Verma',
+      phone: '+919800000026',
+      vehicleInfo: 'Two-wheeler DL3C',
+      cityId: delhiId,
+      vendorId: vendor3.id,
+      isAvailable: true,
+    },
+    {
+      name: 'Kiran Rao',
+      phone: '+919800000027',
+      vehicleInfo: 'Two-wheeler KA01',
+      cityId: bengaluruId,
+      vendorId: vendor4.id,
+      isAvailable: true,
+    },
+  ];
+  // Orders placed before routing existed go to their nearest vendor too, so every vendor panel shows its orders.
+  const vendorsForRouting = (
+    await prisma.vendor.findMany({
+      where: { isActive: true },
+      select: { id: true, pincode: true, cities: { select: { cityId: true } } },
+    })
+  ).map((v) => ({ ...v, cityIds: v.cities.map((c) => c.cityId) }));
+  for (const o of await prisma.order.findMany({
+    where: { fulfilmentVendorId: null },
+    select: { id: true, cityId: true, addressSnapshot: true },
+  })) {
+    const pin = (o.addressSnapshot as { pincode?: string } | null)?.pincode;
+    const v = pickNearestVendor(vendorsForRouting, pin, o.cityId);
+    if (v) await prisma.order.update({ where: { id: o.id }, data: { fulfilmentVendorId: v.id } });
+  }
+  const riderRows = [];
+  for (const r of riders) {
+    riderRows.push(
+      await prisma.deliveryPartner.upsert({
+        where: { phone: r.phone },
+        create: {
+          name: r.name,
+          phone: r.phone,
+          vehicleInfo: r.vehicleInfo,
+          vendorId: r.vendorId,
+          isAvailable: r.isAvailable,
+          cities: { create: [{ cityId: r.cityId }] },
+        },
+        update: {},
+      }),
+    );
+  }
+
   // ── Users (one per role, plus a second of each partner for permission tests) ──
   const users: Array<Prisma.UserCreateInput & { email?: string; phone?: string }> = [
-    { role: 'SUPER_ADMIN', name: 'Super Admin', email: 'admin@sahyadripearls.test', phone: '+919800000001', passwordHash: pw },
-    { role: 'STAFF', name: 'Catalogue Staff', email: 'staff@sahyadripearls.test', phone: '+919800000002', passwordHash: pw },
-    { role: 'CITY_MANAGER', name: 'Pune City Manager', email: 'pune.manager@sahyadripearls.test', phone: '+919800000006', passwordHash: pw, city: { connect: { id: pune.id } } },
-    { role: 'CITY_MANAGER', name: 'Mumbai City Manager', email: 'mumbai.manager@sahyadripearls.test', phone: '+919800000016', passwordHash: pw, city: { connect: { id: mumbai.id } } },
-    { role: 'VENDOR', name: 'Rohan Sawant', email: 'vendor@sahyadripearls.test', phone: '+919800000003', vendor: { connect: { id: vendor.id } } },
-    { role: 'VENDOR', name: 'Meera Kulkarni', email: 'vendor2@sahyadripearls.test', phone: '+919800000013', vendor: { connect: { id: vendor2.id } } },
-    { role: 'FRANCHISE', name: 'Anita Deshmukh', email: 'franchise.pune@sahyadripearls.test', phone: '+919800000004', franchise: { connect: { id: franchise.id } }, city: { connect: { id: pune.id } } },
-    { role: 'FRANCHISE', name: 'Farah Khan', email: 'franchise.mumbai@sahyadripearls.test', phone: '+919800000014', franchise: { connect: { id: franchise2.id } }, city: { connect: { id: mumbai.id } } },
-    { role: 'DELIVERY_PARTNER', name: 'Vikram Pawar', phone: '+919800000005', deliveryPartner: { connect: { id: dp.id } }, city: { connect: { id: pune.id } } },
-    { role: 'DELIVERY_PARTNER', name: 'Suresh Naik', phone: '+919800000015', deliveryPartner: { connect: { id: dp2.id } }, city: { connect: { id: mumbai.id } } },
+    {
+      role: 'SUPER_ADMIN',
+      name: 'Super Admin',
+      email: 'admin@sahyadripearls.test',
+      phone: '+919800000001',
+      passwordHash: pw,
+    },
+    {
+      role: 'STAFF',
+      name: 'Catalogue Staff',
+      email: 'staff@sahyadripearls.test',
+      phone: '+919800000002',
+      passwordHash: pw,
+    },
+    {
+      role: 'CITY_MANAGER',
+      name: 'Pune City Manager',
+      email: 'pune.manager@sahyadripearls.test',
+      phone: '+919800000006',
+      passwordHash: pw,
+      city: { connect: { id: pune.id } },
+    },
+    {
+      role: 'CITY_MANAGER',
+      name: 'Mumbai City Manager',
+      email: 'mumbai.manager@sahyadripearls.test',
+      phone: '+919800000016',
+      passwordHash: pw,
+      city: { connect: { id: mumbai.id } },
+    },
+    {
+      role: 'VENDOR',
+      name: 'Rohan Sawant',
+      email: 'vendor@sahyadripearls.test',
+      phone: '+919800000003',
+      vendor: { connect: { id: vendor.id } },
+    },
+    {
+      role: 'VENDOR',
+      name: 'Meera Kulkarni',
+      email: 'vendor2@sahyadripearls.test',
+      phone: '+919800000013',
+      vendor: { connect: { id: vendor2.id } },
+    },
+    {
+      role: 'FRANCHISE',
+      name: 'Anita Deshmukh',
+      email: 'franchise.pune@sahyadripearls.test',
+      phone: '+919800000004',
+      franchise: { connect: { id: franchise.id } },
+      city: { connect: { id: pune.id } },
+    },
+    {
+      role: 'FRANCHISE',
+      name: 'Farah Khan',
+      email: 'franchise.mumbai@sahyadripearls.test',
+      phone: '+919800000014',
+      franchise: { connect: { id: franchise2.id } },
+      city: { connect: { id: mumbai.id } },
+    },
+    {
+      role: 'DELIVERY_PARTNER',
+      name: 'Vikram Pawar',
+      phone: '+919800000005',
+      deliveryPartner: { connect: { id: dp.id } },
+      city: { connect: { id: pune.id } },
+    },
+    {
+      role: 'DELIVERY_PARTNER',
+      name: 'Suresh Naik',
+      phone: '+919800000015',
+      deliveryPartner: { connect: { id: dp2.id } },
+      city: { connect: { id: mumbai.id } },
+    },
+    {
+      role: 'VENDOR',
+      name: 'Kavya Malhotra',
+      email: 'vendor3@sahyadripearls.test',
+      phone: '+919800000023',
+      vendor: { connect: { id: vendor3.id } },
+    },
+    {
+      role: 'VENDOR',
+      name: 'Arjun Rao',
+      email: 'vendor4@sahyadripearls.test',
+      phone: '+919800000024',
+      vendor: { connect: { id: vendor4.id } },
+    },
+    ...riderRows.map((r, i) => ({
+      role: 'DELIVERY_PARTNER' as const,
+      name: r.name,
+      phone: r.phone,
+      deliveryPartner: { connect: { id: r.id } },
+      city: { connect: { id: riders[i]!.cityId } },
+    })),
   ];
   for (const u of users) {
-    const existing = await prisma.user.findFirst({ where: { OR: [u.email ? { email: u.email } : {}, u.phone ? { phone: u.phone } : {}].filter((x) => Object.keys(x).length) } });
+    const existing = await prisma.user.findFirst({
+      where: {
+        OR: [u.email ? { email: u.email } : {}, u.phone ? { phone: u.phone } : {}].filter(
+          (x) => Object.keys(x).length,
+        ),
+      },
+    });
     if (!existing) await prisma.user.create({ data: u });
   }
   const staff = await prisma.user.findUniqueOrThrow({ where: { email: 'staff@sahyadripearls.test' } });
@@ -364,8 +717,20 @@ async function main() {
   }
 
   for (const c of [
-    { name: 'Asha Patil', phone: '+919800000007', email: 'asha@example.com', code: 'ASHA7K2P', cityId: pune.id },
-    { name: 'Karan Mehta', phone: '+919800000017', email: 'karan@example.com', code: 'KARAN9M4', cityId: mumbai.id },
+    {
+      name: 'Asha Patil',
+      phone: '+919800000007',
+      email: 'asha@example.com',
+      code: 'ASHA7K2P',
+      cityId: pune.id,
+    },
+    {
+      name: 'Karan Mehta',
+      phone: '+919800000017',
+      email: 'karan@example.com',
+      code: 'KARAN9M4',
+      cityId: mumbai.id,
+    },
   ]) {
     const exists = await prisma.user.findUnique({ where: { phone: c.phone } });
     if (!exists)
@@ -390,7 +755,8 @@ async function main() {
         location: 'Mulshi, Pune district, Maharashtra',
         latitude: new Prisma.Decimal(18.5167),
         longitude: new Prisma.Decimal(73.5167),
-        summary: 'Freshwater pearls grown in the clean, cool waters of the Mulshi reservoir in the Sahyadri hills.',
+        summary:
+          'Freshwater pearls grown in the clean, cool waters of the Mulshi reservoir in the Sahyadri hills.',
         story:
           'Mulshi Lake Farm sits where the monsoon fills the Sahyadri valleys. Each mussel is nucleated by hand and tended for 18 to 24 months in floating nets. The farm works with local families, harvests once a year after the rains, and grades every pearl by lustre, surface and shape before it leaves the water’s edge.',
         heroImageUrl: writeMedia('samples/farm-mulshi.svg', sceneSvg('Mulshi Lake Farm', 'water')),
@@ -407,7 +773,8 @@ async function main() {
         location: 'Ratnagiri, Maharashtra',
         latitude: new Prisma.Decimal(16.9944),
         longitude: new Prisma.Decimal(73.3),
-        summary: 'Pearls from the sheltered creeks of the Konkan coast, known for warm cream and golden tones.',
+        summary:
+          'Pearls from the sheltered creeks of the Konkan coast, known for warm cream and golden tones.',
         story:
           'On the Konkan coast, tidal creeks bring rich water to the farm’s pearl beds. The warm water gives these pearls their soft cream and golden overtones. Every harvest is logged by bed and date, so each piece can be traced back to where it grew.',
         heroImageUrl: writeMedia('samples/farm-konkan.svg', sceneSvg('Konkan Coast Farm', 'farm')),
@@ -448,11 +815,17 @@ async function main() {
   const created: Record<string, string> = {};
   for (const [i, [name, cat, col, farm, price, carat, shape, colour, x = {}]] of products.entries()) {
     const sku = `SP-${cat.slice(0, 2).toUpperCase()}-${String(i + 1).padStart(4, '0')}`;
-    const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+    const slug = name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-|-$/g, '');
     const kind = cat === 'loose-pearls' ? 'loose' : cat;
     const isUnique = x.unique ?? false;
     const mainUrl = writeMedia(`samples/products/${slug}-1.svg`, productSvg(kind, colour, 0));
-    const altUrl = writeMedia(`samples/products/${slug}-2.svg`, productSvg(kind, colour === 'White' ? 'Cream' : 'White', 1));
+    const altUrl = writeMedia(
+      `samples/products/${slug}-2.svg`,
+      productSvg(kind, colour === 'White' ? 'Cream' : 'White', 1),
+    );
     const pricePaise = rupees(price);
     const p = await prisma.product.upsert({
       where: { sku },
@@ -488,8 +861,22 @@ async function main() {
         sortOrder: i,
         images: {
           create: [
-            { kind: 'MAIN', url: mainUrl, alt: `${name}, ${colour.toLowerCase()} pearls`, width: 800, height: 800, sortOrder: 0 },
-            { kind: 'CAROUSEL', url: altUrl, alt: `${name}, alternate view`, width: 800, height: 800, sortOrder: 1 },
+            {
+              kind: 'MAIN',
+              url: mainUrl,
+              alt: `${name}, ${colour.toLowerCase()} pearls`,
+              width: 800,
+              height: 800,
+              sortOrder: 0,
+            },
+            {
+              kind: 'CAROUSEL',
+              url: altUrl,
+              alt: `${name}, alternate view`,
+              width: 800,
+              height: 800,
+              sortOrder: 1,
+            },
           ],
         },
         cities: undefined,
@@ -503,13 +890,22 @@ async function main() {
         code: `CERT-${sku}`,
         productId: p.id,
         issuedBy: 'Sahyadri Pearls Grading Desk',
-        details: { grade: p.grade, caratWeight: carat, shape, colour, farm: farm === 'mulshi' ? 'Mulshi Lake Farm' : 'Konkan Coast Farm' },
+        details: {
+          grade: p.grade,
+          caratWeight: carat,
+          shape,
+          colour,
+          farm: farm === 'mulshi' ? 'Mulshi Lake Farm' : 'Konkan Coast Farm',
+        },
       },
       update: {},
     });
   }
   // related products: next two in the same category
-  const all = await prisma.product.findMany({ select: { id: true, categoryId: true }, orderBy: { sortOrder: 'asc' } });
+  const all = await prisma.product.findMany({
+    select: { id: true, categoryId: true },
+    orderBy: { sortOrder: 'asc' },
+  });
   for (const p of all) {
     const same = all.filter((q) => q.categoryId === p.categoryId && q.id !== p.id).slice(0, 3);
     for (const [i, r] of same.entries()) {
@@ -532,13 +928,27 @@ async function main() {
   const waMumbai = await wa('Mumbai team', '+919800000020', mumbai.id);
   const waWholesale = await wa('Wholesale', '+919800000030', null);
   const rules: Prisma.RoutingRuleUncheckedCreateInput[] = [
-    { name: 'Bulk enquiries → wholesale', priority: 10, enquiryType: 'BULK', whatsAppNumberId: waWholesale.id },
-    { name: 'Pune → Pune team (Koregaon Park franchise)', priority: 50, cityId: pune.id, whatsAppNumberId: waPune.id, assignFranchiseId: franchise.id },
+    {
+      name: 'Bulk enquiries → wholesale',
+      priority: 10,
+      enquiryType: 'BULK',
+      whatsAppNumberId: waWholesale.id,
+    },
+    {
+      name: 'Pune → Pune team (Koregaon Park franchise)',
+      priority: 50,
+      cityId: pune.id,
+      whatsAppNumberId: waPune.id,
+      assignFranchiseId: franchise.id,
+    },
     { name: 'Mumbai → Mumbai team', priority: 50, cityId: mumbai.id, whatsAppNumberId: waMumbai.id },
     { name: 'Everything else → main number', priority: 1000, whatsAppNumberId: waDefault.id },
   ];
   for (const r of rules) {
-    await findOrCreate(() => prisma.routingRule.findFirst({ where: { name: r.name } }), () => prisma.routingRule.create({ data: r }));
+    await findOrCreate(
+      () => prisma.routingRule.findFirst({ where: { name: r.name } }),
+      () => prisma.routingRule.create({ data: r }),
+    );
   }
   await seedTemplates();
 
@@ -547,55 +957,209 @@ async function main() {
   // matched by placement and title, and never change one the admin has edited.
   for (const [file, svg] of SAMPLE_BANNER_ART()) writeMedia(`samples/${file}`, svg);
   const banners = [
-    { placement: 'HOME_HERO', title: 'Pearls with a birthplace', subtitle: 'Every pearl traced to a named farm in the Sahyadri hills and the Konkan coast.', imageUrl: '/media/samples/banner-hero.svg', linkUrl: '/jewellery', ctaLabel: 'Shop now', sortOrder: 1 },
-    { placement: 'HOME_HERO', title: 'Golden pearls', subtitle: 'Rare, warm and quietly radiant.', imageUrl: '/media/samples/banner-golden.svg', linkUrl: '/jewellery?colour=Golden', ctaLabel: 'Shop golden pearls', sortOrder: 2 },
-    { placement: 'HOME_HERO', title: 'Made for you', subtitle: 'Bridal sets and bespoke pieces, designed with our craftspeople.', imageUrl: '/media/samples/banner-custom.svg', linkUrl: '/customized-jewellery', ctaLabel: 'Start a design', sortOrder: 3 },
-    { placement: 'HOME_SECONDARY', title: 'The Bridal Edit', subtitle: 'Heirloom strands for the big day.', imageUrl: '/media/samples/banner-bridal.svg', linkUrl: '/collections/bridal', ctaLabel: 'Shop bridal', sortOrder: 1 },
-    { placement: 'HOME_SECONDARY', title: 'Gifts under ₹10,000', subtitle: 'Gift-wrapped, free.', imageUrl: '/media/samples/banner-gifts.svg', linkUrl: '/gifts', ctaLabel: 'Shop gifts', sortOrder: 2 },
-    { placement: 'HOME_SECONDARY', title: 'Everyday pearls', subtitle: 'Light pieces to wear daily.', imageUrl: '/media/samples/banner-everyday.svg', linkUrl: '/collections/everyday', ctaLabel: 'Shop everyday', sortOrder: 3 },
+    {
+      placement: 'HOME_HERO',
+      title: 'Pearls with a birthplace',
+      subtitle: 'Every pearl traced to a named farm in the Sahyadri hills and the Konkan coast.',
+      imageUrl: '/media/samples/banner-hero.svg',
+      linkUrl: '/jewellery',
+      ctaLabel: 'Shop now',
+      sortOrder: 1,
+    },
+    {
+      placement: 'HOME_HERO',
+      title: 'Golden pearls',
+      subtitle: 'Rare, warm and quietly radiant.',
+      imageUrl: '/media/samples/banner-golden.svg',
+      linkUrl: '/jewellery?colour=Golden',
+      ctaLabel: 'Shop golden pearls',
+      sortOrder: 2,
+    },
+    {
+      placement: 'HOME_HERO',
+      title: 'Made for you',
+      subtitle: 'Bridal sets and bespoke pieces, designed with our craftspeople.',
+      imageUrl: '/media/samples/banner-custom.svg',
+      linkUrl: '/customized-jewellery',
+      ctaLabel: 'Start a design',
+      sortOrder: 3,
+    },
+    {
+      placement: 'HOME_SECONDARY',
+      title: 'The Bridal Edit',
+      subtitle: 'Heirloom strands for the big day.',
+      imageUrl: '/media/samples/banner-bridal.svg',
+      linkUrl: '/collections/bridal',
+      ctaLabel: 'Shop bridal',
+      sortOrder: 1,
+    },
+    {
+      placement: 'HOME_SECONDARY',
+      title: 'Gifts under ₹10,000',
+      subtitle: 'Gift-wrapped, free.',
+      imageUrl: '/media/samples/banner-gifts.svg',
+      linkUrl: '/gifts',
+      ctaLabel: 'Shop gifts',
+      sortOrder: 2,
+    },
+    {
+      placement: 'HOME_SECONDARY',
+      title: 'Everyday pearls',
+      subtitle: 'Light pieces to wear daily.',
+      imageUrl: '/media/samples/banner-everyday.svg',
+      linkUrl: '/collections/everyday',
+      ctaLabel: 'Shop everyday',
+      sortOrder: 3,
+    },
   ];
   for (const b of banners) {
-    await findOrCreate(() => prisma.banner.findFirst({ where: { placement: b.placement, title: b.title } }), () => prisma.banner.create({ data: b }));
+    await findOrCreate(
+      () => prisma.banner.findFirst({ where: { placement: b.placement, title: b.title } }),
+      () => prisma.banner.create({ data: b }),
+    );
   }
+  await useSamplePhotos();
   const blocks: Array<[string, Prisma.ContentBlockCreateInput['kind'], string | null, unknown]> = [
-    ['home.story', 'STORY', 'From our farms', { body: 'Every Sahyadri pearl is grown on a farm we can name, by people we know. We follow each pearl from the water to your hands.', linkLabel: 'Visit our farms', linkUrl: '/our-farm', imageUrl: '/media/samples/farm-mulshi.svg' }],
-    ['home.trust', 'TRUST_POINTS', 'Why Sahyadri Pearls', { items: [
-      { icon: 'farm', title: 'Farm-traced', text: 'Every piece names the farm its pearls came from.' },
-      { icon: 'certificate', title: 'Certified', text: 'A certificate of authenticity with a QR code you can verify.' },
-      { icon: 'truck', title: 'Insured delivery', text: 'Insured, tracked delivery across India.' },
-      { icon: 'chat', title: 'Talk to us', text: 'Questions? Our team answers on WhatsApp.' },
-    ] }],
+    [
+      'home.story',
+      'STORY',
+      'From our farms',
+      {
+        body: 'Every Sahyadri pearl is grown on a farm we can name, by people we know. We follow each pearl from the water to your hands.',
+        linkLabel: 'Visit our farms',
+        linkUrl: '/our-farm',
+        imageUrl: '/media/samples/farm-mulshi.svg',
+      },
+    ],
+    [
+      'home.trust',
+      'TRUST_POINTS',
+      'Why Sahyadri Pearls',
+      {
+        items: [
+          { icon: 'farm', title: 'Farm-traced', text: 'Every piece names the farm its pearls came from.' },
+          {
+            icon: 'certificate',
+            title: 'Certified',
+            text: 'A certificate of authenticity with a QR code you can verify.',
+          },
+          { icon: 'truck', title: 'Insured delivery', text: 'Insured, tracked delivery across India.' },
+          { icon: 'chat', title: 'Talk to us', text: 'Questions? Our team answers on WhatsApp.' },
+        ],
+      },
+    ],
     ['home.featured', 'FEATURED_PRODUCTS', 'Featured pieces', { mode: 'flagged', limit: 8 }],
     ['home.collections', 'FEATURED_COLLECTIONS', 'Collections', { mode: 'flagged' }],
-    ['home.custom_cta', 'CTA', 'Something only you will wear', { body: 'Tell us your idea and our designers will bring it to life with pearls from our farms.', linkLabel: 'Design your piece', linkUrl: '/customized-jewellery' }],
-    ['product.trust', 'TRUST_POINTS', null, { items: [
-      { icon: 'farm', title: 'Origin', text: 'Traced to its farm' },
-      { icon: 'certificate', title: 'Certified', text: 'QR-verifiable certificate' },
-      { icon: 'truck', title: 'Delivery', text: 'Insured, 3–5 working days' },
-    ] }],
-    ['footer.about', 'RICH_TEXT', 'About Us', { body: 'Sahyadri Pearls brings farm-traced pearls from Maharashtra to your jewellery box.', address: 'Prabhat Road, Erandwane, Pune 411004, Maharashtra' }],
-    ['contact.info', 'RICH_TEXT', 'Contact', { phone: '+91 98000 00000', email: 'care@sahyadripearls.test', address: 'Prabhat Road, Erandwane, Pune 411004, Maharashtra', hours: 'Mon–Sat, 10 am – 7 pm', mapEmbedUrl: 'https://www.google.com/maps?q=Prabhat+Road+Pune&output=embed' }],
-    ['bulk.intro', 'RICH_TEXT', 'Bulk buying', { body: 'Wedding gifting, corporate orders and trade buyers: tell us what you need and our wholesale team will send a quote.' }],
+    [
+      'home.custom_cta',
+      'CTA',
+      'Something only you will wear',
+      {
+        body: 'Tell us your idea and our designers will bring it to life with pearls from our farms.',
+        linkLabel: 'Design your piece',
+        linkUrl: '/customized-jewellery',
+      },
+    ],
+    [
+      'product.trust',
+      'TRUST_POINTS',
+      null,
+      {
+        items: [
+          { icon: 'farm', title: 'Origin', text: 'Traced to its farm' },
+          { icon: 'certificate', title: 'Certified', text: 'QR-verifiable certificate' },
+          { icon: 'truck', title: 'Delivery', text: 'Insured, 3–5 working days' },
+        ],
+      },
+    ],
+    [
+      'footer.about',
+      'RICH_TEXT',
+      'About Us',
+      {
+        body: 'Sahyadri Pearls brings farm-traced pearls from Maharashtra to your jewellery box.',
+        address: 'Prabhat Road, Erandwane, Pune 411004, Maharashtra',
+      },
+    ],
+    [
+      'contact.info',
+      'RICH_TEXT',
+      'Contact',
+      {
+        phone: '+91 98000 00000',
+        email: 'care@sahyadripearls.test',
+        address: 'Prabhat Road, Erandwane, Pune 411004, Maharashtra',
+        hours: 'Mon–Sat, 10 am – 7 pm',
+        mapEmbedUrl: 'https://www.google.com/maps?q=Prabhat+Road+Pune&output=embed',
+      },
+    ],
+    [
+      'bulk.intro',
+      'RICH_TEXT',
+      'Bulk buying',
+      {
+        body: 'Wedding gifting, corporate orders and trade buyers: tell us what you need and our wholesale team will send a quote.',
+      },
+    ],
   ];
   for (const [key, kind, title, data] of blocks) {
-    await prisma.contentBlock.upsert({ where: { key }, create: { key, kind, title, data: data as Prisma.InputJsonValue }, update: {} });
+    await prisma.contentBlock.upsert({
+      where: { key },
+      create: { key, kind, title, data: data as Prisma.InputJsonValue },
+      update: {},
+    });
   }
   const pages: Array<[string, string, boolean, string]> = [
     ['terms', 'Terms & Conditions', true, legal('Terms & Conditions')],
     ['refund-policy', 'Refund Policy', true, legal('Refund Policy')],
     ['privacy', 'Privacy Policy', true, legal('Privacy Policy')],
-    ['return-cancellation-policy', 'Return & Cancellation Policy', true, legal('Return & Cancellation Policy')],
+    [
+      'return-cancellation-policy',
+      'Return & Cancellation Policy',
+      true,
+      legal('Return & Cancellation Policy'),
+    ],
     ['shipping-policy', 'Shipping / Delivery Policy', true, legal('Shipping / Delivery Policy')],
-    ['our-story', 'Our Story', false, '## Our Story\n\nSahyadri Pearls began on the banks of the Mulshi reservoir, with a simple idea: every pearl should have a birthplace you can name.\n\nToday we work with farms in the Sahyadri hills and on the Konkan coast. We grade every pearl by hand, set it with local craftspeople, and send it to you with a certificate that traces it back to the water it grew in.'],
-    ['about', 'About Us', false, '## About Sahyadri Pearls\n\nWe are a Pune-based pearl jewellery house selling through our own team, partner vendors and city franchises.\n\n**Address:** Prabhat Road, Erandwane, Pune 411004, Maharashtra'],
+    [
+      'our-story',
+      'Our Story',
+      false,
+      '## Our Story\n\nSahyadri Pearls began on the banks of the Mulshi reservoir, with a simple idea: every pearl should have a birthplace you can name.\n\nToday we work with farms in the Sahyadri hills and on the Konkan coast. We grade every pearl by hand, set it with local craftspeople, and send it to you with a certificate that traces it back to the water it grew in.',
+    ],
+    [
+      'about',
+      'About Us',
+      false,
+      '## About Sahyadri Pearls\n\nWe are a Pune-based pearl jewellery house selling through our own team, partner vendors and city franchises.\n\n**Address:** Prabhat Road, Erandwane, Pune 411004, Maharashtra',
+    ],
   ];
   await seedPages(pages);
   if ((await prisma.testimonial.count()) === 0)
     await prisma.testimonial.createMany({
       data: [
-        { name: 'Priya S.', city: 'Pune', quote: 'The strand I bought came with the farm’s name on the certificate. My mother loved that story as much as the pearls.', rating: 5, sortOrder: 1 },
-        { name: 'Nikhil R.', city: 'Mumbai', quote: 'They helped me design my wife’s anniversary ring over WhatsApp. Beautiful work and on time.', rating: 5, sortOrder: 2 },
-        { name: 'Sneha K.', city: 'Nashik', quote: 'Lovely lustre, careful packaging and very honest advice.', rating: 4, sortOrder: 3 },
+        {
+          name: 'Priya S.',
+          city: 'Pune',
+          quote:
+            'The strand I bought came with the farm’s name on the certificate. My mother loved that story as much as the pearls.',
+          rating: 5,
+          sortOrder: 1,
+        },
+        {
+          name: 'Nikhil R.',
+          city: 'Mumbai',
+          quote:
+            'They helped me design my wife’s anniversary ring over WhatsApp. Beautiful work and on time.',
+          rating: 5,
+          sortOrder: 2,
+        },
+        {
+          name: 'Sneha K.',
+          city: 'Nashik',
+          quote: 'Lovely lustre, careful packaging and very honest advice.',
+          rating: 4,
+          sortOrder: 3,
+        },
       ],
     });
   if ((await prisma.galleryItem.count()) === 0)
@@ -610,26 +1174,96 @@ async function main() {
   if ((await prisma.faq.count()) === 0)
     await prisma.faq.createMany({
       data: [
-        { group: 'Pearls', question: 'Are your pearls real?', answer: 'Yes. Every pearl is a cultured pearl grown on a named farm, and every piece comes with a certificate of authenticity you can verify by scanning its QR code.', sortOrder: 1 },
-        { group: 'Pearls', question: 'How do I care for pearls?', answer: 'Put them on last and take them off first. Wipe with a soft cloth after wearing and store them separately from other jewellery.', sortOrder: 2 },
-        { group: 'Orders', question: 'Can I pay cash on delivery?', answer: 'Yes, for most orders. Very high-value and customized pieces need online payment or an advance.', sortOrder: 3 },
-        { group: 'Orders', question: 'Why do some pieces say "Price on request"?', answer: 'Rare and one-of-a-kind pieces are priced individually. Tap "Enquire on WhatsApp" and our team will share the price and details.', sortOrder: 4 },
-        { group: 'Delivery', question: 'How long does delivery take?', answer: 'Most orders arrive in 3 to 5 working days. Every shipment is insured and tracked.', sortOrder: 5 },
-        { group: 'Returns', question: 'Can I return a piece?', answer: 'Yes, within 7 days of delivery, unworn and with its certificate. Customized pieces cannot be returned.', sortOrder: 6 },
+        {
+          group: 'Pearls',
+          question: 'Are your pearls real?',
+          answer:
+            'Yes. Every pearl is a cultured pearl grown on a named farm, and every piece comes with a certificate of authenticity you can verify by scanning its QR code.',
+          sortOrder: 1,
+        },
+        {
+          group: 'Pearls',
+          question: 'How do I care for pearls?',
+          answer:
+            'Put them on last and take them off first. Wipe with a soft cloth after wearing and store them separately from other jewellery.',
+          sortOrder: 2,
+        },
+        {
+          group: 'Orders',
+          question: 'Can I pay cash on delivery?',
+          answer:
+            'Yes, for most orders. Very high-value and customized pieces need online payment or an advance.',
+          sortOrder: 3,
+        },
+        {
+          group: 'Orders',
+          question: 'Why do some pieces say "Price on request"?',
+          answer:
+            'Rare and one-of-a-kind pieces are priced individually. Tap "Enquire on WhatsApp" and our team will share the price and details.',
+          sortOrder: 4,
+        },
+        {
+          group: 'Delivery',
+          question: 'How long does delivery take?',
+          answer: 'Most orders arrive in 3 to 5 working days. Every shipment is insured and tracked.',
+          sortOrder: 5,
+        },
+        {
+          group: 'Returns',
+          question: 'Can I return a piece?',
+          answer:
+            'Yes, within 7 days of delivery, unworn and with its certificate. Customized pieces cannot be returned.',
+          sortOrder: 6,
+        },
       ],
     });
   for (const j of [
-    { title: 'Jewellery Sales Associate', slug: 'jewellery-sales-associate-pune', location: 'Pune', description: 'Help customers choose pearls in our Koregaon Park store and on WhatsApp.', eligibility: 'Graduate; 1+ year retail experience; English and Marathi.' },
-    { title: 'Pearl Grader (Trainee)', slug: 'pearl-grader-trainee-ratnagiri', location: 'Ratnagiri', description: 'Learn to grade pearls by lustre, surface and shape at our Konkan farm.', eligibility: 'Keen eye for detail; training provided.' },
+    {
+      title: 'Jewellery Sales Associate',
+      slug: 'jewellery-sales-associate-pune',
+      location: 'Pune',
+      description: 'Help customers choose pearls in our Koregaon Park store and on WhatsApp.',
+      eligibility: 'Graduate; 1+ year retail experience; English and Marathi.',
+    },
+    {
+      title: 'Pearl Grader (Trainee)',
+      slug: 'pearl-grader-trainee-ratnagiri',
+      location: 'Ratnagiri',
+      description: 'Learn to grade pearls by lustre, surface and shape at our Konkan farm.',
+      eligibility: 'Keen eye for detail; training provided.',
+    },
   ]) {
     await prisma.jobOpening.upsert({ where: { slug: j.slug }, create: j, update: {} });
   }
 
   // ── Coupons ──────────────────────────────────────────────────
   for (const c of [
-    { code: 'WELCOME10', description: '10% off your first order (up to ₹2,000)', discountType: 'PERCENT' as const, discountValue: 1000, maxDiscountPaise: rupees(2000), firstOrderOnly: true, showOnOffersPage: true },
-    { code: 'PEARL500', description: '₹500 off orders above ₹10,000', discountType: 'FLAT' as const, discountValue: rupees(500), minOrderPaise: rupees(10000), showOnOffersPage: true, perCustomerLimit: 3 },
-    { code: 'EARRINGS15', description: '15% off earrings', discountType: 'PERCENT' as const, discountValue: 1500, showOnOffersPage: true, categories: { create: [{ categoryId: cats['earrings']!.id }] } },
+    {
+      code: 'WELCOME10',
+      description: '10% off your first order (up to ₹2,000)',
+      discountType: 'PERCENT' as const,
+      discountValue: 1000,
+      maxDiscountPaise: rupees(2000),
+      firstOrderOnly: true,
+      showOnOffersPage: true,
+    },
+    {
+      code: 'PEARL500',
+      description: '₹500 off orders above ₹10,000',
+      discountType: 'FLAT' as const,
+      discountValue: rupees(500),
+      minOrderPaise: rupees(10000),
+      showOnOffersPage: true,
+      perCustomerLimit: 3,
+    },
+    {
+      code: 'EARRINGS15',
+      description: '15% off earrings',
+      discountType: 'PERCENT' as const,
+      discountValue: 1500,
+      showOnOffersPage: true,
+      categories: { create: [{ categoryId: cats['earrings']!.id }] },
+    },
   ]) {
     const exists = await prisma.coupon.findUnique({ where: { code: c.code } });
     if (!exists) await prisma.coupon.create({ data: c });
@@ -637,8 +1271,16 @@ async function main() {
 
   // ── Pricing ──────────────────────────────────────────────────
   if ((await prisma.pearlRate.count()) === 0) {
-    const grades: Array<[string, number]> = [['AAA', 450000], ['AA', 300000], ['A', 180000]];
-    const bands: Array<[number, number, number]> = [[2, 5.99, 0.8], [6, 8.99, 1], [9, 14, 1.4]];
+    const grades: Array<[string, number]> = [
+      ['AAA', 450000],
+      ['AA', 300000],
+      ['A', 180000],
+    ];
+    const bands: Array<[number, number, number]> = [
+      [2, 5.99, 0.8],
+      [6, 8.99, 1],
+      [9, 14, 1.4],
+    ];
     for (const farm of [farms.mulshi, farms.konkan]) {
       for (const [grade, base] of grades) {
         for (const [min, max, mult] of bands) {
@@ -658,16 +1300,69 @@ async function main() {
       data: [
         { name: 'Default margin', marginBp: 3500, priority: 1000 },
         { name: 'AAA grade', grade: 'AAA', marginBp: 4500, priority: 100 },
-        { name: 'Loose pearls', categoryId: cats['loose-pearls']!.id, marginBp: 2000, minMarginPaise: rupees(300), priority: 50 },
+        {
+          name: 'Loose pearls',
+          categoryId: cats['loose-pearls']!.id,
+          marginBp: 2000,
+          minMarginPaise: rupees(300),
+          priority: 50,
+        },
       ],
     });
   }
 
-  console.log(`Seed complete. Staff/partner password: ${process.env.SEED_PASSWORD ? '(from SEED_PASSWORD)' : PASSWORD}`);
+  console.log(
+    `Seed complete. Staff/partner password: ${process.env.SEED_PASSWORD ? '(from SEED_PASSWORD)' : PASSWORD}`,
+  );
 }
 
 function legal(title: string): string {
   return `## ${title}\n\n> Sample text for development. Replace with the final ${title.toLowerCase()} approved by Sahyadri Pearls before launch.\n\n### 1. Introduction\nThese terms describe how Sahyadri Pearls handles orders placed on its website and apps.\n\n### 2. Details\nThe owner supplies the full text from the admin (Content → Pages). Every published change is kept as a new version.`;
+}
+
+/**
+ * Sample data only: put real photographs where the drawn sample art is. Only rows still pointing at the drawn art
+ * (/media/samples/...) change, so photos uploaded in the admin are never touched.
+ */
+async function useSamplePhotos() {
+  const drawn = (url: string | null | undefined) => !!url && url.startsWith('/media/samples/');
+  const byCategory: Record<string, string[]> = {};
+  for (const [name, cat] of SAMPLE_PRODUCTS) (byCategory[cat] ??= []).push(sampleSlug(name));
+  for (const [cat, slugs] of Object.entries(byCategory)) {
+    const pool = SAMPLE_PHOTOS.products[cat];
+    if (!pool?.length) continue;
+    for (const [i, slug] of slugs.entries()) {
+      const p = await prisma.product.findUnique({
+        where: { slug },
+        select: {
+          images: { orderBy: [{ kind: 'asc' }, { sortOrder: 'asc' }], select: { id: true, url: true } },
+        },
+      });
+      for (const [k, img] of (p?.images ?? []).entries()) {
+        if (!drawn(img.url)) continue;
+        const ph = photo.square(pool[(i + k) % pool.length]!);
+        await prisma.productImage.update({
+          where: { id: img.id },
+          data: { url: ph.url, variants: ph.variants, width: 1200, height: 1200 },
+        });
+      }
+    }
+  }
+  for (const [slug, id] of Object.entries(SAMPLE_PHOTOS.categories)) {
+    const c = await prisma.category.findUnique({ where: { slug }, select: { imageUrl: true } });
+    if (c && drawn(c.imageUrl))
+      await prisma.category.update({ where: { slug }, data: { imageUrl: photo.tile(id) } });
+  }
+  for (const b of await prisma.banner.findMany({
+    where: { imageUrl: { startsWith: '/media/samples/banner-' } },
+  })) {
+    const pick = SAMPLE_PHOTOS.banners[b.imageUrl.replace('/media/samples/', '')];
+    if (pick)
+      await prisma.banner.update({
+        where: { id: b.id },
+        data: { imageUrl: pick.wide ? photo.wide(pick.id) : photo.tile(pick.id) },
+      });
+  }
 }
 
 async function findOrCreate<T>(find: () => Promise<T | null>, create: () => Promise<T>): Promise<T> {

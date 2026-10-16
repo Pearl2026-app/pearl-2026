@@ -259,10 +259,12 @@ describe('order scope by role', () => {
     await http().get(api('/admin/orders')).set(asha).expect(403);
   });
 
-  it('city managers see only their city; vendors only their orders; status rules per role', async () => {
+  it('city managers see only their city; vendors the orders sent to them; status rules per role', async () => {
     await http().get(api(`/admin/orders/${ashaOrder.id}`)).set(bearer(await tokenFor('mumbaiManager'))).expect(404);
     await http().get(api(`/admin/orders/${ashaOrder.id}`)).set(bearer(await tokenFor('puneManager'))).expect(200);
-    await http().get(api(`/admin/orders/${ashaOrder.id}`)).set(bearer(await tokenFor('vendor'))).expect(404);
+    // A Pune address goes to the Pune vendor (nearest PIN code), not to the Mumbai vendor.
+    await http().get(api(`/admin/orders/${ashaOrder.id}`)).set(bearer(await tokenFor('vendor'))).expect(200);
+    await http().get(api(`/admin/orders/${ashaOrder.id}`)).set(bearer(await tokenFor('vendor2'))).expect(404);
     await http().post(api(`/admin/orders/${ashaOrder.id}/status`)).set(bearer(await tokenFor('mumbaiManager'))).send({ status: 'CONFIRMED' }).expect(404);
     // vendor order: vendor may confirm and pack, nothing further
     const vendorPiece = await product('lavender-hoops');
@@ -274,8 +276,19 @@ describe('order scope by role', () => {
     await http().post(api(`/admin/orders/${r.body.order.id}/status`)).set(v).send({ status: 'PACKED' }).expect(200);
     await http().post(api(`/admin/orders/${r.body.order.id}/status`)).set(v).send({ status: 'ASSIGNED' }).expect(400);
     await http().post(api(`/admin/orders/${r.body.order.id}/status`)).set(v).send({ status: 'CANCELLED', reason: 'x' }).expect(400);
-    await http().post(api(`/admin/orders/${r.body.order.id}/assign-delivery`)).set(v).send({ deliveryPartnerId: 'x' }).expect(403);
+    // The vendor hands the packed order to one of its own available riders, never a busy one or another vendor's.
+    const busy = await db.deliveryPartner.findUniqueOrThrow({ where: { phone: '+919800000028' } });
+    const mine = await db.deliveryPartner.findUniqueOrThrow({ where: { phone: '+919800000005' } });
+    const notMine = await db.deliveryPartner.findUniqueOrThrow({ where: { phone: '+919800000015' } });
+    const options = await http().get(api(`/admin/orders/${r.body.order.id}/delivery-options`)).set(v).expect(200);
+    expect(options.body.map((p: { id: string }) => p.id)).toEqual(expect.arrayContaining([mine.id, busy.id]));
+    expect(options.body.map((p: { id: string }) => p.id)).not.toContain(notMine.id);
+    await http().post(api(`/admin/orders/${r.body.order.id}/assign-delivery`)).set(v).send({ deliveryPartnerId: notMine.id }).expect(400);
+    await http().post(api(`/admin/orders/${r.body.order.id}/assign-delivery`)).set(v).send({ deliveryPartnerId: busy.id }).expect(400);
+    const assigned = await http().post(api(`/admin/orders/${r.body.order.id}/assign-delivery`)).set(v).send({ deliveryPartnerId: mine.id }).expect(200);
+    expect(assigned.body.status).toBe('ASSIGNED');
     await http().get(api(`/admin/orders/${r.body.order.id}`)).set(bearer(await tokenFor('vendor2'))).expect(404);
+    await http().post(api(`/admin/orders/${r.body.order.id}/assign-delivery`)).set(bearer(await tokenFor('vendor2'))).send({ deliveryPartnerId: notMine.id }).expect(404);
     // delivery partner must serve the city
     const admin = bearer(await tokenFor('superAdmin'));
     const mumbaiDp = await db.deliveryPartner.findUniqueOrThrow({ where: { phone: '+919800000015' } });

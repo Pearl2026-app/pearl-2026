@@ -115,7 +115,7 @@ describe('gift packing at checkout', () => {
       res.on('end', () => cb(null, Buffer.concat(chunks)));
     }).expect(200);
     expect(pages(plain.body as Buffer)).toBe(1);
-    await http().get(api(`/admin/orders/${o.id}/packing-slip.pdf`)).set(bearer(await tokenFor('vendor'))).expect(404);
+    await http().get(api(`/admin/orders/${o.id}/packing-slip.pdf`)).set(bearer(await tokenFor('vendor2'))).expect(404);
   });
 });
 

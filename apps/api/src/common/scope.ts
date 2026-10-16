@@ -13,7 +13,10 @@ export function orderScope(u: AuthUser): Prisma.OrderWhereInput {
     case 'CITY_MANAGER':
       return { cityId: u.cityId ?? '__none__' };
     case 'VENDOR':
-      return { vendorId: u.vendorId ?? '__none__' };
+      // Orders sent to this vendor as the nearest to the customer, and orders for its own pieces.
+      return {
+        OR: [{ fulfilmentVendorId: u.vendorId ?? '__none__' }, { vendorId: u.vendorId ?? '__none__' }],
+      };
     case 'FRANCHISE':
       return { franchiseId: u.franchiseId ?? '__none__' };
     case 'DELIVERY_PARTNER':

@@ -32,9 +32,9 @@ describe('permissions', () => {
 });
 
 describe('order state machine', () => {
-  it('lets a vendor move only up to Packed', () => {
+  it('lets a vendor move up to Assigned (handing the order to its rider), no further', () => {
     expect(canTransition('VENDOR', 'CONFIRMED', 'PACKED')).toBe(true);
-    expect(canTransition('VENDOR', 'PACKED', 'ASSIGNED')).toBe(false);
+    expect(canTransition('VENDOR', 'PACKED', 'ASSIGNED')).toBe(true); // the vendor an order is sent to hands it to its rider
     expect(canTransition('VENDOR', 'OUT_FOR_DELIVERY', 'DELIVERED')).toBe(false);
   });
   it('lets delivery partners move only delivery steps', () => {

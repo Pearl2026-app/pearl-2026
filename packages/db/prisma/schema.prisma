@@ -480,13 +480,17 @@ model Vendor {
   phone       String
   email       String?
   address     String?
+  /// Where the vendor dispatches from; orders go to the vendor nearest the customer's pincode.
+  pincode     String?
   gstin       String?
   isActive    Boolean @default(true)
 
-  users       User[]
-  cities      VendorCity[]
-  products    Product[]
-  orders      Order[]
+  users            User[]
+  cities           VendorCity[]
+  products         Product[]
+  orders           Order[]           @relation("OrderVendor")
+  fulfilmentOrders Order[]           @relation("FulfilmentVendor")
+  deliveryPartners DeliveryPartner[]
   commissions VendorCommission[]
   settlements Settlement[]
 
@@ -563,6 +567,11 @@ model DeliveryPartner {
   phone       String  @unique
   vehicleInfo String?
   isActive    Boolean @default(true)
+  /// Set by the vendor or head office: whether the partner can take a new job now.
+  isAvailable Boolean @default(true)
+  /// The vendor this partner rides for; that vendor assigns them to its orders.
+  vendorId    String?
+  vendor      Vendor? @relation(fields: [vendorId], references: [id])
 
   user          User?
   cities        DeliveryPartnerCity[]
@@ -990,7 +999,10 @@ model Order {
 
   // Assignments
   vendorId       String?
-  vendor         Vendor?       @relation(fields: [vendorId], references: [id])
+  vendor         Vendor?       @relation("OrderVendor", fields: [vendorId], references: [id])
+  /// The vendor nearest the delivery address, chosen when the order is placed; it packs and dispatches the order.
+  fulfilmentVendorId String?
+  fulfilmentVendor   Vendor?   @relation("FulfilmentVendor", fields: [fulfilmentVendorId], references: [id])
   franchiseId    String?
   franchise      Franchise?    @relation(fields: [franchiseId], references: [id])
   manufacturerId String?
@@ -1049,6 +1061,7 @@ model Order {
   @@index([cityId, status])
   @@index([customerId])
   @@index([vendorId])
+  @@index([fulfilmentVendorId])
   @@index([franchiseId])
   @@index([manufacturerId])
   @@index([placedAt])

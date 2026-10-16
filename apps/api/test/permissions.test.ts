@@ -177,7 +177,9 @@ describe('Franchise: own records only', () => {
   it('sees only delivery partners in its own city', async () => {
     const h = await as('franchisePune');
     const list = await http().get(api('/admin/delivery-partners')).set(h).expect(200);
-    expect(list.body.items.map((d: { id: string }) => d.id)).toEqual([ids.dpPune]);
+    const seen = list.body.items.map((d: { id: string }) => d.id);
+    expect(seen).toContain(ids.dpPune);
+    expect(seen).not.toContain(ids.dpMumbai);
     await http().get(api(`/admin/delivery-partners/${ids.dpMumbai}`)).set(h).expect(404);
     await http().patch(api(`/admin/delivery-partners/${ids.dpPune}`)).set(h).send({ name: 'x' }).expect(403);
   });
