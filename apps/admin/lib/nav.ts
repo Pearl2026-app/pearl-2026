@@ -6,6 +6,8 @@ export interface NavItem {
   module?: Module;
   action?: Action;
   roles?: Role[];
+  /** Shown in the short main menu, with this colour; everything else sits under "More". */
+  primary?: string;
 }
 export interface NavGroup {
   label: string;
@@ -13,27 +15,43 @@ export interface NavGroup {
 }
 
 export const NAV: NavGroup[] = [
-  { label: 'Overview', items: [{ href: '/', label: 'Dashboard', module: 'DASHBOARD' }] },
+  { label: 'Overview', items: [{ href: '/', label: 'Dashboard', module: 'DASHBOARD', primary: '#14212B' }] },
   {
     label: 'Sales',
     items: [
-      { href: '/enquiries', label: 'Enquiries', module: 'ENQUIRIES' },
-      { href: '/orders', label: 'Orders', module: 'ORDERS', roles: ['SUPER_ADMIN', 'STAFF', 'CITY_MANAGER', 'VENDOR', 'FRANCHISE'] },
+      { href: '/enquiries', label: 'Enquiries', module: 'ENQUIRIES', primary: '#1F7A4D' },
+      {
+        href: '/orders',
+        label: 'Orders',
+        module: 'ORDERS',
+        roles: ['SUPER_ADMIN', 'STAFF', 'CITY_MANAGER', 'VENDOR', 'FRANCHISE'],
+        primary: '#2B5C8A',
+      },
       { href: '/custom-orders', label: 'Customized orders', module: 'CUSTOM_ORDERS' },
       { href: '/purchase-orders', label: 'Purchase orders', module: 'PURCHASE_ORDERS' },
-      { href: '/payments', label: 'Payments', module: 'PAYMENTS', roles: ['SUPER_ADMIN', 'STAFF', 'CITY_MANAGER', 'FRANCHISE'] },
+      {
+        href: '/payments',
+        label: 'Payments',
+        module: 'PAYMENTS',
+        roles: ['SUPER_ADMIN', 'STAFF', 'CITY_MANAGER', 'FRANCHISE'],
+      },
       { href: '/returns', label: 'Returns', module: 'RETURNS' },
-      { href: '/abandoned-carts', label: 'Abandoned carts', module: 'ORDERS', roles: ['SUPER_ADMIN', 'STAFF'] },
+      {
+        href: '/abandoned-carts',
+        label: 'Abandoned carts',
+        module: 'ORDERS',
+        roles: ['SUPER_ADMIN', 'STAFF'],
+      },
     ],
   },
   {
     label: 'Delivery',
-    items: [{ href: '/delivery', label: 'My deliveries', roles: ['DELIVERY_PARTNER'] }],
+    items: [{ href: '/delivery', label: 'My deliveries', roles: ['DELIVERY_PARTNER'], primary: '#2B5C8A' }],
   },
   {
     label: 'Catalogue',
     items: [
-      { href: '/products', label: 'Products', module: 'PRODUCTS' },
+      { href: '/products', label: 'Products', module: 'PRODUCTS', primary: '#9A7546' },
       { href: '/categories', label: 'Categories', module: 'CATEGORIES', roles: ['SUPER_ADMIN', 'STAFF'] },
       { href: '/collections', label: 'Collections', module: 'COLLECTIONS', roles: ['SUPER_ADMIN', 'STAFF'] },
       { href: '/farms', label: 'Farms', module: 'FARMS', roles: ['SUPER_ADMIN', 'STAFF'] },
@@ -41,7 +59,10 @@ export const NAV: NavGroup[] = [
       { href: '/reviews', label: 'Reviews', module: 'REVIEWS' },
     ],
   },
-  { label: 'Customers', items: [{ href: '/customers', label: 'Customers', module: 'USERS' }] },
+  {
+    label: 'Customers',
+    items: [{ href: '/customers', label: 'Customers', module: 'USERS', primary: '#6B4C9A' }],
+  },
   {
     label: 'Marketing',
     items: [
@@ -71,7 +92,12 @@ export const NAV: NavGroup[] = [
       { href: '/vendors', label: 'Vendors', module: 'VENDORS' },
       { href: '/franchises', label: 'Franchises', module: 'FRANCHISES' },
       { href: '/manufacturers', label: 'Manufacturers', module: 'MANUFACTURERS' },
-      { href: '/delivery-partners', label: 'Delivery partners', module: 'DELIVERY_PARTNERS', roles: ['SUPER_ADMIN', 'STAFF', 'CITY_MANAGER'] },
+      {
+        href: '/delivery-partners',
+        label: 'Delivery partners',
+        module: 'DELIVERY_PARTNERS',
+        roles: ['SUPER_ADMIN', 'STAFF', 'CITY_MANAGER'],
+      },
     ],
   },
   {
@@ -82,7 +108,10 @@ export const NAV: NavGroup[] = [
       { href: '/margin-rules', label: 'Margin rules', module: 'PRICING', roles: ['SUPER_ADMIN', 'STAFF'] },
     ],
   },
-  { label: 'Reports', items: [{ href: '/reports', label: 'Reports', module: 'REPORTS' }] },
+  {
+    label: 'Reports',
+    items: [{ href: '/reports', label: 'Reports', module: 'REPORTS', primary: '#B4532A' }],
+  },
   {
     label: 'Administration',
     items: [
