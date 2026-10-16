@@ -1,4 +1,4 @@
-import { spawn } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { Logger } from '@nestjs/common';
@@ -8,6 +8,17 @@ import { fillDemoActivity } from './demo-activity';
 
 const log = new Logger('Demo');
 
+const dbDir = resolve(__dirname, '../../../packages/db');
+
+/** Demo site: apply the database migrations before the API starts (Prisma's own lock keeps two instances apart). */
+export function migrateDemoDatabase(): void {
+  const prisma = join(dbDir, 'node_modules/.bin/prisma');
+  if (!existsSync(prisma)) return log.error(`Cannot set up the database: ${prisma} is missing.`);
+  const r = spawnSync(prisma, ['migrate', 'deploy'], { cwd: dbDir, env: process.env, encoding: 'utf8' });
+  if (r.status !== 0) throw new Error(`Database setup failed: ${(r.stderr || r.stdout || '').slice(-1500)}`);
+  log.log('Database tables are up to date.');
+}
+
 /**
  * Demo site (D66): load the sample data and redraw the sample photos. The seed never overwrites rows,
  * so this runs on every start: the first start fills the empty database, later starts only redraw the
@@ -15,7 +26,6 @@ const log = new Logger('Demo');
  */
 export async function prepareDemo(): Promise<void> {
   const c = config();
-  const dbDir = resolve(__dirname, '../../../packages/db');
   const tsx = join(dbDir, 'node_modules/.bin/tsx');
   if (!existsSync(tsx)) {
     log.error(`Cannot load the sample data: ${tsx} is missing.`);

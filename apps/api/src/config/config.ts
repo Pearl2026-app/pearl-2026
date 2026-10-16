@@ -92,8 +92,27 @@ export type AppConfig = z.infer<typeof schema> & { appSecret: string; cookieSecu
 
 let cached: AppConfig | null = null;
 
+/**
+ * Demo site only (D66): fewer settings to paste. Missing signing secrets are derived from the database address
+ * (itself a secret, and stable across restarts and instances), and the public address comes from Vercel's own
+ * VERCEL_PROJECT_PRODUCTION_URL. The real shop never uses this: it must set every secret itself.
+ */
+function demoDefaults(env: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
+  if (!['1', 'true', 'yes', 'on'].includes(String(env.DEMO_MODE ?? '').toLowerCase()) || !env.DATABASE_URL) return env;
+  const derive = (label: string) => require('node:crypto').createHash('sha256').update(`sahyadri-demo:${label}:${env.DATABASE_URL}`).digest('hex') as string;
+  const host = env.VERCEL_PROJECT_PRODUCTION_URL ?? env.SPACE_HOST;
+  const site = host ? `https://${host}` : undefined;
+  return {
+    ...env,
+    JWT_ACCESS_SECRET: env.JWT_ACCESS_SECRET || derive('access'),
+    JWT_REFRESH_SECRET: env.JWT_REFRESH_SECRET || derive('refresh'),
+    APP_SECRET: env.APP_SECRET || derive('app'),
+    ...(site ? { WEB_URL: env.WEB_URL || site, ADMIN_URL: env.ADMIN_URL || `${site}/admin`, API_URL: env.API_URL || site } : {}),
+  };
+}
+
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
-  const parsed = schema.safeParse(env);
+  const parsed = schema.safeParse(demoDefaults(env));
   if (!parsed.success) {
     const issues = parsed.error.issues.map((i) => `  ${i.path.join('.')}: ${i.message}`).join('\n');
     throw new Error(`Invalid environment configuration:\n${issues}`);
