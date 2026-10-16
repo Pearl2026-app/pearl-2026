@@ -2,13 +2,16 @@ import { Logger } from '@nestjs/common';
 import { SwaggerModule } from '@nestjs/swagger';
 import { buildOpenApi, createApp } from './bootstrap';
 import { config } from './config/config';
-import { migrateDemoDatabase, prepareDemo } from './demo';
+import { drawDemoSamples, migrateDemoDatabase, prepareDemo } from './demo';
 import { JobsService } from './queue/jobs.service';
 
 async function main() {
   const c = config();
   // Demo site (D66): the database gets its tables on start, so no separate migration step is needed.
-  if (c.demoMode) migrateDemoDatabase();
+  if (c.demoMode) {
+    migrateDemoDatabase();
+    drawDemoSamples();
+  }
   const app = await createApp();
   // The API reference lists every endpoint, so it is served only outside production.
   const docs = c.NODE_ENV !== 'production';

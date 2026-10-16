@@ -20,6 +20,19 @@ export function migrateDemoDatabase(): void {
 }
 
 /**
+ * Demo site: draw every sample image before this instance serves requests. Each instance has its own disk, and the
+ * seed (which also draws them) runs in the background after start, so without this a request could reach an
+ * instance whose images are not drawn yet. Takes about a second; never stops the API from starting.
+ */
+export function drawDemoSamples(): void {
+  const tsx = join(dbDir, 'node_modules/.bin/tsx');
+  if (!existsSync(tsx)) return log.error(`Cannot draw the sample images: ${tsx} is missing.`);
+  const r = spawnSync(tsx, ['seed/draw-samples.ts'], { cwd: dbDir, env: { ...process.env, STORAGE_LOCAL_DIR: config().storageDir }, encoding: 'utf8' });
+  if (r.status !== 0) log.error(`Sample images were not drawn: ${(r.stderr || r.stdout || '').slice(-800)}`);
+  else log.log((r.stdout || '').trim());
+}
+
+/**
  * Demo site (D66): load the sample data and redraw the sample photos. The seed never overwrites rows,
  * so this runs on every start: the first start fills the empty database, later starts only redraw the
  * photos (the container's disk is wiped on each deploy). A database lock stops two instances seeding at once.
