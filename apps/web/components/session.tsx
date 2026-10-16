@@ -9,7 +9,12 @@ export interface Me {
   phone: string | null;
   email: string | null;
   role: string;
-  customer: { id: string; referralCode: string; cityId: string | null; preferredPaymentMethod: string | null } | null;
+  customer: {
+    id: string;
+    referralCode: string;
+    cityId: string | null;
+    preferredPaymentMethod: string | null;
+  } | null;
 }
 
 interface Session {
@@ -18,14 +23,30 @@ interface Session {
   cartCount: number;
   refresh: () => Promise<void>;
   setCartCount: (n: number) => void;
+  /** The slide-in cart: opened by the bag icon and after every add to cart. */
+  cartOpen: boolean;
+  openCart: () => void;
+  closeCart: () => void;
 }
 
-const Ctx = createContext<Session>({ me: null, loaded: false, cartCount: 0, refresh: async () => undefined, setCartCount: () => undefined });
+const Ctx = createContext<Session>({
+  me: null,
+  loaded: false,
+  cartCount: 0,
+  refresh: async () => undefined,
+  setCartCount: () => undefined,
+  cartOpen: false,
+  openCart: () => undefined,
+  closeCart: () => undefined,
+});
 
 export function SessionProvider({ children }: { children: ReactNode }) {
   const [me, setMe] = useState<Me | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [cartCount, setCartCount] = useState(0);
+  const [cartOpen, setCartOpen] = useState(false);
+  const openCart = useCallback(() => setCartOpen(true), []);
+  const closeCart = useCallback(() => setCartOpen(false), []);
   const refresh = useCallback(async () => {
     const [m, c] = await Promise.all([
       mayHaveSession() ? api<Me>('/me').catch(() => null) : Promise.resolve(null),
@@ -39,7 +60,11 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     void refresh();
     void flushPendingEnquiries();
   }, [refresh]);
-  return <Ctx.Provider value={{ me, loaded, cartCount, refresh, setCartCount }}>{children}</Ctx.Provider>;
+  return (
+    <Ctx.Provider value={{ me, loaded, cartCount, refresh, setCartCount, cartOpen, openCart, closeCart }}>
+      {children}
+    </Ctx.Provider>
+  );
 }
 
 export const useSession = () => useContext(Ctx);

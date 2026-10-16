@@ -29,8 +29,8 @@ export function Footer({ site }: { site: Site }) {
       <div className="border-b border-line">
         <div className="mx-auto flex max-w-7xl flex-col gap-6 px-4 py-12 md:flex-row md:items-center md:justify-between lg:px-8">
           <div>
-            <p className="font-serif text-3xl">Join the Sahyadri circle</p>
-            <p className="mt-2 max-w-md text-sm text-muted">New collections from our farms, private previews and pearl care tips. A few emails a month, never more.</p>
+            <p className="font-serif text-3xl">The Sahyadri circle</p>
+            <p className="mt-2 text-sm text-muted">New pieces and private previews. A few emails a month.</p>
           </div>
           <NewsletterForm />
         </div>
@@ -38,7 +38,6 @@ export function Footer({ site }: { site: Site }) {
       <div className="mx-auto grid max-w-7xl gap-10 px-4 py-14 md:grid-cols-2 lg:grid-cols-[1.4fr_1fr_1fr_1fr] lg:px-8">
         <div>
           <Link href="/about" className="font-serif text-2xl text-accent">About Us</Link>
-          <p className="mt-3 max-w-sm text-sm leading-relaxed text-muted">{about.body}</p>
           <address className="mt-3 text-sm not-italic text-ink">{about.address ?? site.store.address}</address>
           <p className="mt-2 text-sm">
             <a href={`tel:${site.store.phone}`} className="hover:text-accent">{site.store.phone}</a> ·{' '}

@@ -29,6 +29,19 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   });
 }
 
+/** One fold of the product details. Native <details>, so it works without JavaScript. */
+function Fold({ title, children, open, id }: { title: string; children: React.ReactNode; open?: boolean; id?: string }) {
+  return (
+    <details id={id} open={open} className="group/fold border-b border-line">
+      <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between text-[15px] font-medium [&::-webkit-details-marker]:hidden">
+        {title}
+        <span aria-hidden className="text-xl leading-none font-light text-muted transition-transform duration-300 group-open/fold:rotate-45">+</span>
+      </summary>
+      <div className="pb-5">{children}</div>
+    </details>
+  );
+}
+
 function Stars({ value }: { value: number }) {
   return (
     <span aria-label={`${value} out of 5`} className="text-gold">
@@ -66,7 +79,6 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
             {p.collection && <Link href={`/collections/${p.collection.slug}`} className="eyebrow hover:text-accent">{p.collection.name} collection</Link>}
             <h1 className="mt-2 font-serif text-4xl leading-tight lg:text-5xl">{p.name}</h1>
             <p className="mt-2 flex flex-wrap items-center gap-3 text-sm text-muted">
-              <span>SKU {p.sku}</span>
               {p.rating.count > 0 && (
                 <a href="#reviews" className="flex items-center gap-1 hover:text-accent">
                   <Stars value={p.rating.average ?? 0} /> {p.rating.average} ({p.rating.count})
@@ -127,14 +139,14 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
             )}
           </div>
           {!p.isSold && !p.priceOnRequest && <DeliveryCheck />}
-          <ul className="grid grid-cols-3 gap-2 text-center text-xs text-muted">
-            {site && site.returns.windowDays > 0 && <li className="border border-line px-2 py-3"><span className="block font-serif text-lg text-ink">{site.returns.windowDays} days</span>easy returns</li>}
-            <li className="border border-line px-2 py-3"><span className="block font-serif text-lg text-ink">Insured</span>tracked delivery</li>
-            {site?.storefront.giftWrapEnabled && <li className="border border-line px-2 py-3"><span className="block font-serif text-lg text-ink">Free</span>gift packing</li>}
-          </ul>
-          {p.description && <p className="leading-relaxed text-ink/90">{p.description}</p>}
-          <section aria-labelledby="spec">
-            <h2 id="spec" className="eyebrow mb-3">Specification</h2>
+          {/* Details folded away: the buy box stays short, the facts are one tap away. */}
+          <div className="border-t border-line">
+            {p.description && (
+              <Fold title="Details" open>
+                <p className="leading-relaxed text-ink/90">{p.description}</p>
+              </Fold>
+            )}
+            <Fold title="Specification" id="spec">
             <dl className="grid grid-cols-[auto_1fr] gap-x-8 gap-y-2 text-sm">
               {spec
                 .filter(([, v]) => v != null && v !== '')
@@ -151,7 +163,15 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
                   </div>
                 ))}
             </dl>
-          </section>
+            </Fold>
+            <Fold title="Delivery and returns">
+              <ul className="grid gap-2 text-sm text-ink/90">
+                <li>{site?.delivery.promise ?? 'Insured, tracked delivery.'}</li>
+                {site && site.returns.windowDays > 0 && <li>Easy returns within {site.returns.windowDays} days of delivery.</li>}
+                {site?.storefront.giftWrapEnabled && <li>Free gift packing with a message card.</li>}
+              </ul>
+            </Fold>
+          </div>
         </div>
       </div>
 

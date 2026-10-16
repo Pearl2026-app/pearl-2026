@@ -60,12 +60,9 @@ export default async function HomePage() {
         <Container>
           <ul className="grid grid-cols-2 gap-x-6 gap-y-6 border-b border-line py-8 lg:grid-cols-4 lg:py-10">
             {(trust.data.items as Array<{ icon: string; title: string; text: string }>).map((t) => (
-              <li key={t.title} className="flex items-start gap-3">
-                <IconFor name={t.icon} className="mt-0.5 shrink-0 text-gold" width={24} height={24} />
-                <div>
-                  <p className="text-[15px] font-medium">{t.title}</p>
-                  <p className="text-sm text-muted">{t.text}</p>
-                </div>
+              <li key={t.title} className="flex items-center gap-3">
+                <IconFor name={t.icon} className="shrink-0 text-gold" width={22} height={22} />
+                <p className="text-[15px]">{t.title}</p>
               </li>
             ))}
           </ul>

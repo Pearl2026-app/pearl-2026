@@ -75,3 +75,22 @@ h2.font-serif {
 .no-scrollbar {
   scrollbar-width: none;
 }
+
+html {
+  scroll-behavior: smooth;
+}
+/* The cart count settles in with a small bounce when it changes. */
+.pop {
+  animation: pop 0.45s var(--ease-calm) both;
+}
+@keyframes pop {
+  0% {
+    transform: scale(0.4);
+  }
+  60% {
+    transform: scale(1.18);
+  }
+  100% {
+    transform: none;
+  }
+}

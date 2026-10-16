@@ -11,13 +11,10 @@ test('a shopper finds a piece, pays online and tracks the order', async ({ page,
   await page.goto(`/product/${piece.slug}`);
   await expect(page.getByRole('heading', { level: 1, name: piece.name })).toBeVisible();
   await page.getByRole('button', { name: 'Add to cart' }).click();
-  // Once added, the main button leads straight to checkout; the shopper reviews the cart first here.
-  await expect(page.getByRole('link', { name: 'Check out now' })).toBeVisible();
-  await page.goto('/cart');
-
-  await expect(page).toHaveURL(/\/cart$/);
-  await expect(page.getByText(piece.name).first()).toBeVisible();
-  await page.getByRole('link', { name: 'Check out securely' }).click();
+  // Adding opens the cart drawer on the same page; checkout starts from there.
+  const drawer = page.getByRole('dialog', { name: 'Your cart' });
+  await expect(drawer.getByText(piece.name)).toBeVisible();
+  await drawer.getByRole('link', { name: 'Check out' }).click();
 
   await expect(page.getByRole('heading', { name: 'Checkout' })).toBeVisible();
   await page.getByLabel('Full name').fill('Meera Joshi');
