@@ -1,23 +1,25 @@
 /* Shared Tailwind v4 theme. Import after "tailwindcss" in each app's globals.css. Values mirror tokens.ts. */
 @theme {
-  --color-bg: #fbf8f3;
+  /* "Nacre": cool pearl white, Konkan-sea ink, one warm metal for details. */
+  --color-bg: #f4f5f3;
   --color-surface: #ffffff;
-  --color-surface-muted: #f3eee6;
-  --color-ink: #1f2326;
-  --color-muted: #5c6166;
-  --color-line: #e4ddd2;
-  --color-accent: #1f4e52;
-  --color-accent-hover: #173b3e;
-  --color-accent-soft: #e3eceb;
-  --color-gold: #a8875a;
+  --color-surface-muted: #e9ecea;
+  --color-ink: #14212b;
+  --color-muted: #586570;
+  --color-line: #d9dedf;
+  --color-accent: #14212b;
+  --color-accent-hover: #0a141b;
+  --color-accent-soft: #e2e8eb;
+  --color-gold: #9a7546;
+  --color-orient: #e9d9d3;
   --color-whatsapp: #1f7a4d;
   --color-success: #2e7d4f;
   --color-warning: #a86b12;
   --color-danger: #b3261e;
   --color-info: #2b5c8a;
 
-  --font-serif: 'Cormorant Garamond', Georgia, 'Times New Roman', serif;
-  --font-sans: Inter, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-serif: 'Bodoni Moda', Didot, 'Bodoni 72', Georgia, serif;
+  --font-sans: Jost, Futura, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
 
   --radius-sm: 2px;
   --radius-md: 4px;

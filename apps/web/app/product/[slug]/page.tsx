@@ -77,7 +77,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
           <div>
             <Price p={p} className={`font-serif text-3xl ${p.priceOnRequest ? 'italic text-muted' : ''}`} />
             {!p.priceOnRequest && <p className="mt-1 text-xs text-muted">Inclusive of GST</p>}
-            {p.isSold && <p className="mt-3 inline-block bg-ink px-3 py-1 text-xs tracking-widest text-white uppercase">Sold</p>}
+            {p.isSold && <p className="mt-3 inline-block rounded-full bg-ink px-3 py-1 text-xs text-white">Sold</p>}
             {p.reserved && <p className="mt-3 text-sm text-warning">Someone is checking out this one-of-a-kind piece right now. It may be available again in 15 minutes.</p>}
             {!p.availableInCity && <p className="mt-3 text-sm text-warning">Not delivered in your selected city. Enquire and we will try to help.</p>}
             {p.isUnique && !p.isSold && <p className="mt-3 text-sm text-muted">One of a kind: there is only this piece.</p>}

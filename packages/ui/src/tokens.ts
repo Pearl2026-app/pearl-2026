@@ -1,16 +1,17 @@
 // Brand tokens: change the brand here and every app follows (SPEC Part 11).
 // Web and admin read these through theme.css; the mobile apps import this file directly.
 export const colors = {
-  bg: '#FBF8F3', // warm ivory
-  surface: '#FFFFFF', // pearl white
-  surfaceMuted: '#F3EEE6',
-  text: '#1F2326', // deep charcoal
-  textMuted: '#5C6166',
-  border: '#E4DDD2',
-  accent: '#1F4E52', // deep teal
-  accentHover: '#173B3E',
-  accentSoft: '#E3ECEB',
-  gold: '#A8875A', // muted gold, details only
+  bg: '#F4F5F3', // cool pearl white (nacre)
+  surface: '#FFFFFF',
+  surfaceMuted: '#E9ECEA', // mist
+  text: '#14212B', // Konkan-sea ink
+  textMuted: '#586570',
+  border: '#D9DEDF',
+  accent: '#14212B', // ink: buttons and links
+  accentHover: '#0A141B',
+  accentSoft: '#E2E8EB',
+  gold: '#9A7546', // temple gold, details only
+  orient: '#E9D9D3', // the rose lustre on a pearl's surface, washes only
   whatsapp: '#1F7A4D',
   success: '#2E7D4F',
   warning: '#A86B12',
@@ -19,8 +20,8 @@ export const colors = {
 } as const;
 
 export const fonts = {
-  serif: '"Cormorant Garamond", Georgia, "Times New Roman", serif',
-  sans: 'Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
+  serif: '"Bodoni Moda", Didot, "Bodoni 72", Georgia, serif',
+  sans: 'Jost, "Futura", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
 } as const;
 
 export const space = { 1: 4, 2: 8, 3: 12, 4: 16, 6: 24, 8: 32, 12: 48, 16: 64, 24: 96 } as const;

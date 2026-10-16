@@ -4,9 +4,9 @@ import { formatINR } from '@sahyadri/shared';
 
 // PDF builders for invoices, purchase orders and certificates. Built-in fonts only; ₹ is written as "Rs."
 // because the standard PDF fonts have no rupee glyph.
-const INK = '#1F2326';
-const MUTED = '#5C6166';
-const ACCENT = '#1F4E52';
+const INK = '#14212B';
+const MUTED = '#586570';
+const ACCENT = '#14212B';
 const rs = (paise: number) => formatINR(paise).replace('₹', 'Rs. ');
 
 function collect(doc: PDFKit.PDFDocument): Promise<Buffer> {
@@ -169,7 +169,7 @@ export async function certificatePdf(c: CertificatePdfInput): Promise<Buffer> {
   const doc = new PDFDocument({ size: 'A5', layout: 'landscape', margin: 36, info: { Title: `Certificate ${c.code}`, Author: 'Sahyadri Pearls' } });
   const w = doc.page.width;
   const h = doc.page.height;
-  doc.rect(18, 18, w - 36, h - 36).lineWidth(1.5).strokeColor('#A8875A').stroke();
+  doc.rect(18, 18, w - 36, h - 36).lineWidth(1.5).strokeColor('#9A7546').stroke();
   doc.fillColor(ACCENT).font('Times-Bold').fontSize(22).text('Sahyadri Pearls', 0, 44, { align: 'center', width: w });
   doc.fillColor(INK).font('Times-Roman').fontSize(13).text('Certificate of Authenticity', 0, 72, { align: 'center', width: w });
   doc.font('Helvetica-Bold').fontSize(12).text(c.productName, 50, 115, { width: w - 230 });

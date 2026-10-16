@@ -25,7 +25,7 @@ export default async function FarmPage({ params }: { params: Promise<{ slug: str
         {f.heroImageUrl && <img src={f.heroImageUrl} alt="" width={1600} height={900} fetchPriority="high" className="absolute inset-0 -z-10 h-full w-full object-cover opacity-75" />}
         <div className="absolute inset-0 -z-10 bg-gradient-to-t from-ink/70 to-transparent" />
         <Container className="flex min-h-[56vh] flex-col justify-end pb-12 text-white">
-          <p className="text-xs tracking-[0.2em] uppercase opacity-80">{f.location}</p>
+          <p className="font-serif text-lg italic opacity-85">{f.location}</p>
           <h1 className="mt-2 font-serif text-5xl lg:text-6xl">{f.name}</h1>
           {f.summary && <p className="mt-4 max-w-2xl text-lg text-white/90">{f.summary}</p>}
         </Container>

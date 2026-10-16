@@ -15,18 +15,22 @@ export function Price({ p, className }: { p: Pick<Card, 'pricePaise' | 'priceOnR
 
 export function ProductCard({ p, priority }: { p: Card; priority?: boolean }) {
   return (
-    <Link href={`/product/${p.slug}`} className="group flex flex-col gap-3 focus-visible:outline-offset-4">
-      <div className="relative overflow-hidden bg-surface">
+    <Link href={`/product/${p.slug}`} className="group flex flex-col gap-4 focus-visible:outline-offset-4">
+      <div className="nacre relative overflow-hidden">
         <PearlImage image={p.images[0]} alt={p.images[0]?.alt ?? p.name} priority={priority} className={`img-zoom aspect-square w-full object-cover ${p.isSold ? 'opacity-60' : ''}`} />
-        {p.isSold && <span className="absolute top-3 left-3 bg-ink/85 px-2 py-1 text-[11px] tracking-widest text-white uppercase">Sold</span>}
-        {!p.isSold && p.isUnique && <span className="absolute top-3 left-3 bg-surface/90 px-2 py-1 text-[11px] tracking-widest text-ink uppercase">One of a kind</span>}
+        {/* The second photograph, revealed on hover where a pointer exists. */}
+        {p.images[1] && !p.isSold && (
+          <PearlImage image={p.images[1]} alt="" className="absolute inset-0 aspect-square h-full w-full object-cover opacity-0 transition-opacity duration-500 ease-[var(--ease-calm)] group-hover:opacity-100" />
+        )}
+        {p.isSold && <span className="absolute top-3 left-3 rounded-full bg-ink px-3 py-1 text-xs text-white">Sold</span>}
+        {!p.isSold && p.isUnique && <span className="absolute top-3 left-3 rounded-full bg-surface/95 px-3 py-1 text-xs text-ink">One of a kind</span>}
       </div>
-      <div className="flex flex-col gap-0.5 px-0.5">
-        <h3 className="font-serif text-lg leading-snug text-ink group-hover:text-accent">{p.name}</h3>
-        <p className="text-xs text-muted">
-          {[p.farm?.name, p.caratWeight ? `${p.caratWeight} ct` : null, p.shape].filter(Boolean).join(' · ')}
+      <div className="flex flex-col gap-1 px-0.5">
+        <h3 className="font-serif text-[19px] leading-snug text-ink underline-offset-4 group-hover:underline">{p.name}</h3>
+        <p className="text-[13px] text-muted">
+          {[p.farm?.name, p.caratWeight ? `${p.caratWeight} ct` : null, p.shape].filter(Boolean).join(', ')}
         </p>
-        <Price p={p} className={`mt-1 text-[15px] ${p.priceOnRequest ? 'text-muted italic' : 'text-ink'}`} />
+        <Price p={p} className={`mt-1 text-[15px] font-medium tracking-wide ${p.priceOnRequest ? 'font-normal text-muted italic' : 'text-ink'}`} />
       </div>
     </Link>
   );
@@ -34,7 +38,7 @@ export function ProductCard({ p, priority }: { p: Card; priority?: boolean }) {
 
 export function ProductGrid({ products, priorityCount = 0 }: { products: Card[]; priorityCount?: number }) {
   return (
-    <ul className="grid grid-cols-2 gap-x-4 gap-y-10 md:grid-cols-3 lg:grid-cols-4 lg:gap-x-8">
+    <ul className="grid grid-cols-2 gap-x-3 gap-y-12 md:grid-cols-3 lg:grid-cols-4 lg:gap-x-6 lg:gap-y-16">
       {products.map((p, i) => (
         <li key={p.id}>
           <ProductCard p={p} priority={i < priorityCount} />

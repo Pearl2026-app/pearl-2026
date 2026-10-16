@@ -35,19 +35,19 @@ export default async function HomePage() {
         <section className="relative isolate overflow-hidden bg-ink">
           <picture>
             {hero.mobileImageUrl && <source media="(max-width: 767px)" srcSet={hero.mobileImageUrl} />}
-            <img src={hero.imageUrl} alt="" width={1600} height={900} fetchPriority="high" className="absolute inset-0 -z-10 h-full w-full object-cover opacity-80" />
+            <img src={hero.imageUrl} alt="" width={1600} height={900} fetchPriority="high" className="absolute inset-0 -z-10 h-full w-full object-cover" />
           </picture>
-          <div className="absolute inset-0 -z-10 bg-gradient-to-t from-ink/70 via-ink/20 to-transparent" />
-          <Container className="flex min-h-[78vh] flex-col justify-end pt-24 pb-16 lg:min-h-[86vh] lg:pb-24">
+          <div className="absolute inset-0 -z-10 bg-gradient-to-tr from-ink/80 via-ink/25 to-transparent" />
+          <Container className="flex min-h-[80vh] flex-col justify-end pt-24 pb-14 lg:min-h-[88vh] lg:pb-24">
             <div className="fade-in max-w-2xl text-white">
-              <p className="mb-4 text-xs tracking-[0.2em] text-white/80 uppercase">Farm-traced pearls · Maharashtra</p>
-              <h1 className="font-serif text-5xl leading-[1.05] lg:text-7xl">{hero.title}</h1>
-              {hero.subtitle && <p className="mt-5 max-w-lg text-lg leading-relaxed text-white/90">{hero.subtitle}</p>}
-              <div className="mt-8 flex flex-wrap gap-3">
-                <Link href={hero.linkUrl ?? '/jewellery'} className="inline-flex min-h-12 items-center bg-white px-7 text-[15px] text-ink hover:bg-bg">
+              <p className="mb-5 font-serif text-lg text-white/85 italic">Grown in the Sahyadri hills and on the Konkan coast</p>
+              <h1 className="font-serif text-[52px] leading-[1.02] lg:text-[96px]">{hero.title}</h1>
+              {hero.subtitle && <p className="mt-6 max-w-md text-lg leading-relaxed text-white/85">{hero.subtitle}</p>}
+              <div className="mt-10 flex flex-wrap gap-3">
+                <Link href={hero.linkUrl ?? '/jewellery'} className="inline-flex min-h-12 items-center bg-white px-8 text-[15px] tracking-wide text-ink transition-colors hover:bg-orient">
                   {hero.ctaLabel ?? 'Explore Jewellery'}
                 </Link>
-                <Link href="/our-farm" className="inline-flex min-h-12 items-center border border-white/70 px-7 text-[15px] text-white hover:bg-white/10">
+                <Link href="/our-farm" className="inline-flex min-h-12 items-center border border-white/60 px-8 text-[15px] tracking-wide text-white transition-colors hover:border-white hover:bg-white/10">
                   Visit our farms
                 </Link>
               </div>

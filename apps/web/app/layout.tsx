@@ -11,16 +11,18 @@ import type { Site } from '@/lib/types';
 import './globals.css';
 
 // Fonts ship with the site (open licence, from Fontsource): no request to Google at build or run time.
+// Bodoni Moda (display): a high-contrast Didone with an optical-size axis, so small names stay crisp.
+// Jost (text): a clean geometric sans in the Futura line.
 const serif = localFont({
   src: [
-    { path: '../node_modules/@fontsource/cormorant-garamond/files/cormorant-garamond-latin-400-normal.woff2', weight: '400' },
-    { path: '../node_modules/@fontsource/cormorant-garamond/files/cormorant-garamond-latin-500-normal.woff2', weight: '500' },
-    { path: '../node_modules/@fontsource/cormorant-garamond/files/cormorant-garamond-latin-600-normal.woff2', weight: '600' },
+    { path: '../node_modules/@fontsource-variable/bodoni-moda/files/bodoni-moda-latin-standard-normal.woff2', style: 'normal' },
+    { path: '../node_modules/@fontsource-variable/bodoni-moda/files/bodoni-moda-latin-standard-italic.woff2', style: 'italic' },
   ],
-  variable: '--font-cormorant',
+  weight: '400 900',
+  variable: '--font-display',
   display: 'swap',
 });
-const sans = localFont({ src: '../node_modules/@fontsource-variable/inter/files/inter-latin-wght-normal.woff2', weight: '100 900', variable: '--font-inter', display: 'swap' });
+const sans = localFont({ src: '../node_modules/@fontsource-variable/jost/files/jost-latin-wght-normal.woff2', weight: '100 900', variable: '--font-text', display: 'swap' });
 
 export const dynamic = 'force-dynamic';
 
@@ -36,7 +38,7 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-export const viewport: Viewport = { themeColor: '#FBF8F3', width: 'device-width', initialScale: 1 };
+export const viewport: Viewport = { themeColor: '#F4F5F3', width: 'device-width', initialScale: 1 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const site = (await get<Site>('/site', { revalidate: 300 }))!;

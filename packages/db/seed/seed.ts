@@ -550,6 +550,10 @@ async function main() {
   await seedTemplates();
 
   // ── Content ──────────────────────────────────────────────────
+  // Draw the banner art on every run: the files live on the container's disk, which each deploy wipes,
+  // while the banner rows are created only once.
+  const heroArt = writeMedia('samples/banner-hero.svg', sceneSvg('Pearls with a birthplace', 'water'));
+  const customArt = writeMedia('samples/banner-custom.svg', sceneSvg('Made for you', 'craft'));
   if ((await prisma.banner.count()) === 0) {
     await prisma.banner.createMany({
       data: [
@@ -557,7 +561,7 @@ async function main() {
           placement: 'HOME_HERO',
           title: 'Pearls with a birthplace',
           subtitle: 'Every pearl traced to a named farm in the Sahyadri hills and the Konkan coast.',
-          imageUrl: writeMedia('samples/banner-hero.svg', sceneSvg('Pearls with a birthplace', 'water')),
+          imageUrl: heroArt,
           linkUrl: '/jewellery',
           ctaLabel: 'Explore Jewellery',
           sortOrder: 1,
@@ -566,7 +570,7 @@ async function main() {
           placement: 'HOME_HERO',
           title: 'Made for you',
           subtitle: 'Bridal sets and bespoke pieces, designed with our craftspeople.',
-          imageUrl: writeMedia('samples/banner-custom.svg', sceneSvg('Made for you', 'craft')),
+          imageUrl: customArt,
           linkUrl: '/customized-jewellery',
           ctaLabel: 'Start a design',
           sortOrder: 2,
