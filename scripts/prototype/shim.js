@@ -93,6 +93,7 @@
 
     var res = await answer();
     if (res) return res;
+    if (window.console) console.info('[prototype] not recorded:', method, url.pathname + url.search);
     if (method === 'GET') return json(404, { code: 'NOT_FOUND', message: 'Not available in this prototype.' });
     return notSaved();
   };

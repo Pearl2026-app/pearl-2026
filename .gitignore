@@ -26,3 +26,6 @@ apps/web/public/apps/
 
 # Local throwaway scripts
 *.tmp.mjs
+
+# Generated front-end-only prototype (scripts/prototype/assemble.mjs); not committed until it passes its test
+/prototype/

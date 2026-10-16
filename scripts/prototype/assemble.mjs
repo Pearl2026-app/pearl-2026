@@ -52,7 +52,9 @@ const shim = readFileSync(join(here, 'shim.js'), 'utf8')
   .replace('__IDENTITIES__', () => readFileSync(join(REC, 'identities.json'), 'utf8'));
 writeFileSync(join(OUT, 'mock', 'shim.js'), shim);
 const webRequire = createRequire(new URL('../../apps/web/package.json', import.meta.url));
-const esbuild = createRequire(new URL('../../apps/api/package.json', import.meta.url)).resolve('esbuild');
+// esbuild comes with tsx (packages/db), which bundles the QR library for the browser.
+const tsxPkg = createRequire(new URL('../../packages/db/package.json', import.meta.url)).resolve('tsx/package.json');
+const esbuild = createRequire(tsxPkg).resolve('esbuild');
 const qrEntry = webRequire.resolve('qrcode/lib/browser.js');
 execFileSync(process.execPath, ['-e', `require(${JSON.stringify(esbuild)}).buildSync({ entryPoints: [${JSON.stringify(qrEntry)}], bundle: true, minify: true, format: 'iife', globalName: 'QRCode', outfile: ${JSON.stringify(join(OUT, 'mock', 'qr.js'))} })`]);
 // The QR codes on /platforms were drawn for the recording address; redraw them for wherever the site is opened.
