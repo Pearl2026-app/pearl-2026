@@ -7,6 +7,9 @@ OUT=apps/web/public/apps
 rm -rf "$OUT"
 mkdir -p "$OUT"
 
+# The apps import @sahyadri/shared from its compiled dist/, which the website build makes only later.
+pnpm --filter @sahyadri/shared build >/dev/null || echo "WARNING: @sahyadri/shared did not build; the app previews will fall back."
+
 export_app() { # name, package folder, fallback page
   local name=$1 dir=$2 fallback=$3
   if (cd "apps/$dir" && EXPO_OFFLINE=1 EXPO_NO_TELEMETRY=1 EXPO_PUBLIC_SAME_ORIGIN=1 EXPO_BASE_URL="/apps/$name" \
