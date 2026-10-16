@@ -1,4 +1,5 @@
 'use client';
+import { usePathname } from 'next/navigation';
 import { useState } from 'react';
 import { cx } from '@sahyadri/ui';
 import { enquireOnWhatsApp, type EnquiryPayload } from '@/lib/enquiry';
@@ -43,6 +44,10 @@ export function WhatsAppFloat() {
   const number = useWhatsAppNumber();
   useSite();
   const [busy, setBusy] = useState(false);
+  const path = usePathname() ?? '';
+  // Cart and checkout: no side exits while paying. Product pages: the sticky bar on phones already has Enquire.
+  if (/^\/(cart|checkout|pay)(\/|$)/.test(path)) return null;
+  const phoneHidden = path.startsWith('/product/');
   return (
     <button
       type="button"
@@ -56,7 +61,7 @@ export function WhatsAppFloat() {
           setTimeout(() => setBusy(false), 800);
         }
       }}
-      className="fixed right-4 bottom-[calc(env(safe-area-inset-bottom)+5.5rem)] z-30 flex h-14 w-14 items-center justify-center rounded-full bg-whatsapp text-white shadow-lg transition-transform hover:scale-105 lg:bottom-6"
+      className={`fixed right-4 bottom-[calc(env(safe-area-inset-bottom)+5.5rem)] z-30 ${phoneHidden ? 'hidden lg:flex' : 'flex'} h-14 w-14 items-center justify-center rounded-full bg-whatsapp text-white shadow-lg transition-transform hover:scale-105 lg:bottom-6`}
     >
       <WhatsAppIcon width={28} height={28} />
     </button>
