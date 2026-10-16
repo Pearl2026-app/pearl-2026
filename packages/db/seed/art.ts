@@ -86,7 +86,7 @@ function mark(x: number, y: number, light = false): string {
 
 /** A light studio sweep: cool pearl-white paper with a pool of light and a faint rose blush. */
 function studio(variant: number): string {
-  const [top, bottom] = variant % 2 === 0 ? ['#f9faf8', '#e2e6e4'] : ['#eef2f3', '#cfd8dc'];
+  const [top, bottom] = variant % 2 === 0 ? ['#fffaf8', '#f1e1dc'] : ['#fbf0ed', '#ead2cc'];
   const bg = uid('bg');
   return `<defs><linearGradient id="${bg}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${top}"/><stop offset="1" stop-color="${bottom}"/></linearGradient></defs>
 <rect width="800" height="800" fill="url(#${bg})"/>
@@ -193,7 +193,7 @@ export function sceneSvg(title: string, tone: 'water' | 'farm' | 'craft' | 'gold
       [960, 690, 54],
     ];
     return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" width="1600" height="900">${defs()}
-<defs><radialGradient id="${v}" cx="72%" cy="45%" r="75%"><stop offset="0" stop-color="#33404a"/><stop offset=".55" stop-color="#16222b"/><stop offset="1" stop-color="#0a1117"/></radialGradient></defs>
+<defs><radialGradient id="${v}" cx="72%" cy="45%" r="75%"><stop offset="0" stop-color="#5e4148"/><stop offset=".55" stop-color="#38242b"/><stop offset="1" stop-color="#1e1215"/></radialGradient></defs>
 <rect width="1600" height="900" fill="url(#${v})"/>
 <ellipse cx="1180" cy="430" rx="460" ry="320" fill="#f8e7b2" opacity=".07" filter="url(#b40)"/>
 <path d="M760 900 C 900 640, 1000 560, 1120 620 S 1400 860, 1600 760" fill="none" stroke="url(#metal)" stroke-width="3" opacity=".9"/>
@@ -211,7 +211,7 @@ ${mark(1576, 880, true)}</svg>`;
     ] as const)
       loose += shadow(x, y, r, 0.5, '#000') + pearl(x, y, r, 'White');
     return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" width="1600" height="900">${defs()}
-<defs><radialGradient id="${v}" cx="62%" cy="38%" r="80%"><stop offset="0" stop-color="#2d3e4b"/><stop offset=".55" stop-color="#15222c"/><stop offset="1" stop-color="#091117"/></radialGradient></defs>
+<defs><radialGradient id="${v}" cx="62%" cy="38%" r="80%"><stop offset="0" stop-color="#5a3c43"/><stop offset=".55" stop-color="#36232a"/><stop offset="1" stop-color="#1e1215"/></radialGradient></defs>
 <rect width="1600" height="900" fill="url(#${v})"/>
 <ellipse cx="1050" cy="330" rx="520" ry="260" fill="#e9d9d3" opacity=".08" filter="url(#b40)"/>
 ${strand(pts, () => 30, 'White', 0.55)}${loose}
@@ -244,18 +244,18 @@ ${mark(1576, 880, true)}</svg>`;
       : '';
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" width="1600" height="900">${defs()}
 <defs>
-<linearGradient id="${sky}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#dfe4e8"/><stop offset=".45" stop-color="#efe6e2"/><stop offset=".62" stop-color="#f6e4da"/></linearGradient>
-<linearGradient id="${lake}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#a9b8c1"/><stop offset=".35" stop-color="#5f7684"/><stop offset="1" stop-color="#1b2a35"/></linearGradient>
+<linearGradient id="${sky}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#efdfe0"/><stop offset=".45" stop-color="#f7e6e2"/><stop offset=".62" stop-color="#fbe5dc"/></linearGradient>
+<linearGradient id="${lake}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#cdb4b8"/><stop offset=".35" stop-color="#8c6f76"/><stop offset="1" stop-color="#3a2a2c"/></linearGradient>
 </defs>
 <rect width="1600" height="620" fill="url(#${sky})"/>
 <circle cx="${sunX}" cy="420" r="210" fill="#fff4ea" opacity=".9" filter="url(#b40)"/>
 <circle cx="${sunX}" cy="430" r="46" fill="#fffaf3" opacity=".95" filter="url(#b6)"/>
-${ridge(440, 70, s, '#c6ced6', 0.9)}
+${ridge(440, 70, s, '#dcc8cb', 0.9)}
 <rect x="0" y="420" width="1600" height="90" fill="#fff" opacity=".45" filter="url(#b40)"/>
-${ridge(500, 90, s + 1.3, '#93a2ae')}
+${ridge(500, 90, s + 1.3, '#b8999f')}
 <rect x="0" y="500" width="1600" height="70" fill="#fff" opacity=".35" filter="url(#b40)"/>
-${ridge(560, 70, s + 2.6, '#5b6e7b')}
-${ridge(610, 40, s + 4.1, '#33454f')}
+${ridge(560, 70, s + 2.6, '#86656d')}
+${ridge(610, 40, s + 4.1, '#563f45')}
 <rect y="612" width="1600" height="288" fill="url(#${lake})"/>
 <ellipse cx="${sunX}" cy="720" rx="60" ry="200" fill="#fff3e6" opacity=".35" filter="url(#b14)"/>
 ${Array.from({ length: 14 }, (_, i) => `<path d="M${sunX - 160 + ((i * 53) % 300)} ${640 + i * 17} h${60 + ((i * 29) % 90)}" stroke="#fff" stroke-opacity="${(0.35 - i * 0.02).toFixed(2)}" stroke-width="2" stroke-linecap="round"/>`).join('')}

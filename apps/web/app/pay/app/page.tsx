@@ -59,7 +59,7 @@ function AppPayment() {
           name: 'Sahyadri Pearls',
           description: `Order ${c.orderNumber}`,
           prefill: c.prefill,
-          theme: { color: '#14212B' },
+          theme: { color: '#9E5662' },
           handler: async (r: { razorpay_order_id: string; razorpay_payment_id: string; razorpay_signature: string }) => {
             await api('/payments/verify', { method: 'POST', json: { orderId: r.razorpay_order_id, paymentId: r.razorpay_payment_id, signature: r.razorpay_signature } }).catch(() => undefined);
             finish('paid');

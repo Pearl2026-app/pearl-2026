@@ -2,7 +2,20 @@
 @import '@sahyadri/ui/theme.css';
 @source '../../../packages/ui/src';
 
+/* Website palette, "blush and rose gold" (the admin keeps the shared palette in packages/ui). Buttons use the deeper
+   rose so white text on them stays readable; the lighter rose gold is for icons, lines and highlights. */
 @theme {
+  --color-bg: #fbf3f1;
+  --color-surface: #ffffff;
+  --color-surface-muted: #f5e6e2;
+  --color-ink: #3a2a2c;
+  --color-muted: #7a6266;
+  --color-line: #ebd8d3;
+  --color-accent: #9e5662;
+  --color-accent-hover: #864652;
+  --color-accent-soft: #f5e1df;
+  --color-gold: #b76e79;
+  --color-orient: #f2d7d3;
   --font-serif: var(--font-display), Didot, 'Bodoni 72', Georgia, serif;
   --font-sans: var(--font-text), Futura, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
 }
