@@ -38,7 +38,7 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-export const viewport: Viewport = { themeColor: '#FBF3F1', width: 'device-width', initialScale: 1 };
+export const viewport: Viewport = { themeColor: '#F5F5F3', width: 'device-width', initialScale: 1 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const site = (await get<Site>('/site', { revalidate: 300 }))!;
