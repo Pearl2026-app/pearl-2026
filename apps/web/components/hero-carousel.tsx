@@ -47,7 +47,7 @@ export function HeroCarousel({ slides }: { slides: Slide[] }) {
 
   return (
     <section
-      className="relative bg-ink"
+      className="relative bg-surface-muted"
       aria-roledescription="carousel"
       aria-label="Featured"
       onMouseEnter={() => setPaused(true)}
@@ -60,12 +60,14 @@ export function HeroCarousel({ slides }: { slides: Slide[] }) {
           // The first banner's title is the page's main heading.
           const Title = i === 0 ? 'h1' : 'h2';
           return (
-            <div
+            <Link
               key={s.id}
-              className="relative isolate w-full shrink-0 snap-center overflow-hidden"
+              href={s.linkUrl ?? '/jewellery'}
+              className="relative block w-full shrink-0 snap-center overflow-hidden"
               aria-roledescription="slide"
-              aria-label={`${i + 1} of ${slides.length}`}
+              aria-label={`${i + 1} of ${slides.length}: ${s.title ?? s.ctaLabel ?? 'Shop now'}`}
             >
+              {s.title && <Title className="sr-only">{s.title}</Title>}
               <picture>
                 {s.mobileImageUrl && <source media="(max-width: 767px)" srcSet={s.mobileImageUrl} />}
                 <img
@@ -75,25 +77,10 @@ export function HeroCarousel({ slides }: { slides: Slide[] }) {
                   height={900}
                   fetchPriority={i === 0 ? 'high' : undefined}
                   loading={i === 0 ? 'eager' : 'lazy'}
-                  className="block aspect-[4/3] w-full object-cover object-[72%_center] md:absolute md:inset-0 md:-z-10 md:aspect-auto md:h-full md:object-right"
+                  className="block aspect-[4/3] w-full object-cover object-[72%_center] md:aspect-[16/7] md:object-center"
                 />
               </picture>
-              <div className="absolute inset-0 -z-10 hidden bg-gradient-to-r from-ink/80 via-ink/30 to-transparent md:block" />
-              <div className="mx-auto flex max-w-7xl flex-col px-4 pt-8 pb-16 md:min-h-[78vh] md:justify-center md:pt-24 md:pb-24 lg:px-8">
-                <div className="max-w-xl text-white">
-                  {s.title && (
-                    <Title className="font-serif text-[40px] leading-[1.05] md:text-[76px]">{s.title}</Title>
-                  )}
-                  {s.subtitle && <p className="mt-5 max-w-md text-lg text-white/85">{s.subtitle}</p>}
-                  <Link
-                    href={s.linkUrl ?? '/jewellery'}
-                    className="mt-7 inline-flex min-h-12 md:mt-9 items-center bg-white px-9 text-[15px] tracking-wide text-ink transition-colors hover:bg-orient"
-                  >
-                    {s.ctaLabel ?? 'Shop now'}
-                  </Link>
-                </div>
-              </div>
-            </div>
+            </Link>
           );
         })}
       </div>
@@ -108,7 +95,7 @@ export function HeroCarousel({ slides }: { slides: Slide[] }) {
               className="flex h-6 items-center px-1"
             >
               <span
-                className={`block h-[3px] rounded-full bg-white transition-all duration-500 ${i === index ? 'w-8 opacity-100' : 'w-4 opacity-50'}`}
+                className={`block h-[3px] rounded-full bg-white shadow-[0_0_4px_rgba(0,0,0,0.4)] transition-all duration-500 ${i === index ? 'w-8 opacity-100' : 'w-4 opacity-50'}`}
               />
             </button>
           ))}
