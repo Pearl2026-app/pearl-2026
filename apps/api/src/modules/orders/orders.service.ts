@@ -306,7 +306,7 @@ export class OrdersService implements OnModuleInit {
                 actorId: input.createdById ?? null,
                 type: 'PLACED',
                 toStatus: paid ? 'CONFIRMED' : 'PLACED',
-                message: `Order placed (${input.source.toLowerCase()}${input.channel ? `, ${input.channel}` : ''}). Total ${formatINR(totals.totalPaise)}.${fulfilment ? ` Sent to ${fulfilment.name}, the nearest vendor to PIN ${input.address.pincode}.` : ''}`,
+                message: `Order placed (${input.source.toLowerCase()}${input.channel ? `, ${input.channel}` : ''}). Total ${formatINR(totals.totalPaise)}.${fulfilment ? ` Sent to ${fulfilment.name}, the nearest active vendor to PIN ${input.address.pincode}${fulfilment.km != null ? ` (about ${Math.round(fulfilment.km)} km away)` : ''}.` : ''}`,
               },
             },
           },

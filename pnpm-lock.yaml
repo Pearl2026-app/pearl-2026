@@ -138,6 +138,9 @@ importers:
       helmet:
         specifier: ^8.1.0
         version: 8.3.0
+      india-post-pincode:
+        specifier: 1.0.0
+        version: 1.0.0
       ioredis:
         specifier: ^5.6.0
         version: 5.11.1
@@ -4236,6 +4239,10 @@ packages:
   imurmurhash@0.1.4:
     resolution: {integrity: sha512-JmXMZ6wuvDmLiHEml9ykzqO6lwFbof0GG4IkcGaENdCRDDmMVnny7s5HsIgHCbaq0w2MyPhDqkhTUgS2LU2PHA==}
     engines: {node: '>=0.8.19'}
+
+  india-post-pincode@1.0.0:
+    resolution: {integrity: sha512-P3up4gRtb5pM5/k/t7bekMNdNvdhRkJiuA3MVl1GNXXMzhv5Xy4U3Z/dbK7c04nRGuwGKAMqyxUnIWDfWXtjWA==}
+    engines: {node: '>=18'}
 
   inherits@2.0.4:
     resolution: {integrity: sha512-k/vGaX4/Yla3WzyMCvTQOXYeIHvqOKtnqBduzTHpzpQZzAskKMhZ2K+EnBiSM9zGSoIFeMpXKxa4dYeZIQqewQ==}
@@ -10352,6 +10359,8 @@ snapshots:
       resolve-from: 4.0.0
 
   imurmurhash@0.1.4: {}
+
+  india-post-pincode@1.0.0: {}
 
   inherits@2.0.4: {}
 

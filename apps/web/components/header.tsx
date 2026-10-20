@@ -5,8 +5,9 @@ import { useEffect, useRef, useState } from 'react';
 import { cx } from '@sahyadri/ui';
 import { CartDrawer } from './cart-drawer';
 import { useSession } from './session';
-import { BagIcon, CloseIcon, MenuIcon, PinIcon, SearchIcon, UserIcon } from './icons';
+import { BagIcon, CloseIcon, MenuIcon, SearchIcon, UserIcon } from './icons';
 import { bandHref, PRICE_BANDS } from '@/lib/guides';
+import { LocationPicker } from './location-picker';
 import { useSite } from './site-context';
 
 const NAV = [
@@ -150,10 +151,8 @@ export function Header() {
   const [mega, setMega] = useState(false);
   const [search, setSearch] = useState(false);
   const [q, setQ] = useState('');
-  const [city, setCity] = useState<string>('');
   const searchRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => setCity(document.cookie.match(/(?:^|; )sp_city=([^;]+)/)?.[1] ?? ''), []);
   useEffect(() => {
     setMenu(false);
     setSearch(false);
@@ -163,11 +162,7 @@ export function Header() {
     if (search) searchRef.current?.focus();
   }, [search]);
 
-  const chooseCity = (slug: string) => {
-    document.cookie = `sp_city=${slug}; path=/; max-age=${60 * 60 * 24 * 365}; samesite=lax`;
-    setCity(slug);
-    router.refresh();
-  };
+
   const active = (href: string) => (href === '/' ? pathname === '/' : pathname.startsWith(href));
 
   return (
@@ -236,23 +231,9 @@ export function Header() {
             )}
           </nav>
           <div className="ml-auto flex items-center">
-            <label className="mr-2 hidden items-center gap-1 text-sm text-muted md:flex">
-              <PinIcon width={16} height={16} />
-              <span className="sr-only">Your city</span>
-              <select
-                value={city}
-                onChange={(e) => chooseCity(e.target.value)}
-                className="bg-transparent py-2 text-sm text-ink focus:outline-none"
-                aria-label="Your city"
-              >
-                <option value="">All India</option>
-                {site.cities.map((c) => (
-                  <option key={c.slug} value={c.slug}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
-            </label>
+            <div className="hidden md:block">
+              <LocationPicker />
+            </div>
             <button
               className="flex h-11 w-11 items-center justify-center hover:text-accent"
               onClick={() => setSearch((s) => !s)}
@@ -354,21 +335,9 @@ export function Header() {
                   </Link>
                 ))}
               </nav>
-              <label className="mt-6 flex items-center gap-2 text-sm">
-                <PinIcon width={18} height={18} /> City
-                <select
-                  value={city}
-                  onChange={(e) => chooseCity(e.target.value)}
-                  className="min-h-11 flex-1 border border-line bg-surface px-2"
-                >
-                  <option value="">All India</option>
-                  {site.cities.map((c) => (
-                    <option key={c.slug} value={c.slug}>
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
+              <div className="mt-6 border-t border-line pt-4">
+                <LocationPicker compact />
+              </div>
             </div>
           </div>
         )}

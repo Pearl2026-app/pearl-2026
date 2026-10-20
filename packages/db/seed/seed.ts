@@ -510,6 +510,37 @@ async function main() {
         },
       }),
   );
+  // Two vendors in NCR so the demo shows the "nearest active vendor" rule: Gurugram and Noida.
+  const vendor5 = await findOrCreate(
+    () => prisma.vendor.findFirst({ where: { name: 'Gurugram Pearl Studio' } }),
+    () =>
+      prisma.vendor.create({
+        data: {
+          name: 'Gurugram Pearl Studio',
+          contactName: 'Rohit Sharma',
+          phone: '+919800000029',
+          email: 'vendor5@sahyadripearls.test',
+          address: 'Sector 29, Gurugram 122001',
+          pincode: '122001',
+          cities: { create: [{ cityId: delhiId }] },
+        },
+      }),
+  );
+  const vendor6 = await findOrCreate(
+    () => prisma.vendor.findFirst({ where: { name: 'Noida Pearl House' } }),
+    () =>
+      prisma.vendor.create({
+        data: {
+          name: 'Noida Pearl House',
+          contactName: 'Neha Gupta',
+          phone: '+919800000030',
+          email: 'vendor6@sahyadripearls.test',
+          address: 'Sector 18, Noida 201301',
+          pincode: '201301',
+          cities: { create: [{ cityId: delhiId }] },
+        },
+      }),
+  );
   await prisma.deliveryPartner.updateMany({
     where: { id: dp.id, vendorId: null },
     data: { vendorId: vendor.id },
@@ -548,6 +579,22 @@ async function main() {
       vehicleInfo: 'Two-wheeler DL3C',
       cityId: delhiId,
       vendorId: vendor3.id,
+      isAvailable: true,
+    },
+    {
+      name: 'Deepak Yadav',
+      phone: '+919800000031',
+      vehicleInfo: 'Two-wheeler HR26',
+      cityId: delhiId,
+      vendorId: vendor5.id,
+      isAvailable: true,
+    },
+    {
+      name: 'Imran Khan',
+      phone: '+919800000032',
+      vehicleInfo: 'Two-wheeler UP16',
+      cityId: delhiId,
+      vendorId: vendor6.id,
       isAvailable: true,
     },
     {
@@ -681,6 +728,20 @@ async function main() {
       email: 'vendor4@sahyadripearls.test',
       phone: '+919800000024',
       vendor: { connect: { id: vendor4.id } },
+    },
+    {
+      role: 'VENDOR',
+      name: 'Rohit Sharma',
+      email: 'vendor5@sahyadripearls.test',
+      phone: '+919800000029',
+      vendor: { connect: { id: vendor5.id } },
+    },
+    {
+      role: 'VENDOR',
+      name: 'Neha Gupta',
+      email: 'vendor6@sahyadripearls.test',
+      phone: '+919800000030',
+      vendor: { connect: { id: vendor6.id } },
     },
     ...riderRows.map((r, i) => ({
       role: 'DELIVERY_PARTNER' as const,
