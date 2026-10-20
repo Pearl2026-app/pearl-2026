@@ -381,7 +381,7 @@ export default function OrderPage() {
           {me.role !== 'DELIVERY_PARTNER' && (
             <ScanCard
               items={o.items}
-              next={next.find((x) => ['CONFIRMED', 'PACKED'].includes(x)) ?? null}
+              next={o.status === 'PLACED' && next.includes('CONFIRMED') ? 'CONFIRMED' : o.status === 'CONFIRMED' && next.includes('PACKED') ? 'PACKED' : null}
               onAdvance={(to) => move(to)}
               busy={act.isPending}
             />
