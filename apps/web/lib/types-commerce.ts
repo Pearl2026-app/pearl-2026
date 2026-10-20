@@ -37,4 +37,5 @@ export interface Tracking {
   delivery: { status: string; deliveredAt: string | null; partner: string | null } | null;
   shipTo: { name: string; cityName: string; pincode: string };
   invoiceNumber: string | null;
+  map?: { rider: { lat: number; lng: number; at: string; name: string | null } | null; riderKmAway: number | null } | null;
 }

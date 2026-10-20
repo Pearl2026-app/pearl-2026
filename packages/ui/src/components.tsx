@@ -151,7 +151,13 @@ export function toneFor(status: string): Tone {
 }
 
 export function StatusBadge({ status, label }: { status: string; label?: string }) {
-  return <Badge tone={toneFor(status)}>{label ?? status.replace(/_/g, ' ').toLowerCase().replace(/^\w/, (c) => c.toUpperCase())}</Badge>;
+  return (
+    <Badge tone={toneFor(status)} className="gap-1.5">
+      {/* A coloured dot, so the state reads at a glance even without reading the word. */}
+      <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-current opacity-80" />
+      {label ?? status.replace(/_/g, ' ').toLowerCase().replace(/^\w/, (c) => c.toUpperCase())}
+    </Badge>
+  );
 }
 
 export function Card({ children, className, ...rest }: HTMLAttributes<HTMLDivElement>) {

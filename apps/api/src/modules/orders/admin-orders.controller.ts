@@ -187,7 +187,7 @@ export class AdminOrdersController {
   @Requires('ORDERS', 'view')
   async get(@CurrentUser() user: AuthUser, @Param('id') id: string) {
     const o = await this.orders.find(user, id);
-    return { ...o, trackUrl: this.orders.trackUrl(o.number) };
+    return { ...o, trackUrl: this.orders.trackUrl(o.number), map: await this.orders.mapInfo(o.id, (o.addressSnapshot as { pincode?: string }).pincode) };
   }
 
   /** Manual entry for a phone or Instagram sale. */

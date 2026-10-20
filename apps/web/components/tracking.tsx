@@ -8,8 +8,23 @@ export function Timeline({ t }: { t: Tracking }) {
   const off = ['CANCELLED', 'FAILED', 'RETURNED', 'REFUNDED'].includes(t.status);
   const reached = new Map(t.timeline.map((e) => [e.status, e.at]));
   const idx = STEPS.indexOf(t.status as OrderStatus);
+  const rider = t.map?.rider;
   return (
     <div>
+      {rider && (
+        <div className="mb-5 border border-line bg-surface p-4">
+          <p className="text-sm">
+            <span className="mr-2 inline-block h-2 w-2 animate-pulse rounded-full bg-accent align-middle" />
+            {rider.name ?? 'Your delivery partner'} is on the way{t.map?.riderKmAway != null ? `, about ${t.map.riderKmAway} km from you` : ''}.
+          </p>
+          <iframe
+            title="Where your delivery partner is"
+            loading="lazy"
+            className="mt-3 h-48 w-full border border-line"
+            src={`https://www.openstreetmap.org/export/embed.html?bbox=${rider.lng - 0.03},${rider.lat - 0.02},${rider.lng + 0.03},${rider.lat + 0.02}&layer=mapnik&marker=${rider.lat},${rider.lng}`}
+          />
+        </div>
+      )}
       {off && <p className="mb-4 inline-block bg-[#F8E1DF] px-3 py-1 text-sm text-[#8C1D17]">{ORDER_STATUS_LABEL[t.status as OrderStatus]}</p>}
       <ol className="flex flex-col gap-0">
         {STEPS.map((s, i) => {

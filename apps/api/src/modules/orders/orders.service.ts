@@ -3,6 +3,7 @@ import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { Prisma, type OrderStatus, type PaymentMethod } from '@sahyadri/db';
 import {
   canTransition,
+  distanceKm,
   formatINR,
   ORDER_STATUS_LABEL,
   REASON_REQUIRED,
@@ -24,7 +25,7 @@ import {
 import { SettingsService } from '../../common/settings.service';
 import { config } from '../../config/config';
 import { PrismaService } from '../../prisma/prisma.service';
-import { nearestVendor } from './routing';
+import { nearestVendor, pincodePoint } from './routing';
 import { JobsService } from '../../queue/jobs.service';
 import { AuthService } from '../../auth/auth.service';
 import { EnquiriesService } from '../enquiries/enquiries.service';
@@ -359,6 +360,36 @@ export class OrdersService implements OnModuleInit {
     if (input.paymentMethod !== 'ONLINE' || input.paidNow)
       await this.jobs.add('orders.notify', { orderId: order.id, templateKey: 'ORDER_PLACED' });
     return order;
+  }
+
+  // ── Map ──────────────────────────────────────────────────────
+
+  /**
+   * Where the order is going (placed from the delivery PIN code), where it ships from (the vendor's PIN code), and
+   * the rider's last known position while the delivery is on its way.
+   */
+  async mapInfo(orderId: string, pincode: string | null | undefined) {
+    const o = await this.prisma.order.findUnique({
+      where: { id: orderId },
+      select: {
+        fulfilmentVendor: { select: { name: true, pincode: true } },
+        delivery: { select: { id: true, status: true, deliveryPartner: { select: { name: true } } } },
+      },
+    });
+    const to = pincodePoint(pincode);
+    const from = pincodePoint(o?.fulfilmentVendor?.pincode);
+    const ping =
+      o?.delivery && ['ASSIGNED', 'PICKED_UP', 'OUT_FOR_DELIVERY'].includes(o.delivery.status)
+        ? await this.prisma.deliveryLocationPing.findFirst({ where: { deliveryId: o.delivery.id }, orderBy: { recordedAt: 'desc' } })
+        : null;
+    const rider = ping ? { lat: Number(ping.latitude), lng: Number(ping.longitude), at: ping.recordedAt, name: o?.delivery?.deliveryPartner?.name ?? null } : null;
+    return {
+      destination: to,
+      store: from ? { ...from, name: o?.fulfilmentVendor?.name ?? null } : null,
+      rider,
+      riderKmAway: rider && to ? Math.round(distanceKm(rider, to) * 10) / 10 : null,
+      storeKmAway: from && to ? Math.round(distanceKm(from, to)) : null,
+    };
   }
 
   // ── Invoices ─────────────────────────────────────────────────

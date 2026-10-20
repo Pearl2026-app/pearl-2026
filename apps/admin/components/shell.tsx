@@ -1,11 +1,65 @@
 'use client';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
+import { ChevronRight, LogOut, Menu } from 'lucide-react';
 import { ROLE_LABEL } from '@sahyadri/shared';
 import { Button, cx, Spinner } from '@sahyadri/ui';
 import { adminPath } from '@/lib/base-path';
+import { api } from '@/lib/api';
+import { iconFor } from '@/lib/icons';
 import { NAV } from '@/lib/nav';
+
+/** A colour per menu section, so related pages share a colour and a page is recognised at a glance. */
+export const GROUP_COLOUR: Record<string, string> = {
+  Overview: '#14212B',
+  Sales: '#2B5C8A',
+  Delivery: '#2B5C8A',
+  Catalogue: '#9A7546',
+  Customers: '#6B4C9A',
+  Marketing: '#C2410C',
+  Content: '#1F7A4D',
+  Network: '#0E7C86',
+  Pricing: '#8A6D1F',
+  Reports: '#B4532A',
+  Administration: '#586570',
+};
+export const colourFor = (href: string) => {
+  const g = NAV.find((x) => x.items.some((i) => i.href === href || (href !== '/' && href.startsWith(i.href + '/'))));
+  return (g && GROUP_COLOUR[g.label]) ?? '#586570';
+};
+
+/** An icon on a soft tile in the page's colour. */
+export function IconTile({ href, size = 'md' }: { href: string; size?: 'sm' | 'md' | 'lg' }) {
+  const Icon = iconFor(href);
+  if (!Icon) return null;
+  const c = colourFor(href);
+  const box = size === 'sm' ? 'h-7 w-7' : size === 'lg' ? 'h-11 w-11' : 'h-9 w-9';
+  const px = size === 'sm' ? 15 : size === 'lg' ? 22 : 18;
+  return (
+    <span aria-hidden className={cx('inline-flex shrink-0 items-center justify-center rounded-lg', box)} style={{ backgroundColor: `${c}17`, color: c }}>
+      <Icon size={px} strokeWidth={2} />
+    </span>
+  );
+}
+
+/** Riders using the web panel share their position every 30 s while they have deliveries (meeting of 19 Oct). */
+function useRiderLocation(on: boolean) {
+  useEffect(() => {
+    if (!on || typeof navigator === 'undefined' || !navigator.geolocation) return;
+    let last = 0;
+    const id = navigator.geolocation.watchPosition(
+      (p) => {
+        if (Date.now() - last < 25_000) return;
+        last = Date.now();
+        void api('/delivery/location', { method: 'POST', json: { lat: p.coords.latitude, lng: p.coords.longitude, accuracyM: p.coords.accuracy } }).catch(() => undefined);
+      },
+      () => undefined,
+      { enableHighAccuracy: false, maximumAge: 30_000, timeout: 20_000 },
+    );
+    return () => navigator.geolocation.clearWatch(id);
+  }, [on]);
+}
 import { useDemo, useMe, useLogout } from '@/lib/session';
 
 export function Shell({ children }: { children: ReactNode }) {
@@ -14,6 +68,7 @@ export function Shell({ children }: { children: ReactNode }) {
   const logout = useLogout();
   const demo = useDemo();
   const [open, setOpen] = useState(false);
+  useRiderLocation(me?.role === 'DELIVERY_PARTNER');
 
   if (isLoading)
     return (
@@ -41,36 +96,41 @@ export function Shell({ children }: { children: ReactNode }) {
     .map((g) => ({ ...g, items: g.items.filter((i) => !i.primary) }))
     .filter((g) => g.items.length);
   const inMore = more.some((g) => g.items.some((i) => active(i.href)));
-  const link = (i: (typeof items)[number], colour?: string) => (
-    <Link
-      href={i.href}
-      onClick={() => setOpen(false)}
-      aria-current={active(i.href) ? 'page' : undefined}
-      className={cx(
-        'flex items-center gap-3 rounded-md px-3 text-sm transition-colors',
-        colour ? 'py-2.5 font-medium' : 'py-1.5',
-        active(i.href) ? 'text-ink' : 'text-ink/80 hover:bg-surface-muted hover:text-ink',
-      )}
-      style={
-        active(i.href) && colour
-          ? { backgroundColor: `${colour}14`, boxShadow: `inset 3px 0 0 ${colour}` }
-          : active(i.href)
-            ? { backgroundColor: 'var(--color-surface-muted)' }
-            : undefined
-      }
-    >
-      {colour && (
-        <span aria-hidden className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: colour }} />
-      )}
-      {i.label}
-    </Link>
-  );
+  const link = (i: (typeof items)[number], main?: boolean) => {
+    const Icon = iconFor(i.href);
+    const c = colourFor(i.href);
+    const on = active(i.href);
+    return (
+      <Link
+        href={i.href}
+        onClick={() => setOpen(false)}
+        aria-current={on ? 'page' : undefined}
+        className={cx(
+          'flex items-center gap-3 rounded-md px-2.5 text-sm transition-colors',
+          main ? 'py-2 font-medium' : 'py-1.5',
+          on ? 'text-ink' : 'text-ink/80 hover:bg-surface-muted hover:text-ink',
+        )}
+        style={on ? { backgroundColor: `${c}14`, boxShadow: `inset 3px 0 0 ${c}` } : undefined}
+      >
+        {Icon && (
+          <span
+            aria-hidden
+            className={cx('inline-flex shrink-0 items-center justify-center rounded-md', main ? 'h-7 w-7' : 'h-6 w-6')}
+            style={{ backgroundColor: main || on ? `${c}1A` : 'transparent', color: c }}
+          >
+            <Icon size={main ? 16 : 15} strokeWidth={2} />
+          </span>
+        )}
+        {i.label}
+      </Link>
+    );
+  };
 
   const nav = (
     <nav aria-label="Main" className="flex flex-col gap-4 p-3">
       <ul className="flex flex-col gap-0.5">
         {main.map((i) => (
-          <li key={i.href}>{link(i, i.primary)}</li>
+          <li key={i.href}>{link(i, true)}</li>
         ))}
       </ul>
       {more.length > 0 && (
@@ -78,14 +138,15 @@ export function Shell({ children }: { children: ReactNode }) {
         <details open={inMore} className="group border-t border-line pt-3">
           <summary className="flex cursor-pointer list-none items-center justify-between rounded-md px-3 py-2 text-sm text-muted hover:bg-surface-muted [&::-webkit-details-marker]:hidden">
             More
-            <span aria-hidden className="transition-transform group-open:rotate-90">
-              ›
-            </span>
+            <ChevronRight aria-hidden size={16} className="transition-transform group-open:rotate-90" />
           </summary>
           <div className="mt-2 flex flex-col gap-3">
             {more.map((g) => (
               <div key={g.label}>
-                <p className="mb-0.5 px-3 text-xs text-muted">{g.label}</p>
+                <p className="mb-0.5 flex items-center gap-2 px-3 text-[11px] font-medium tracking-wide text-muted uppercase">
+                  <span aria-hidden className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: GROUP_COLOUR[g.label] ?? '#586570' }} />
+                  {g.label}
+                </p>
                 <ul>
                   {g.items.map((i) => (
                     <li key={i.href}>{link(i)}</li>
@@ -134,12 +195,13 @@ export function Shell({ children }: { children: ReactNode }) {
               onClick={() => setOpen(true)}
               aria-label="Open menu"
             >
-              ☰
+              <Menu size={20} />
             </button>
             <span className="font-serif text-lg text-accent lg:hidden">Sahyadri Pearls</span>
             <div className="ml-auto flex items-center gap-3 text-sm">
               <span className="hidden text-muted sm:inline">{me.name}</span>
               <Button variant="secondary" size="sm" onClick={logout}>
+                <LogOut size={14} className="mr-1.5" aria-hidden />
                 Sign out
               </Button>
             </div>
@@ -163,11 +225,15 @@ export function PageHeader({
   description?: ReactNode;
   actions?: ReactNode;
 }) {
+  const pathname = usePathname();
   return (
     <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
-      <div>
-        <h1 className="text-2xl font-semibold text-ink">{title}</h1>
-        {description && <p className="mt-1 text-sm text-muted">{description}</p>}
+      <div className="flex items-start gap-3">
+        <IconTile href={pathname} size="lg" />
+        <div>
+          <h1 className="text-2xl font-semibold text-ink">{title}</h1>
+          {description && <p className="mt-1 max-w-3xl text-sm text-muted">{description}</p>}
+        </div>
       </div>
       {actions && <div className="flex flex-wrap gap-2">{actions}</div>}
     </div>

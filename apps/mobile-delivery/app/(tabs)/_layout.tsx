@@ -1,4 +1,7 @@
+import { useEffect } from 'react';
 import { Redirect, Tabs } from 'expo-router';
+import { client } from '@/api';
+import { startLiveLocation } from '@/location';
 import { Text, type ColorValue } from 'react-native';
 import { useSession } from '@/session';
 import { C } from '@/theme';
@@ -7,6 +10,8 @@ const icon = (glyph: string) => ({ color }: { color: ColorValue }) => <Text styl
 
 export default function TabsLayout() {
   const { me, ready } = useSession();
+  // Share the rider's position while they are signed in; the API keeps it only while a delivery is active.
+  useEffect(() => (me ? startLiveLocation((p) => client.post('/delivery/location', p)) : undefined), [me]);
   if (ready && !me) return <Redirect href="/login" />;
   return (
     <Tabs screenOptions={{ tabBarActiveTintColor: C.accent, headerStyle: { backgroundColor: C.bg }, headerTitleStyle: { color: C.ink }, sceneStyle: { backgroundColor: C.bg } }}>

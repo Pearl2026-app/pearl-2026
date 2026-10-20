@@ -11,6 +11,17 @@ import {
   type OrderStatus,
 } from '@sahyadri/shared';
 import { Card, Input, Spinner, StatusBadge } from '@sahyadri/ui';
+import {
+  BarChart3,
+  ImagePlus,
+  IndianRupee,
+  MessageSquare,
+  PackageX,
+  Plus,
+  Reply,
+  ShoppingBag,
+  type LucideIcon,
+} from 'lucide-react';
 import { PageHeader } from './shell';
 import { api, errorText, qs } from '@/lib/api';
 import { ago, inr } from '@/lib/format';
@@ -41,26 +52,19 @@ interface Dash {
 }
 
 /** The four figures that need attention, each in its own colour. The rest live in Reports. */
-const CARDS: Array<{ key: string; label: string; money?: boolean; href: string; tint: string; ink: string }> =
-  [
-    { key: 'salesPaise', label: 'Sales', money: true, href: '/reports', tint: '#E2F1E8', ink: '#1F5E3A' },
-    {
-      key: 'pendingOrders',
-      label: 'Orders to process',
-      href: '/orders?status=PLACED',
-      tint: '#E3EDF7',
-      ink: '#1F4A73',
-    },
-    { key: 'pendingEnquiries', label: 'Open enquiries', href: '/enquiries', tint: '#FBF0DC', ink: '#7A4C0B' },
-    { key: 'outOfStock', label: 'Out of stock or sold', href: '/products', tint: '#F8E1DF', ink: '#8C1D17' },
-  ];
+const CARDS: Array<{ key: string; label: string; money?: boolean; href: string; tint: string; ink: string; icon: LucideIcon }> = [
+  { key: 'salesPaise', label: 'Sales', money: true, href: '/reports', tint: '#E2F1E8', ink: '#1F5E3A', icon: IndianRupee },
+  { key: 'pendingOrders', label: 'Orders to process', href: '/orders?status=PLACED', tint: '#E3EDF7', ink: '#1F4A73', icon: ShoppingBag },
+  { key: 'pendingEnquiries', label: 'Open enquiries', href: '/enquiries', tint: '#FBF0DC', ink: '#7A4C0B', icon: MessageSquare },
+  { key: 'outOfStock', label: 'Out of stock or sold', href: '/restock', tint: '#F8E1DF', ink: '#8C1D17', icon: PackageX },
+];
 
 /** Shortcuts to the jobs done most often, shown only to people who may do them. */
-const ACTIONS: Array<{ href: string; label: string; module: Module; action: Action }> = [
-  { href: '/orders/new', label: 'New order', module: 'ORDERS', action: 'create' },
-  { href: '/products/new', label: 'Add product', module: 'PRODUCTS', action: 'create' },
-  { href: '/enquiries', label: 'Reply to enquiries', module: 'ENQUIRIES', action: 'view' },
-  { href: '/banners', label: 'Change banners', module: 'CONTENT', action: 'edit' },
+const ACTIONS: Array<{ href: string; label: string; module: Module; action: Action; icon: LucideIcon; colour: string }> = [
+  { href: '/orders/new', label: 'New order', module: 'ORDERS', action: 'create', icon: Plus, colour: '#2B5C8A' },
+  { href: '/products/new', label: 'Add product', module: 'PRODUCTS', action: 'create', icon: Plus, colour: '#9A7546' },
+  { href: '/enquiries', label: 'Reply to enquiries', module: 'ENQUIRIES', action: 'view', icon: Reply, colour: '#1F7A4D' },
+  { href: '/banners', label: 'Change banners', module: 'CONTENT', action: 'edit', icon: ImagePlus, colour: '#1F7A4D' },
 ];
 
 function Bars({
@@ -152,8 +156,13 @@ export function Dashboard() {
                   className="block rounded-lg p-4 transition-transform hover:-translate-y-0.5"
                   style={{ backgroundColor: c.tint, color: c.ink }}
                 >
-                  <span className="block text-sm font-medium">{c.label}</span>
-                  <span className="mt-2 block text-3xl font-semibold tabular-nums">
+                  <span className="flex items-center justify-between gap-2">
+                    <span className="text-sm font-medium">{c.label}</span>
+                    <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-white/70" aria-hidden>
+                      <c.icon size={18} />
+                    </span>
+                  </span>
+                  <span className="mt-1 block text-3xl font-semibold tabular-nums">
                     {c.money ? inr(data.cards[c.key]!) : data.cards[c.key]!.toLocaleString('en-IN')}
                   </span>
                 </Link>
@@ -168,8 +177,11 @@ export function Dashboard() {
                   <Link
                     key={a.href}
                     href={a.href}
-                    className="inline-flex min-h-10 items-center rounded-md border border-line bg-surface px-4 text-sm font-medium hover:border-ink"
+                    className="inline-flex min-h-10 items-center gap-2 rounded-md border border-line bg-surface px-3 text-sm font-medium hover:border-ink"
                   >
+                    <span className="inline-flex h-7 w-7 items-center justify-center rounded-md" style={{ backgroundColor: `${a.colour}1A`, color: a.colour }} aria-hidden>
+                      <a.icon size={15} />
+                    </span>
                     {a.label}
                   </Link>
                 ))}
@@ -177,12 +189,16 @@ export function Dashboard() {
             ) : null;
           })()}
           <Card className="mb-5">
-            <h2 className="mb-2 font-semibold">Sales by month</h2>
+            <h2 className="mb-2 flex items-center gap-2 font-semibold">
+              <BarChart3 size={18} className="text-[#B4532A]" aria-hidden /> Sales by month
+            </h2>
             <Bars data={data.monthly} value={(m) => m.salesPaise} format={(n) => inr(n)} />
           </Card>
           <div className="grid gap-4 lg:grid-cols-2">
             <Card>
-              <h2 className="mb-2 font-semibold">Recent orders</h2>
+              <h2 className="mb-2 flex items-center gap-2 font-semibold">
+                <ShoppingBag size={18} className="text-[#2B5C8A]" aria-hidden /> Recent orders
+              </h2>
               <ul className="text-sm">
                 {data.recentOrders.map((o) => (
                   <li
@@ -210,7 +226,9 @@ export function Dashboard() {
             </Card>
             {me?.role !== 'VENDOR' && (
               <Card>
-                <h2 className="mb-2 font-semibold">Recent enquiries</h2>
+                <h2 className="mb-2 flex items-center gap-2 font-semibold">
+                  <MessageSquare size={18} className="text-[#1F7A4D]" aria-hidden /> Recent enquiries
+                </h2>
                 <ul className="text-sm">
                   {data.recentEnquiries.map((e) => (
                     <li

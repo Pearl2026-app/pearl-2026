@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import { Card } from '@sahyadri/ui';
 import { Dashboard } from '@/components/dashboard';
+import { IconTile } from '@/components/shell';
 import { NAV } from '@/lib/nav';
 import { useMe } from '@/lib/session';
 
@@ -27,7 +28,10 @@ export default function HomePage() {
         <div className="grid gap-3 sm:grid-cols-2">
           {items.map((i) => (
             <Link key={i.href} href={i.href}>
-              <Card className="hover:border-accent">{i.label}</Card>
+              <Card className="flex items-center gap-3 hover:border-accent">
+                <IconTile href={i.href} />
+                <span className="font-medium">{i.label}</span>
+              </Card>
             </Link>
           ))}
         </div>

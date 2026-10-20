@@ -282,6 +282,11 @@ export class CheckoutController {
       delivery: order.delivery ? { status: order.delivery.status, deliveredAt: order.delivery.deliveredAt, partner: order.delivery.deliveryPartner?.name.split(' ')[0] ?? null } : null,
       shipTo: { name: addr.name, cityName: addr.cityName, pincode: addr.pincode },
       invoiceNumber: order.invoice?.number ?? null,
+      // While the rider is on the way: where they are and how far from the delivery address.
+      map:
+        order.status === 'OUT_FOR_DELIVERY' || order.status === 'PICKED_UP'
+          ? await this.orders.mapInfo(order.id, addr.pincode).then((m) => ({ ...m, rider: m.rider ? { ...m.rider, name: m.rider.name?.split(' ')[0] ?? null } : null }))
+          : null,
     };
   }
 

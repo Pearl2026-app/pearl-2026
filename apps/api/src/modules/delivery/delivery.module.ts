@@ -94,6 +94,31 @@ export class DeliveryController {
     return this.job(user, orderId);
   }
 
+  /**
+   * Live location while the rider has a job on the way (meeting of 19 Oct): the app sends it every half minute or
+   * so; head office, the vendor and the customer see where the rider is. Only while a delivery is active.
+   */
+  @Post('location')
+  @HttpCode(200)
+  async location(
+    @CurrentUser() user: AuthUser,
+    @Body(new ZodValidationPipe(z.object({ lat: z.number().min(-90).max(90), lng: z.number().min(-180).max(180), accuracyM: z.number().min(0).max(100_000).optional() })))
+    dto: { lat: number; lng: number; accuracyM?: number },
+  ) {
+    if (!user.deliveryPartnerId) throw notFound('Delivery partner');
+    const active = await this.prisma.delivery.findMany({
+      where: { deliveryPartnerId: user.deliveryPartnerId, status: { in: ['ASSIGNED', 'PICKED_UP', 'OUT_FOR_DELIVERY'] } },
+      select: { id: true },
+    });
+    if (!active.length) return { saved: false };
+    // One row per active delivery; older pings are trimmed so the table stays small.
+    await this.prisma.deliveryLocationPing.createMany({
+      data: active.map((d) => ({ deliveryPartnerId: user.deliveryPartnerId!, deliveryId: d.id, latitude: dto.lat, longitude: dto.lng, accuracyM: dto.accuracyM ? Math.round(dto.accuracyM) : null, recordedAt: new Date() })),
+    });
+    await this.prisma.deliveryLocationPing.deleteMany({ where: { deliveryPartnerId: user.deliveryPartnerId, recordedAt: { lt: new Date(Date.now() - 2 * 24 * 3600_000) } } });
+    return { saved: true };
+  }
+
   @Post('jobs/:orderId/picked-up')
   @HttpCode(200)
   async pickedUp(@CurrentUser() user: AuthUser, @Param('orderId') orderId: string, @Body(new ZodValidationPipe(clientEvent)) dto: z.infer<typeof clientEvent>) {

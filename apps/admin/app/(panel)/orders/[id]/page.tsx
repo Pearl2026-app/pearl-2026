@@ -13,6 +13,9 @@ import {
 } from '@sahyadri/shared';
 import { Alert, Button, Card, Input, Select, Spinner, StatusBadge } from '@sahyadri/ui';
 import { useRefOptions } from '@/components/fields';
+import { CreditCard, History, Store, Truck, Undo2, User, Wallet } from 'lucide-react';
+import { OrderMap } from '@/components/order-map';
+import { ScanCard } from '@/components/scan-card';
 import { PageHeader } from '@/components/shell';
 import { useToast } from '@/components/toast';
 import { api, errorText } from '@/lib/api';
@@ -28,6 +31,8 @@ export default function OrderPage() {
   const { data: o, isLoading } = useQuery({
     queryKey: ['/admin/orders', id],
     queryFn: () => api<any>(`/admin/orders/${id}`),
+    // While a rider is on the way, refresh every 30 seconds so the map follows them.
+    refetchInterval: (q) => (['ASSIGNED', 'PICKED_UP', 'OUT_FOR_DELIVERY'].includes((q.state.data as { status?: string } | undefined)?.status ?? '') ? 30_000 : false),
   });
   const vendors = useRefOptions(
     can('VENDORS') && (me?.role === 'SUPER_ADMIN' || me?.role === 'STAFF')
@@ -213,7 +218,7 @@ export default function OrderPage() {
             </dl>
           </Card>
           <Card>
-            <h2 className="mb-2 font-semibold">Timeline</h2>
+            <h2 className="mb-2 flex items-center gap-2 font-semibold"><History size={17} style={{ color: '#586570' }} aria-hidden /> Timeline</h2>
             <ol className="flex flex-col gap-2 text-sm">
               {o.events.map((e: any) => (
                 <li key={e.id} className="border-l-2 border-line pl-3">
@@ -238,7 +243,7 @@ export default function OrderPage() {
           </Card>
           {o.payments.length > 0 && (
             <Card>
-              <h2 className="mb-2 font-semibold">Payments</h2>
+              <h2 className="mb-2 flex items-center gap-2 font-semibold"><CreditCard size={17} style={{ color: '#2B5C8A' }} aria-hidden /> Payments</h2>
               <ul className="text-sm">
                 {o.payments.map((p: any) => (
                   <li key={p.id} className="flex justify-between border-t border-line py-1">
@@ -266,7 +271,7 @@ export default function OrderPage() {
           )}
           {o.delivery && (
             <Card>
-              <h2 className="mb-2 font-semibold">Delivery</h2>
+              <h2 className="mb-2 flex items-center gap-2 font-semibold"><Truck size={17} style={{ color: '#2B5C8A' }} aria-hidden /> Delivery</h2>
               <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
                 <dt className="text-muted">Partner</dt>
                 <dd>
@@ -324,7 +329,7 @@ export default function OrderPage() {
         </div>
         <div className="flex flex-col gap-4">
           <Card>
-            <h2 className="mb-2 font-semibold">Customer</h2>
+            <h2 className="mb-2 flex items-center gap-2 font-semibold"><User size={17} style={{ color: '#6B4C9A' }} aria-hidden /> Customer</h2>
             <p className="text-sm">
               {o.contactName}
               <br />
@@ -373,6 +378,15 @@ export default function OrderPage() {
               </p>
             )}
           </Card>
+          {me.role !== 'DELIVERY_PARTNER' && (
+            <ScanCard
+              items={o.items}
+              next={next.find((x) => ['CONFIRMED', 'PACKED'].includes(x)) ?? null}
+              onAdvance={(to) => move(to)}
+              busy={act.isPending}
+            />
+          )}
+          <OrderMap map={o.map} address={[addr.line1, addr.line2, addr.area, `${addr.cityName} ${addr.pincode}`, addr.state].filter(Boolean).join(', ')} />
           {can('ORDERS', 'edit') && me.role !== 'DELIVERY_PARTNER' && (
             <DeliveryCard
               order={o}
@@ -386,7 +400,7 @@ export default function OrderPage() {
           )}
           {(vendors.data || franchises.data || manufacturers.data) && (
             <Card className="flex flex-col gap-3">
-              <h2 className="font-semibold">Assignments</h2>
+              <h2 className="flex items-center gap-2 font-semibold"><Store size={17} style={{ color: '#0E7C86' }} aria-hidden /> Assignments</h2>
               {vendors.data && isHeadOffice && (
                 <label className="text-sm">
                   Sent to vendor (nearest to the customer)
@@ -462,7 +476,7 @@ export default function OrderPage() {
             !['PAID', 'COD_COLLECTED', 'REFUNDED'].includes(o.paymentStatus) &&
             !['CANCELLED', 'FAILED'].includes(o.status) && (
               <Card className="flex flex-col gap-2">
-                <h2 className="font-semibold">Record a payment</h2>
+                <h2 className="flex items-center gap-2 font-semibold"><Wallet size={17} style={{ color: '#1F7A4D' }} aria-hidden /> Record a payment</h2>
                 <p className="text-xs text-muted">
                   For cash collected, bank transfer or UPI to the shop. The full amount {inr(o.totalPaise)} is
                   recorded.
@@ -508,7 +522,7 @@ export default function OrderPage() {
                     act.mutate({ path: '/refunds', json: { amountPaise, reason: refund.reason } });
                 }}
               >
-                <h2 className="font-semibold">Refund</h2>
+                <h2 className="flex items-center gap-2 font-semibold"><Undo2 size={17} style={{ color: '#8C1D17' }} aria-hidden /> Refund</h2>
                 <p className="text-xs text-muted">
                   Up to {inr(paid - refunded)}. Online payments are refunded through the gateway.
                 </p>
@@ -537,7 +551,7 @@ export default function OrderPage() {
           )}
           {o.returnRequests.length > 0 && (
             <Card>
-              <h2 className="mb-2 font-semibold">Return / cancellation</h2>
+              <h2 className="mb-2 flex items-center gap-2 font-semibold"><Undo2 size={17} style={{ color: '#8C1D17' }} aria-hidden /> Return / cancellation</h2>
               {o.returnRequests.map((r: any) => (
                 <p key={r.id} className="text-sm">
                   {r.type.toLowerCase()} · {r.reason} · <StatusBadge status={r.status} />{' '}
@@ -608,7 +622,7 @@ function DeliveryCard({
   return (
     <Card className="flex flex-col gap-3">
       <div>
-        <h2 className="font-semibold">Delivery</h2>
+        <h2 className="flex items-center gap-2 font-semibold"><Truck size={17} style={{ color: '#2B5C8A' }} aria-hidden /> Delivery</h2>
         <p className="mt-1 text-sm text-muted">
           {order.fulfilmentVendor ? (
             <>
