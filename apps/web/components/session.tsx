@@ -14,6 +14,8 @@ export interface Me {
     referralCode: string;
     cityId: string | null;
     preferredPaymentMethod: string | null;
+    pointsPaise?: number;
+    b2bStatus?: string;
   } | null;
 }
 

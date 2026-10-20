@@ -1066,6 +1066,8 @@ model Order {
   currencyCode  String @default("INR")
 
   couponCode   String?
+  /// Part of the order settled with credit points (earned 1 point = Re 1 on delivered orders)
+  pointsPaise  Int     @default(0)
   customerNote String?
   /// Gift packing chosen at checkout; the message is printed on a card, never on the invoice
   giftWrap     Boolean @default(false)

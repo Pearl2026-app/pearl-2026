@@ -35,6 +35,12 @@ export default function AccountPage() {
       }}
     >
       <h2 className="font-serif text-2xl">Account</h2>
+      {(me?.customer?.pointsPaise ?? 0) > 0 && (
+        <p className="border border-gold/50 bg-surface px-4 py-3 text-sm">
+          <strong>₹{Math.floor((me!.customer!.pointsPaise ?? 0) / 100).toLocaleString('en-IN')} in credit points.</strong> Points are earned on every
+          delivered order and can pay part of your next one at checkout.
+        </p>
+      )}
       {msg && <Notice tone={msg.tone}>{msg.text}</Notice>}
       <FormField label="Mobile number" hint="Your sign-in number cannot be changed here.">{(id) => <TextInput id={id} value={me?.phone ?? ''} disabled />}</FormField>
       <FormField label="Name" error={fields.name}>{(id) => <TextInput id={id} autoComplete="name" value={v.name} onChange={(e) => setV({ ...v, name: e.target.value })} />}</FormField>

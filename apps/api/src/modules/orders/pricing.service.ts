@@ -1,7 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import type { Prisma } from '@sahyadri/db';
-import { computeTotals, evaluateCoupon, type CouponResult, type PricingLine, type Totals } from '@sahyadri/shared';
+import { allocate, computeTotals, evaluateCoupon, type CouponResult, type PricingLine, type Totals } from '@sahyadri/shared';
 import { SettingsService } from '../../common/settings.service';
+import { pointsBalancePaise } from './loyalty';
 import { PrismaService } from '../../prisma/prisma.service';
 
 type Db = PrismaService | Prisma.TransactionClient;
@@ -15,6 +16,8 @@ export interface PriceRequest {
   cityId?: string | null;
   /** Manual orders may skip delivery charges */
   skipDelivery?: boolean;
+  /** Pay part of the order with credit points (signed-in customers) */
+  redeemPoints?: boolean;
 }
 
 export interface PricedLine {
@@ -40,6 +43,8 @@ export interface Priced {
   totals: Totals;
   coupon: { code: string; id: string; discountPaise: number } | null;
   couponError: string | null;
+  /** Credit points: how much of this order they pay, and the customer's balance */
+  points: { redeemedPaise: number; balancePaise: number } | null;
 }
 
 /** Rule 5: money is calculated here, from current prices and settings. Client totals are ignored. */
@@ -96,13 +101,32 @@ export class PricingService {
       } else couponError = r.result.message;
     }
 
+    // Credit points pay part of the order like a discount, spread over the pieces so GST stays right per line.
+    let points: Priced['points'] = null;
+    let discounts = lineDiscounts;
+    if (req.redeemPoints && req.customerId) {
+      const loyalty = await this.settings.get('loyalty');
+      if (loyalty.enabled) {
+        const balancePaise = await pointsBalancePaise(db, req.customerId);
+        const nets = pricing.map((l, i) => l.unitPricePaise * l.quantity - (lineDiscounts?.[i] ?? 0));
+        const gross = nets.reduce((a, b) => a + b, 0);
+        const cap = Math.floor((gross * loyalty.maxRedeemPercent) / 100 / 100) * 100; // whole rupees
+        const use = Math.max(0, Math.min(balancePaise, cap));
+        if (use > 0) {
+          const spread = allocate(use, nets);
+          discounts = nets.map((_, i) => (lineDiscounts?.[i] ?? 0) + spread[i]!);
+        }
+        points = { redeemedPaise: use, balancePaise };
+      }
+    }
+
     const delivery = await this.settings.get('delivery');
     const city = req.cityId ? await db.city.findUnique({ where: { id: req.cityId }, select: { deliveryChargePaise: true } }) : null;
     const totals = computeTotals(pricing, {
-      lineDiscountsPaise: lineDiscounts,
+      lineDiscountsPaise: discounts,
       delivery: req.skipDelivery ? undefined : { chargePaise: delivery.chargePaise, freeAbovePaise: delivery.freeAbovePaise, cityChargePaise: city?.deliveryChargePaise ?? null },
     });
-    return { lines, totals, coupon, couponError };
+    return { lines, totals, coupon, couponError, points };
   }
 
   private async evaluate(db: Db, rawCode: string, lines: PricingLine[], customerId: string | null, phone: string | null, cityId: string | null = null): Promise<{ code: string; id?: string; result: CouponResult }> {

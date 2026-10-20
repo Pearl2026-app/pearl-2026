@@ -35,6 +35,14 @@ export const SETTING_SCHEMAS = {
     refereeRewardPaise: z.number().int().nonnegative().default(50_000),
     rewardValidDays: z.number().int().positive().default(90),
   }),
+  /** Credit points (meeting of 19 Oct): earn on delivered orders, pay part of the next order with them. */
+  loyalty: z.object({
+    enabled: z.boolean().default(true),
+    /** Points earned, as % of the order value; 1 point = Re 1 */
+    earnPercent: z.number().min(0).max(50).default(2),
+    /** The most of an order that points may pay, as % */
+    maxRedeemPercent: z.number().min(0).max(100).default(20),
+  }),
   /** Low-stock alerts to head office, the vendor and the manufacturers (meeting of 19 Oct). */
   stock_alert: z.object({
     enabled: z.boolean().default(true),
@@ -69,7 +77,7 @@ export type SettingKey = keyof typeof SETTING_SCHEMAS;
 export type SettingValue<K extends SettingKey> = z.infer<(typeof SETTING_SCHEMAS)[K]>;
 
 /** Settings that the public site may read. */
-export const PUBLIC_SETTINGS: SettingKey[] = ['store', 'delivery', 'app_links', 'seo', 'returns', 'storefront'];
+export const PUBLIC_SETTINGS: SettingKey[] = ['store', 'delivery', 'app_links', 'seo', 'returns', 'storefront', 'loyalty'];
 
 @Injectable()
 export class SettingsService {

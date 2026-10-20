@@ -48,6 +48,7 @@ export default function CheckoutPage() {
   const [gift, setGift] = useState(false);
   const [giftMessage, setGiftMessage] = useState('');
   const [business, setBusiness] = useState(false);
+  const [usePoints, setUsePoints] = useState(false);
   const [gstin, setGstin] = useState('');
   const [businessName, setBusinessName] = useState('');
   const [saveAddress, setSaveAddress] = useState(true);
@@ -117,6 +118,7 @@ export default function CheckoutPage() {
         cityId,
         paymentMethod: method,
         note: note || null,
+        ...(usePoints ? { usePoints: true } : {}),
         ...(business && gstin.trim() ? { gstin: gstin.trim().toUpperCase(), businessName: businessName.trim() || null } : {}),
         ...(gift ? { giftWrap: true, giftMessage: giftMessage.trim() || null } : {}),
         saveAddress: !!me && addressId === 'new' && saveAddress,
@@ -236,6 +238,15 @@ export default function CheckoutPage() {
               </div>
             )}
             <FormField label="Delivery note (optional)">{(id) => <TextInput id={id} value={note} onChange={(e) => setNote(e.target.value)} placeholder="Gate code, best time to deliver…" />}</FormField>
+            {me && (me.customer?.pointsPaise ?? 0) > 0 && (
+              <label className={`flex min-h-11 cursor-pointer items-center gap-3 border p-4 text-sm ${usePoints ? 'border-accent bg-accent-soft' : 'border-line bg-surface'}`}>
+                <input type="checkbox" checked={usePoints} onChange={(e) => setUsePoints(e.target.checked)} className="h-5 w-5" />
+                <span>
+                  <strong>Use my credit points</strong> · you have ₹{Math.floor((me.customer!.pointsPaise ?? 0) / 100).toLocaleString('en-IN')} in points
+                  {site.loyalty ? `; points can pay up to ${site.loyalty.maxRedeemPercent}% of the order` : ''}. The exact amount shows on your order.
+                </span>
+              </label>
+            )}
             <div className={`border p-4 ${business ? 'border-accent bg-accent-soft' : 'border-line bg-surface'}`}>
               <label className="flex min-h-11 cursor-pointer items-center gap-3 text-sm">
                 <input type="checkbox" checked={business} onChange={(e) => setBusiness(e.target.checked)} className="h-5 w-5" />

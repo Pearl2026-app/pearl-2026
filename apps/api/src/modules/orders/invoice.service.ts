@@ -44,7 +44,7 @@ export class InvoiceService {
       })),
       delivery: { taxablePaise: delivery.taxablePaise, gstPaise: delivery.gstPaise, totalPaise: o.deliveryPaise, rateBp: maxRate },
       totals: { taxablePaise: o.taxablePaise, cgstPaise: o.invoice.cgstPaise, sgstPaise: o.invoice.sgstPaise, igstPaise: o.invoice.igstPaise, totalPaise: o.totalPaise },
-      summary: { subtotalPaise: o.subtotalPaise, discountPaise: o.discountPaise, couponCode: o.couponCode, deliveryPaise: o.deliveryPaise },
+      summary: { subtotalPaise: o.subtotalPaise, discountPaise: o.discountPaise, couponCode: o.couponCode, pointsPaise: o.pointsPaise, deliveryPaise: o.deliveryPaise },
       paymentStatus: o.paymentStatus === 'PAID' ? 'paid' : o.paymentStatus === 'COD_PENDING' ? 'to be collected' : o.paymentStatus.replace(/_/g, ' ').toLowerCase(),
       paymentReference: ((p) => (p?.raw as { reference?: string } | null)?.reference ?? p?.providerPaymentId ?? null)(o.payments[0]),
       paymentMethod: o.paymentMethod === 'COD' ? 'Cash on delivery' : o.paymentMethod === 'ONLINE' ? 'Paid online' : o.paymentMethod.replace('_', ' ').toLowerCase(),

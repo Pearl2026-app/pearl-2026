@@ -56,6 +56,15 @@ const GROUPS: Array<{ key: string; title: string; fields: FieldDef[] }> = [
     ],
   },
   {
+    key: 'loyalty',
+    title: 'Credit points',
+    fields: [
+      { name: 'enabled', label: 'Give credit points', type: 'switch' },
+      { name: 'earnPercent', label: 'Earn (% of the order, on delivery)', type: 'number', hint: '1 point = ₹1. E.g. 2 means a ₹10,000 order earns 200 points.' },
+      { name: 'maxRedeemPercent', label: 'Points may pay at most (% of the order)', type: 'number' },
+    ],
+  },
+  {
     key: 'stock_alert',
     title: 'Low-stock alerts',
     fields: [

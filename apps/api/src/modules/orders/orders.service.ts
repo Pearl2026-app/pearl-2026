@@ -25,6 +25,7 @@ import {
 import { SettingsService } from '../../common/settings.service';
 import { config } from '../../config/config';
 import { PrismaService } from '../../prisma/prisma.service';
+import { earnOrderPoints, redeemOrderPoints, refundOrderPoints } from './loyalty';
 import { nearestVendor, pincodePoint } from './routing';
 import { JobsService } from '../../queue/jobs.service';
 import { AuthService } from '../../auth/auth.service';
@@ -54,6 +55,8 @@ export interface CreateOrderInput {
   giftMessage?: string | null;
   internalNote?: string | null;
   franchiseId?: string | null;
+  /** Pay part of the order with credit points */
+  redeemPoints?: boolean;
   /** Business buyers: their GSTIN and registered name, printed on the tax invoice */
   buyerGstin?: string | null;
   buyerBusinessName?: string | null;
@@ -193,6 +196,7 @@ export class OrdersService implements OnModuleInit {
             customerId,
             cityId: city.id,
             skipDelivery: input.skipDelivery,
+            redeemPoints: input.redeemPoints,
           },
           tx,
         );
@@ -256,12 +260,13 @@ export class OrdersService implements OnModuleInit {
             paymentStatus,
             paymentMethod: input.paymentMethod,
             subtotalPaise: totals.subtotalPaise,
-            discountPaise: totals.discountPaise,
+            discountPaise: totals.discountPaise - (priced.points?.redeemedPaise ?? 0),
             taxablePaise: totals.taxablePaise,
             gstPaise: totals.gstPaise,
             deliveryPaise: totals.deliveryPaise,
             totalPaise: totals.totalPaise,
             couponCode: priced.coupon?.code ?? null,
+            pointsPaise: priced.points?.redeemedPaise ?? 0,
             customerNote: input.customerNote ?? null,
             giftWrap: input.giftWrap ?? false,
             giftMessage: input.giftWrap ? (input.giftMessage ?? null) : null,
@@ -319,6 +324,9 @@ export class OrdersService implements OnModuleInit {
             lines.map((l) => ({ productId: l.productId, quantity: l.quantity })),
             { convert: input.convertStock, allowUnpublished: input.allowUnpublished },
           );
+        if (priced.points && priced.points.redeemedPaise > 0) {
+          await redeemOrderPoints(tx, { id: o.id, number: o.number, customerId }, priced.points.redeemedPaise);
+        }
         if (priced.coupon && input.convertStock) {
           await tx.couponRedemption.create({
             data: {
@@ -492,6 +500,17 @@ export class OrdersService implements OnModuleInit {
       if (to === 'DELIVERED') data.deliveredAt = now;
       if (to === 'CANCELLED') data.cancelledAt = now;
       const updated = await tx.order.update({ where: { id: orderId }, data });
+      // Credit points (meeting of 19 Oct): earned when the order is delivered; given back when it is cancelled,
+      // fails, comes back or is refunded.
+      if (to === 'DELIVERED') {
+        const loyalty = await this.settings.get('loyalty');
+        if (loyalty.enabled) {
+          const earned = await earnOrderPoints(tx, { id: order.id, number: order.number, customerId: order.customerId, totalPaise: order.totalPaise }, loyalty.earnPercent);
+          if (earned > 0)
+            await tx.orderEvent.create({ data: { orderId, type: 'NOTE', message: `${earned} credit points earned (worth ${formatINR(earned * 100)}).` } });
+        }
+      }
+      if (['CANCELLED', 'FAILED', 'RETURNED', 'REFUNDED'].includes(to)) await refundOrderPoints(tx, orderId);
       // The tax invoice is ready once the order is confirmed, so the vendor can print it and pack it with the
       // pieces; for cash on delivery it shows the amount as "to be collected".
       if (to === 'CONFIRMED' || to === 'PACKED') await this.issueInvoice(tx, orderId);

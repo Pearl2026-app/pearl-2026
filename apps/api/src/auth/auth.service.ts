@@ -2,6 +2,7 @@ import { randomInt } from 'node:crypto';
 import { Injectable } from '@nestjs/common';
 import { verifyPassword } from '@sahyadri/db';
 import { PASSWORD_ROLES, permissionSet, type Role } from '@sahyadri/shared';
+import { pointsBalancePaise } from '../modules/orders/loyalty';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../common/audit.service';
 import { badRequest, forbidden } from '../common/errors';
@@ -185,6 +186,7 @@ export class AuthService {
       },
     });
     const au = toAuthUser(u, null);
+    const pointsPaise = u.customer ? await pointsBalancePaise(this.prisma, u.customer.id) : 0;
     return {
       id: u.id,
       role: u.role,
@@ -195,7 +197,7 @@ export class AuthService {
       vendor: u.vendor,
       franchise: u.franchise,
       deliveryPartner: u.deliveryPartner,
-      customer: u.customer,
+      customer: u.customer ? { ...u.customer, pointsPaise } : null,
       permissions: permissionSet({ role: au.role, staffGrants: au.grants }),
     };
   }

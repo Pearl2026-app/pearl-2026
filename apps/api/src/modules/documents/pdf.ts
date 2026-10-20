@@ -56,7 +56,7 @@ export interface InvoicePdfInput {
   delivery: { taxablePaise: number; gstPaise: number; totalPaise: number; rateBp: number };
   totals: { taxablePaise: number; cgstPaise: number; sgstPaise: number; igstPaise: number; totalPaise: number };
   /** Before tax split: price of the pieces, order discount (coupon), delivery */
-  summary?: { subtotalPaise: number; discountPaise: number; couponCode?: string | null; deliveryPaise: number };
+  summary?: { subtotalPaise: number; discountPaise: number; couponCode?: string | null; pointsPaise?: number; deliveryPaise: number };
   paymentMethod: string;
   paymentStatus?: string;
   paymentReference?: string | null;
@@ -109,6 +109,7 @@ export async function invoicePdf(i: InvoicePdfInput): Promise<Buffer> {
     sum('Subtotal', i.summary.subtotalPaise);
     if (i.summary.discountPaise > 0)
       sum(`Discount${i.summary.couponCode ? ` (${i.summary.couponCode})` : ''}`, -i.summary.discountPaise);
+    if (i.summary.pointsPaise) sum('Credit points', -i.summary.pointsPaise);
     sum('Shipping', i.summary.deliveryPaise);
     doc.moveTo(330, y - 2).lineTo(545, y - 2).strokeColor('#E4DDD2').stroke();
     y += 4;

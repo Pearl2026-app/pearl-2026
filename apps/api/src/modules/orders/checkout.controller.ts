@@ -118,6 +118,8 @@ const checkoutInput = z.object({
   giftWrap: z.boolean().optional(),
   giftMessage: z.string().trim().max(200).optional().nullable(),
   saveAddress: z.boolean().optional(),
+  /** Pay part of the order with credit points */
+  usePoints: z.boolean().optional(),
   /** Optional, for a GST invoice in the business's name */
   gstin: z
     .string()
@@ -206,6 +208,7 @@ export class CheckoutController {
       // Gift packing is free; it is offered only while the storefront setting allows it.
       giftWrap: !!dto.giftWrap && (await this.settings.get('storefront')).giftWrapEnabled,
       giftMessage: dto.giftMessage || null,
+      redeemPoints: !!dto.usePoints && !!customerId,
       buyerGstin: dto.gstin || null,
       buyerBusinessName: dto.businessName || null,
       convertStock: dto.paymentMethod === 'COD',
