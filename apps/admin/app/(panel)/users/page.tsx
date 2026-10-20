@@ -23,7 +23,7 @@ function Users() {
       <div className="mb-3 flex gap-2">
         <Select aria-label="Role" className="max-w-56" value={params.role ?? ''} onChange={(e) => set({ role: e.target.value || undefined })}>
           <option value="">All roles</option>
-          {(['SUPER_ADMIN', 'STAFF', 'CITY_MANAGER', 'VENDOR', 'FRANCHISE', 'DELIVERY_PARTNER', 'MANUFACTURER', 'FARMER'] as Role[]).map((r) => <option key={r} value={r}>{ROLE_LABEL[r]}</option>)}
+          {(['SUPER_ADMIN', 'STAFF', 'STATE_MANAGER', 'CITY_MANAGER', 'VENDOR', 'FRANCHISE', 'DELIVERY_PARTNER', 'MANUFACTURER', 'FARMER'] as Role[]).map((r) => <option key={r} value={r}>{ROLE_LABEL[r]}</option>)}
         </Select>
       </div>
       <DataTable

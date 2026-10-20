@@ -10,6 +10,8 @@ export function orderScope(u: AuthUser): Prisma.OrderWhereInput {
     case 'SUPER_ADMIN':
     case 'STAFF':
       return {};
+    case 'STATE_MANAGER':
+      return { city: { state: u.state ?? '__none__' } };
     case 'CITY_MANAGER':
       return { cityId: u.cityId ?? '__none__' };
     case 'VENDOR':
@@ -36,6 +38,8 @@ export function enquiryScope(u: AuthUser): Prisma.EnquiryWhereInput {
     case 'SUPER_ADMIN':
     case 'STAFF':
       return {};
+    case 'STATE_MANAGER':
+      return { city: { state: u.state ?? '__none__' } };
     case 'CITY_MANAGER':
       return { cityId: u.cityId ?? '__none__' };
     case 'FRANCHISE':
@@ -57,6 +61,8 @@ export function productScope(u: AuthUser): Prisma.ProductWhereInput {
     case 'DELIVERY_PARTNER':
     case 'CUSTOMER':
       return IMPOSSIBLE;
+    case 'STATE_MANAGER':
+      return { OR: [{ cities: { none: {} } }, { cities: { some: { city: { state: u.state ?? '__none__' } } } }] };
     case 'CITY_MANAGER':
       // Products available in their city: no city rows means all cities.
       return { OR: [{ cities: { none: {} } }, { cities: { some: { cityId: u.cityId ?? '__none__' } } }] };
@@ -70,6 +76,8 @@ export function customerScope(u: AuthUser): Prisma.CustomerWhereInput {
     case 'SUPER_ADMIN':
     case 'STAFF':
       return {};
+    case 'STATE_MANAGER':
+      return { city: { state: u.state ?? '__none__' } };
     case 'CITY_MANAGER':
       return { cityId: u.cityId ?? '__none__' };
     case 'FRANCHISE':
@@ -86,6 +94,8 @@ export function customRequestScope(u: AuthUser): Prisma.CustomRequestWhereInput 
     case 'SUPER_ADMIN':
     case 'STAFF':
       return {};
+    case 'STATE_MANAGER':
+      return { city: { state: u.state ?? '__none__' } };
     case 'CITY_MANAGER':
       return { cityId: u.cityId ?? '__none__' };
     case 'FRANCHISE':
@@ -102,6 +112,8 @@ export function purchaseOrderScope(u: AuthUser): Prisma.PurchaseOrderWhereInput 
     case 'SUPER_ADMIN':
     case 'STAFF':
       return {};
+    case 'STATE_MANAGER':
+      return { order: { city: { state: u.state ?? '__none__' } } };
     case 'CITY_MANAGER':
       return { order: { cityId: u.cityId ?? '__none__' } };
     case 'MANUFACTURER':
@@ -116,6 +128,8 @@ export function deliveryPartnerScope(u: AuthUser): Prisma.DeliveryPartnerWhereIn
     case 'SUPER_ADMIN':
     case 'STAFF':
       return {};
+    case 'STATE_MANAGER':
+      return { cities: { some: { city: { state: u.state ?? '__none__' } } } };
     case 'CITY_MANAGER':
       return { cities: { some: { cityId: u.cityId ?? '__none__' } } };
     case 'FRANCHISE':

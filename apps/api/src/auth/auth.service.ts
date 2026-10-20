@@ -193,6 +193,7 @@ export class AuthService {
       name: u.name,
       email: u.email,
       phone: u.phone,
+      state: u.state,
       city: u.city,
       vendor: u.vendor,
       franchise: u.franchise,

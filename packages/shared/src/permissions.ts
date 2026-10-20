@@ -69,11 +69,12 @@ export const MODULE_LABEL: Record<Module, string> = {
 };
 
 /** How a role's data is limited. Applied to every query in the API. */
-export type ScopeKind = 'global' | 'city' | 'vendor' | 'franchise' | 'delivery' | 'self' | 'manufacturer' | 'farm';
+export type ScopeKind = 'global' | 'state' | 'city' | 'vendor' | 'franchise' | 'delivery' | 'self' | 'manufacturer' | 'farm';
 
 export const ROLE_SCOPE: Record<Role, ScopeKind> = {
   SUPER_ADMIN: 'global',
   STAFF: 'global',
+  STATE_MANAGER: 'state',
   CITY_MANAGER: 'city',
   VENDOR: 'vendor',
   FRANCHISE: 'franchise',
@@ -84,9 +85,9 @@ export const ROLE_SCOPE: Record<Role, ScopeKind> = {
 };
 
 /** Roles that use the admin app. */
-export const PANEL_ROLES: Role[] = ['SUPER_ADMIN', 'STAFF', 'CITY_MANAGER', 'VENDOR', 'FRANCHISE', 'DELIVERY_PARTNER', 'MANUFACTURER', 'FARMER'];
+export const PANEL_ROLES: Role[] = ['SUPER_ADMIN', 'STAFF', 'STATE_MANAGER', 'CITY_MANAGER', 'VENDOR', 'FRANCHISE', 'DELIVERY_PARTNER', 'MANUFACTURER', 'FARMER'];
 /** Roles that sign in with email + password + OTP. */
-export const PASSWORD_ROLES: Role[] = ['SUPER_ADMIN', 'STAFF', 'CITY_MANAGER'];
+export const PASSWORD_ROLES: Role[] = ['SUPER_ADMIN', 'STAFF', 'STATE_MANAGER', 'CITY_MANAGER'];
 
 type Grants = Partial<Record<Module, Action[]>>;
 const V: Action[] = ['view'];
@@ -99,6 +100,30 @@ const VCE: Action[] = ['view', 'create', 'edit'];
  * The data each grant reaches is further limited by ROLE_SCOPE.
  */
 export const ROLE_GRANTS: Record<Exclude<Role, 'SUPER_ADMIN' | 'STAFF'>, Grants> = {
+  // A state manager (meeting of 19 Oct: national → state → district/area) sees every city of their state,
+  // with the same day-to-day powers as a city manager.
+  STATE_MANAGER: {
+    DASHBOARD: V,
+    USERS: V,
+    CATEGORIES: V,
+    COLLECTIONS: V,
+    FARMS: V,
+    PRODUCTS: V,
+    ORDERS: VCE,
+    CUSTOM_ORDERS: VCE,
+    PURCHASE_ORDERS: V,
+    ENQUIRIES: VCE,
+    COUPONS: VCE,
+    CITIES: V,
+    VENDORS: V,
+    FRANCHISES: V,
+    MANUFACTURERS: V,
+    DELIVERY_PARTNERS: VE,
+    PRICING: V,
+    PAYMENTS: V,
+    RETURNS: VE,
+    REPORTS: V,
+  },
   CITY_MANAGER: {
     DASHBOARD: V,
     USERS: V,

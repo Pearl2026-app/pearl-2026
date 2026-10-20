@@ -663,6 +663,14 @@ async function main() {
       passwordHash: pw,
     },
     {
+      role: 'STATE_MANAGER',
+      name: 'Maharashtra State Manager',
+      email: 'state.manager@sahyadripearls.test',
+      phone: '+919800000036',
+      passwordHash: pw,
+      state: 'Maharashtra',
+    },
+    {
       role: 'CITY_MANAGER',
       name: 'Pune City Manager',
       email: 'pune.manager@sahyadripearls.test',

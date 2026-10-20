@@ -30,6 +30,7 @@ export function toAuthUser(
     name: string;
     email: string | null;
     phone: string | null;
+    state?: string | null;
     cityId: string | null;
     vendorId: string | null;
     franchiseId: string | null;
@@ -47,6 +48,7 @@ export function toAuthUser(
     name: user.name,
     email: user.email,
     phone: user.phone,
+    state: user.state ?? null,
     cityId: user.cityId,
     vendorId: user.vendorId,
     franchiseId: user.franchiseId,

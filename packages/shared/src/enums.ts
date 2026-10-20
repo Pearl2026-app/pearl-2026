@@ -3,7 +3,7 @@
 
 const e = <T extends string>(...values: T[]) => Object.freeze(Object.fromEntries(values.map((v) => [v, v])) as { [K in T]: K });
 
-export const Role = e('SUPER_ADMIN', 'STAFF', 'CITY_MANAGER', 'VENDOR', 'FRANCHISE', 'DELIVERY_PARTNER', 'CUSTOMER', 'MANUFACTURER', 'FARMER');
+export const Role = e('SUPER_ADMIN', 'STAFF', 'STATE_MANAGER', 'CITY_MANAGER', 'VENDOR', 'FRANCHISE', 'DELIVERY_PARTNER', 'CUSTOMER', 'MANUFACTURER', 'FARMER');
 export type Role = keyof typeof Role;
 
 export const ProductStatus = e('DRAFT', 'PENDING_APPROVAL', 'PUBLISHED', 'UNPUBLISHED', 'ARCHIVED');
@@ -145,6 +145,7 @@ export const ENQUIRY_TYPE_LABEL: Record<EnquiryType, string> = {
 export const ROLE_LABEL: Record<Role, string> = {
   SUPER_ADMIN: 'Super Admin',
   STAFF: 'Admin / Staff',
+  STATE_MANAGER: 'State Manager',
   CITY_MANAGER: 'City Manager',
   VENDOR: 'Vendor',
   FRANCHISE: 'Franchise',

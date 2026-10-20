@@ -24,7 +24,7 @@ export const NAV: NavGroup[] = [
         href: '/orders',
         label: 'Orders',
         module: 'ORDERS',
-        roles: ['SUPER_ADMIN', 'STAFF', 'CITY_MANAGER', 'VENDOR', 'FRANCHISE'],
+        roles: ['SUPER_ADMIN', 'STAFF', 'STATE_MANAGER', 'CITY_MANAGER', 'VENDOR', 'FRANCHISE'],
         primary: '#2B5C8A',
       },
       { href: '/custom-orders', label: 'Customized orders', module: 'CUSTOM_ORDERS' },
@@ -33,7 +33,7 @@ export const NAV: NavGroup[] = [
         href: '/payments',
         label: 'Payments',
         module: 'PAYMENTS',
-        roles: ['SUPER_ADMIN', 'STAFF', 'CITY_MANAGER', 'FRANCHISE'],
+        roles: ['SUPER_ADMIN', 'STAFF', 'STATE_MANAGER', 'CITY_MANAGER', 'FRANCHISE'],
       },
       { href: '/returns', label: 'Returns', module: 'RETURNS' },
       {
@@ -51,12 +51,12 @@ export const NAV: NavGroup[] = [
   {
     label: 'Catalogue',
     items: [
-      { href: '/products', label: 'Products', module: 'PRODUCTS', primary: '#9A7546', roles: ['SUPER_ADMIN', 'STAFF', 'CITY_MANAGER', 'VENDOR', 'FRANCHISE', 'FARMER'] },
+      { href: '/products', label: 'Products', module: 'PRODUCTS', primary: '#9A7546', roles: ['SUPER_ADMIN', 'STAFF', 'STATE_MANAGER', 'CITY_MANAGER', 'VENDOR', 'FRANCHISE', 'FARMER'] },
       {
         href: '/restock',
         label: 'Restock list',
         module: 'PRODUCTS',
-        roles: ['SUPER_ADMIN', 'STAFF', 'CITY_MANAGER', 'VENDOR', 'MANUFACTURER'],
+        roles: ['SUPER_ADMIN', 'STAFF', 'STATE_MANAGER', 'CITY_MANAGER', 'VENDOR', 'MANUFACTURER'],
         primary: '#9A7546',
       },
       { href: '/products/offers', label: 'Offers & discounts', module: 'PRODUCTS', action: 'edit', roles: ['SUPER_ADMIN', 'STAFF'] },
@@ -77,7 +77,7 @@ export const NAV: NavGroup[] = [
   {
     label: 'Marketing',
     items: [
-      { href: '/coupons', label: 'Coupons & offers', module: 'COUPONS', roles: ['SUPER_ADMIN', 'STAFF', 'CITY_MANAGER', 'VENDOR'] },
+      { href: '/coupons', label: 'Coupons & offers', module: 'COUPONS', roles: ['SUPER_ADMIN', 'STAFF', 'STATE_MANAGER', 'CITY_MANAGER', 'VENDOR'] },
       { href: '/notifications', label: 'Push notifications', module: 'NOTIFICATIONS' },
       { href: '/messages', label: 'Message log', module: 'NOTIFICATIONS' },
       { href: '/newsletter', label: 'Newsletter', module: 'NOTIFICATIONS' },
@@ -107,9 +107,9 @@ export const NAV: NavGroup[] = [
         href: '/delivery-partners',
         label: 'Delivery partners',
         module: 'DELIVERY_PARTNERS',
-        roles: ['SUPER_ADMIN', 'STAFF', 'CITY_MANAGER', 'VENDOR'],
+        roles: ['SUPER_ADMIN', 'STAFF', 'STATE_MANAGER', 'CITY_MANAGER', 'VENDOR'],
       },
-      { href: '/rider-applications', label: 'Rider applications', module: 'DELIVERY_PARTNERS', action: 'edit', roles: ['SUPER_ADMIN', 'STAFF', 'CITY_MANAGER'] },
+      { href: '/rider-applications', label: 'Rider applications', module: 'DELIVERY_PARTNERS', action: 'edit', roles: ['SUPER_ADMIN', 'STAFF', 'STATE_MANAGER', 'CITY_MANAGER'] },
     ],
   },
   {
@@ -123,7 +123,7 @@ export const NAV: NavGroup[] = [
   {
     label: 'Reports',
     items: [
-      { href: '/reports', label: 'Reports', module: 'REPORTS', primary: '#B4532A', roles: ['SUPER_ADMIN', 'STAFF', 'CITY_MANAGER', 'VENDOR', 'FRANCHISE'] },
+      { href: '/reports', label: 'Reports', module: 'REPORTS', primary: '#B4532A', roles: ['SUPER_ADMIN', 'STAFF', 'STATE_MANAGER', 'CITY_MANAGER', 'VENDOR', 'FRANCHISE'] },
       { href: '/farm-sales', label: 'Farm sales', module: 'REPORTS', primary: '#B4532A', roles: ['SUPER_ADMIN', 'STAFF', 'FARMER'] },
     ],
   },

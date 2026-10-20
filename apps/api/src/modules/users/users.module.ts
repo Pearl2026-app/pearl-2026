@@ -23,13 +23,14 @@ const grant = z.object({
   canEdit: z.boolean(),
   canDelete: z.boolean(),
 });
-const staffRoles = ['SUPER_ADMIN', 'STAFF', 'CITY_MANAGER', 'VENDOR', 'FRANCHISE', 'DELIVERY_PARTNER', 'MANUFACTURER', 'FARMER'] as const;
+const staffRoles = ['SUPER_ADMIN', 'STAFF', 'STATE_MANAGER', 'CITY_MANAGER', 'VENDOR', 'FRANCHISE', 'DELIVERY_PARTNER', 'MANUFACTURER', 'FARMER'] as const;
 const userCreate = z.object({
   role: z.enum(staffRoles),
   name: z.string().trim().min(2).max(120),
   email: email.optional().nullable(),
   phone: phoneE164.optional().nullable(),
   password: password.optional(),
+  state: z.string().trim().max(60).optional().nullable(),
   cityId: z.string().optional().nullable(),
   vendorId: z.string().optional().nullable(),
   franchiseId: z.string().optional().nullable(),
@@ -41,7 +42,7 @@ const userCreate = z.object({
 const userUpdate = userCreate.omit({ role: true, password: true }).partial();
 
 const USER_SELECT = {
-  id: true, role: true, name: true, email: true, phone: true, isActive: true, lastLoginAt: true, createdAt: true,
+  id: true, role: true, name: true, email: true, phone: true, state: true, isActive: true, lastLoginAt: true, createdAt: true,
   city: { select: { id: true, name: true } },
   vendor: { select: { id: true, name: true } },
   franchise: { select: { id: true, name: true } },
@@ -81,7 +82,14 @@ class UsersController {
   }
 
   private async links(role: Role, d: z.infer<typeof userUpdate>) {
-    const data: Prisma.UserUncheckedUpdateInput = { cityId: null, vendorId: null, franchiseId: null, deliveryPartnerId: null, manufacturerId: null, farmId: null };
+    const data: Prisma.UserUncheckedUpdateInput = { state: null, cityId: null, vendorId: null, franchiseId: null, deliveryPartnerId: null, manufacturerId: null, farmId: null };
+    if (role === 'STATE_MANAGER') {
+      const state = d.state?.trim();
+      if (!state) throw badRequest('STATE_REQUIRED', 'Enter the state this manager runs (exactly as written on the cities).', { state: 'Required' });
+      const known = await this.prisma.city.findFirst({ where: { state: { equals: state, mode: 'insensitive' } }, select: { state: true } });
+      if (!known) throw badRequest('UNKNOWN_STATE', 'No city carries that state. Check the spelling against Network → Cities.', { state: 'No city has this state' });
+      data.state = known.state;
+    }
     if (role === 'MANUFACTURER') {
       if (!d.manufacturerId) throw badRequest('MANUFACTURER_REQUIRED', 'Choose the manufacturer.', { manufacturerId: 'Required' });
       data.manufacturerId = d.manufacturerId;
@@ -146,7 +154,7 @@ class UsersController {
   async update(@Param('id') id: string, @Body(new ZodValidationPipe(userUpdate)) dto: z.infer<typeof userUpdate>) {
     const before = await this.get(id);
     const { grants, ...rest } = dto;
-    const touchesLinks = ['cityId', 'vendorId', 'franchiseId', 'deliveryPartnerId', 'manufacturerId', 'farmId'].some((k) => k in rest);
+    const touchesLinks = ['state', 'cityId', 'vendorId', 'franchiseId', 'deliveryPartnerId', 'manufacturerId', 'farmId'].some((k) => k in rest);
     const links = touchesLinks ? await this.links(before.role, { ...linkIds(before), ...rest }) : {};
     return this.prisma.$transaction(async (tx) => {
       const u = await tx.user.update({
@@ -204,6 +212,7 @@ class UsersController {
 }
 
 const linkIds = (u: {
+  state?: string | null;
   city: { id: string } | null;
   vendor: { id: string } | null;
   franchise: { id: string } | null;
@@ -211,6 +220,7 @@ const linkIds = (u: {
   manufacturer: { id: string } | null;
   farm: { id: string } | null;
 }) => ({
+  state: u.state ?? null,
   cityId: u.city?.id ?? null,
   vendorId: u.vendor?.id ?? null,
   franchiseId: u.franchise?.id ?? null,

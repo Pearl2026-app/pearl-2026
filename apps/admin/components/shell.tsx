@@ -86,7 +86,7 @@ export function Shell({ children }: { children: ReactNode }) {
     (!i.roles || i.roles.includes(me.role)) &&
     (!i.module || me.permissions[i.module]?.includes(i.action ?? 'view'));
   const groups = NAV.map((g) => ({ ...g, items: g.items.filter(allowed) })).filter((g) => g.items.length);
-  const scope = me.city?.name ?? me.vendor?.name ?? me.franchise?.name ?? me.deliveryPartner?.name ?? null;
+  const scope = me.state ?? me.city?.name ?? me.vendor?.name ?? me.franchise?.name ?? me.deliveryPartner?.name ?? null;
   const active = (href: string) =>
     href === '/' ? pathname === '/' : pathname === href || pathname.startsWith(href + '/');
 

@@ -8,6 +8,7 @@ export interface AuthUser {
   name: string;
   email: string | null;
   phone: string | null;
+  state: string | null;
   cityId: string | null;
   vendorId: string | null;
   franchiseId: string | null;

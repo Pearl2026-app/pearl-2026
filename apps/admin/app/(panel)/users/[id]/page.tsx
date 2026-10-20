@@ -14,11 +14,12 @@ type Grant = { module: Module; canView: boolean; canCreate: boolean; canEdit: bo
 const ACTIONS = [['canView', 'View'], ['canCreate', 'Create'], ['canEdit', 'Edit'], ['canDelete', 'Delete']] as const;
 
 const FIELDS: FieldDef[] = [
-  { name: 'role', label: 'Role', type: 'select', only: 'create', required: true, options: (['SUPER_ADMIN', 'STAFF', 'CITY_MANAGER', 'VENDOR', 'FRANCHISE', 'DELIVERY_PARTNER', 'MANUFACTURER', 'FARMER'] as Role[]).map((r) => ({ value: r, label: ROLE_LABEL[r] })) },
+  { name: 'role', label: 'Role', type: 'select', only: 'create', required: true, options: (['SUPER_ADMIN', 'STAFF', 'STATE_MANAGER', 'CITY_MANAGER', 'VENDOR', 'FRANCHISE', 'DELIVERY_PARTNER', 'MANUFACTURER', 'FARMER'] as Role[]).map((r) => ({ value: r, label: ROLE_LABEL[r] })) },
   { name: 'name', label: 'Name', required: true },
   { name: 'email', label: 'Email', hint: 'Team roles sign in with email, password and a one-time code.' },
   { name: 'phone', label: 'Mobile number', hint: 'Used for one-time codes. Partners can sign in with it.' },
   { name: 'password', label: 'Password', only: 'create', showIf: (v) => PASSWORD_ROLES.includes(v.role as Role), hint: 'At least 10 characters.' },
+  { name: 'state', label: 'State', showIf: (v) => v.role === 'STATE_MANAGER', hint: 'Exactly as written on the cities, e.g. Maharashtra. They see every city of this state.' },
   { name: 'cityId', label: 'City', type: 'ref', ref: { path: '/admin/cities' }, showIf: (v) => v.role === 'CITY_MANAGER' },
   { name: 'vendorId', label: 'Vendor', type: 'ref', ref: { path: '/admin/vendors' }, showIf: (v) => v.role === 'VENDOR' },
   { name: 'franchiseId', label: 'Franchise', type: 'ref', ref: { path: '/admin/franchises' }, showIf: (v) => v.role === 'FRANCHISE' },
@@ -41,7 +42,7 @@ export default function UserPage() {
 
   useEffect(() => {
     if (!u) return;
-    setValues({ role: u.role, name: u.name, email: u.email, phone: u.phone, cityId: u.city?.id, vendorId: u.vendor?.id, franchiseId: u.franchise?.id, deliveryPartnerId: u.deliveryPartner?.id, manufacturerId: u.manufacturer?.id, farmId: u.farm?.id });
+    setValues({ role: u.role, name: u.name, email: u.email, phone: u.phone, state: u.state, cityId: u.city?.id, vendorId: u.vendor?.id, franchiseId: u.franchise?.id, deliveryPartnerId: u.deliveryPartner?.id, manufacturerId: u.manufacturer?.id, farmId: u.farm?.id });
     setGrants(u.permissions);
   }, [u]);
 

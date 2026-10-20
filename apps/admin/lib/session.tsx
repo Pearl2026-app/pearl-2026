@@ -10,6 +10,7 @@ export interface Me {
   name: string;
   email: string | null;
   phone: string | null;
+  state: string | null;
   city: { id: string; name: string } | null;
   vendor: { id: string; name: string } | null;
   franchise: { id: string; name: string; area: string } | null;

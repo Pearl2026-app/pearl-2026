@@ -152,8 +152,16 @@ export const CouponsController = crudController({
   remove: 'deactivate',
   // Vendors and city managers make offers for their own area only and see only those; head office sees all.
   scope: (u: AuthUser) =>
-    u.role === 'VENDOR' ? { vendorId: u.vendorId ?? '__none__' } : u.role === 'CITY_MANAGER' ? { cityId: u.cityId ?? '__none__' } : {},
+    u.role === 'VENDOR'
+      ? { vendorId: u.vendorId ?? '__none__' }
+      : u.role === 'CITY_MANAGER'
+        ? { cityId: u.cityId ?? '__none__' }
+        : u.role === 'STATE_MANAGER'
+          ? { city: { state: u.state ?? '__none__' } }
+          : {},
   checkWrite: (u: AuthUser, data: Record<string, unknown>) => {
+    if (u.role === 'STATE_MANAGER' && !data.cityId)
+      throw badRequest('CITY_REQUIRED', 'Choose the city this offer is for.', { cityId: 'Required' });
     if (u.role === 'CITY_MANAGER') {
       if (data.cityId && data.cityId !== u.cityId) throw forbidden('You can make offers only for your city.');
       data.cityId = u.cityId;

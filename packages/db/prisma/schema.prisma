@@ -26,6 +26,8 @@ datasource db {
 enum Role {
   SUPER_ADMIN
   STAFF
+  /// Runs one state: sees every city of that state
+  STATE_MANAGER
   CITY_MANAGER
   VENDOR
   FRANCHISE
@@ -297,6 +299,8 @@ model User {
   lastLoginAt  DateTime?
 
   // Scope links. Which one is set depends on role (see docs/PERMISSION-MATRIX.md).
+  /// STATE_MANAGER: the state they run, matching City.state
+  state             String?
   cityId            String?
   city              City?            @relation(fields: [cityId], references: [id])
   vendorId          String?
