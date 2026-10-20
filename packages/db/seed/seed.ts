@@ -1519,10 +1519,11 @@ async function partnerLogins(swastikFarmId: string) {
     await prisma.product.update({ where: { id: p.id }, data: { b2bPricePaise: Math.round((p.pricePaise * 0.8) / 100) * 100, b2bMinQty: 50 } });
 
   // Rings sold in sizes 5–10: stock per size, so the picker and the per-size restock list show in the demo.
-  for (const ring of await prisma.product.findMany({
-    where: { category: { slug: 'rings' }, stockType: 'QUANTITY', archivedAt: null, sizes: { equals: Prisma.DbNull } },
-    select: { id: true, quantity: true },
-  })) {
+  const ringRows = await prisma.product.findMany({
+    where: { category: { slug: 'rings' }, stockType: 'QUANTITY', archivedAt: null },
+    select: { id: true, quantity: true, sizes: true },
+  });
+  for (const ring of ringRows.filter((r) => !Array.isArray(r.sizes))) {
     const spread = [
       { label: '5', quantity: 2 },
       { label: '6', quantity: 5 },
