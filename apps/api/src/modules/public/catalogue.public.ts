@@ -90,6 +90,8 @@ export function publicWhere(cityId?: string | null): Prisma.ProductWhereInput {
   return {
     status: 'PUBLISHED',
     archivedAt: null,
+    // Business-only pieces are shown to approved business buyers in their account, not in the public store.
+    b2bOnly: false,
     category: { isActive: true, archivedAt: null },
     ...(cityId ? { OR: [{ cities: { none: {} } }, { cities: { some: { cityId } } }] } : {}),
   };

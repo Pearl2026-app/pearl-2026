@@ -31,6 +31,10 @@ enum Role {
   FRANCHISE
   DELIVERY_PARTNER
   CUSTOMER
+  /// Makes the pieces; sees the restock list and its purchase orders
+  MANUFACTURER
+  /// A partner farm; sees the sales of its own pearls
+  FARMER
 }
 
 enum PermissionModule {
@@ -301,6 +305,10 @@ model User {
   franchise         Franchise?       @relation(fields: [franchiseId], references: [id])
   deliveryPartnerId String?          @unique
   deliveryPartner   DeliveryPartner? @relation(fields: [deliveryPartnerId], references: [id])
+  manufacturerId    String?
+  manufacturer      Manufacturer?    @relation(fields: [manufacturerId], references: [id])
+  farmId            String?
+  farm              Farm?            @relation(fields: [farmId], references: [id])
 
   customer       Customer?
   permissions    StaffPermission[]
@@ -380,6 +388,12 @@ model Customer {
   isBlocked              Boolean        @default(false)
   preferredPaymentMethod PaymentMethod?
   archivedAt             DateTime?
+  /// Business buyers apply (PENDING) and head office approves them (APPROVED) before they see business prices.
+  b2bStatus              String         @default("NONE")
+  businessName           String?
+  businessGstin          String?
+  b2bAppliedAt           DateTime?
+  b2bNote                String?
 
   addresses         Address[]
   carts             Cart[]
@@ -463,6 +477,7 @@ model City {
   manufacturers   Manufacturer[]
   categoryCities  CategoryCity[]
   productCities   ProductCity[]
+  coupons         Coupon[]
   orders          Order[]
   enquiries       Enquiry[]
   whatsAppNumbers WhatsAppNumber[]
@@ -556,6 +571,7 @@ model Manufacturer {
 
   orders         Order[]
   purchaseOrders PurchaseOrder[]
+  users          User[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -572,6 +588,17 @@ model DeliveryPartner {
   /// The vendor this partner rides for; that vendor assigns them to its orders.
   vendorId    String?
   vendor      Vendor? @relation(fields: [vendorId], references: [id])
+
+  /// Riders who apply on the website wait as PENDING until head office checks their documents (APPROVED / REJECTED).
+  approvalStatus  String    @default("APPROVED")
+  address         String?
+  vehicleNumber   String?
+  licenceNumber   String?
+  licenceUrl      String?
+  rcUrl           String?
+  addressProofUrl String?
+  rejectionReason String?
+  appliedAt       DateTime?
 
   user          User?
   cities        DeliveryPartnerCity[]
@@ -666,6 +693,7 @@ model Farm {
 
   products   Product[]
   pearlRates PearlRate[]
+  users      User[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -714,6 +742,12 @@ model Product {
   isFeatured Boolean   @default(false) // shown in Featured Pieces on the home page
   /// Designer and limited pieces, shown with an "Exclusive" tag and on the Exclusive page
   isExclusive Boolean  @default(false)
+  /// Alert head office, the franchise and the manufacturer when stock falls to this many (empty = the default setting)
+  lowStockAt  Int?
+  // Business (B2B) buyers: their price, minimum quantity, and pieces only they can see
+  b2bPricePaise Int?
+  b2bMinQty     Int?
+  b2bOnly       Boolean @default(false)
   sortOrder  Int       @default(0)
   soldAt     DateTime? // set when a UNIQUE piece is sold
 
@@ -919,6 +953,11 @@ model Coupon {
   showOnOffersPage Boolean      @default(false)
   /// Personal coupon (e.g. a referral reward) usable only by this customer
   customerId       String?
+  /// Area offer: valid only for orders delivered in this city (empty = anywhere)
+  cityId           String?
+  city             City?        @relation(fields: [cityId], references: [id])
+  /// Made by this vendor for its area
+  vendorId         String?
 
   categories  CouponCategory[]
   products    CouponProduct[]

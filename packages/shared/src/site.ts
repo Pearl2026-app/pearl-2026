@@ -11,6 +11,7 @@ export const ACCOUNT_MENU = [
   { label: 'Wishlist', href: '/account/wishlist' },
   { label: 'Referral Code', href: '/account/referral' },
   { label: 'Returns', href: '/account/returns' },
+  { label: 'Business Account', href: '/account/business' },
   { label: 'Terms & Conditions', href: '/terms' },
 ] as const;
 

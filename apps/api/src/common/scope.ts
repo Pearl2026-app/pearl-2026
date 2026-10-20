@@ -23,6 +23,11 @@ export function orderScope(u: AuthUser): Prisma.OrderWhereInput {
       return { delivery: { deliveryPartnerId: u.deliveryPartnerId ?? '__none__' } };
     case 'CUSTOMER':
       return { customerId: u.customerId ?? '__none__' };
+    case 'FARMER':
+      // Orders with pieces made from this farm's pearls (for its sales figures).
+      return { items: { some: { product: { farmId: u.farmId ?? '__none__' } } } };
+    case 'MANUFACTURER':
+      return { manufacturerId: u.manufacturerId ?? '__none__' };
   }
 }
 
@@ -47,6 +52,8 @@ export function productScope(u: AuthUser): Prisma.ProductWhereInput {
   switch (u.role) {
     case 'VENDOR':
       return { vendorId: u.vendorId ?? '__none__' };
+    case 'FARMER':
+      return { farmId: u.farmId ?? '__none__' };
     case 'DELIVERY_PARTNER':
     case 'CUSTOMER':
       return IMPOSSIBLE;
@@ -97,6 +104,8 @@ export function purchaseOrderScope(u: AuthUser): Prisma.PurchaseOrderWhereInput 
       return {};
     case 'CITY_MANAGER':
       return { order: { cityId: u.cityId ?? '__none__' } };
+    case 'MANUFACTURER':
+      return { manufacturerId: u.manufacturerId ?? '__none__' };
     default:
       return IMPOSSIBLE;
   }
@@ -113,6 +122,8 @@ export function deliveryPartnerScope(u: AuthUser): Prisma.DeliveryPartnerWhereIn
       return { cities: { some: { cityId: u.cityId ?? '__none__' } }, isActive: true };
     case 'DELIVERY_PARTNER':
       return { id: u.deliveryPartnerId ?? '__none__' };
+    case 'VENDOR':
+      return { vendorId: u.vendorId ?? '__none__' };
     default:
       return IMPOSSIBLE;
   }

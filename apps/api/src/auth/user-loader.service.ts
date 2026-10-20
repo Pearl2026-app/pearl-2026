@@ -34,6 +34,8 @@ export function toAuthUser(
     vendorId: string | null;
     franchiseId: string | null;
     deliveryPartnerId: string | null;
+    manufacturerId?: string | null;
+    farmId?: string | null;
     permissions?: Array<{ module: string; canView: boolean; canCreate: boolean; canEdit: boolean; canDelete: boolean }>;
     customer?: { id: string } | null;
   },
@@ -49,6 +51,8 @@ export function toAuthUser(
     vendorId: user.vendorId,
     franchiseId: user.franchiseId,
     deliveryPartnerId: user.deliveryPartnerId,
+    manufacturerId: user.manufacturerId ?? null,
+    farmId: user.farmId ?? null,
     customerId: user.customer?.id ?? null,
     sessionId,
     grants: (user.permissions ?? []).map((p) => ({

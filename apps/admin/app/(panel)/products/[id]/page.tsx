@@ -81,10 +81,19 @@ const SECTIONS: Array<{ title: string; fields: FieldDef[] }> = [
     fields: [
       { name: 'stockType', label: 'Stock type', type: 'select', options: [{ value: 'UNIQUE', label: 'Unique piece (sold once)' }, { value: 'QUANTITY', label: 'Quantity stock' }], required: true },
       { name: 'quantity', label: 'Quantity', type: 'number', showIf: (v) => v.stockType === 'QUANTITY' },
+      { name: 'lowStockAt', label: 'Low-stock alert at', type: 'number', showIf: (v) => v.stockType === 'QUANTITY', hint: 'Empty = the default in Settings.' },
       { name: 'outOfStock', label: 'Mark out of stock', type: 'switch' },
       { name: 'isFeatured', label: 'Feature on the home page', type: 'switch' },
       { name: 'isExclusive', label: 'Exclusive / designer piece', type: 'switch' },
       { name: 'sortOrder', label: 'Sort order', type: 'number' },
+    ],
+  },
+  {
+    title: 'Business buyers (B2B)',
+    fields: [
+      { name: 'b2bPricePaise', label: 'Business price (incl. GST)', type: 'money', hint: 'Shown only to approved business buyers. Empty = normal price.' },
+      { name: 'b2bMinQty', label: 'Minimum order quantity', type: 'number', hint: 'For business buyers, e.g. 100 loose pearls or 10 rings.' },
+      { name: 'b2bOnly', label: 'Only for business buyers (hidden from the public store)', type: 'switch' },
     ],
   },
   {

@@ -22,7 +22,7 @@ export const PRODUCT_DETAIL_INCLUDE = {
 
 /** Hide costs from roles that should not see margins. */
 export function redactCosts<T extends Record<string, unknown>>(user: AuthUser, p: T): T {
-  if (user.role !== 'FRANCHISE' && user.role !== 'CITY_MANAGER') return p;
+  if (!['FRANCHISE', 'CITY_MANAGER', 'FARMER', 'MANUFACTURER'].includes(user.role)) return p;
   const copy: Record<string, unknown> = { ...p };
   for (const f of COST_FIELDS) delete copy[f];
   delete copy.pendingChanges;

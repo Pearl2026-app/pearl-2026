@@ -116,3 +116,77 @@ export function CareerApplyForm({ slug }: { slug: string }) {
 }
 
 export { SelectInput };
+
+const DOC_ACCEPT = 'image/*,.pdf,application/pdf';
+
+/** Riders apply with their documents; head office checks them and approves (no Aadhaar asked). */
+export function RiderApplyForm() {
+  const site = useSite();
+  const [busy, setBusy] = useState(false);
+  const [done, setDone] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [error, setError] = useState<string | null>(null);
+  if (done)
+    return (
+      <Notice tone="success">
+        Thank you. We have your application and documents. Our team will check them and call you; once approved you can
+        sign in to the delivery app with your mobile number.
+      </Notice>
+    );
+  return (
+    <form
+      className="flex flex-col gap-5"
+      onSubmit={async (e) => {
+        e.preventDefault();
+        setBusy(true);
+        setErrors({});
+        setError(null);
+        try {
+          await api('/partners/delivery/apply', { method: 'POST', body: new FormData(e.currentTarget) });
+          setDone(true);
+        } catch (err) {
+          if (err instanceof ApiError && err.fields) setErrors(err.fields);
+          setError(errorText(err));
+        } finally {
+          setBusy(false);
+        }
+      }}
+    >
+      {error && <Notice tone="danger">{error}</Notice>}
+      <FormField label="Full name" error={errors.name} required>{(id) => <TextInput id={id} name="name" autoComplete="name" required />}</FormField>
+      <FormField label="Mobile number" error={errors.phone} required hint="You will sign in to the delivery app with this number.">
+        {(id, d) => <TextInput id={id} aria-describedby={d} name="phone" type="tel" autoComplete="tel" required />}
+      </FormField>
+      <FormField label="City" error={errors.citySlug} required>
+        {(id) => (
+          <SelectInput id={id} name="citySlug" required defaultValue={city() ?? ''}>
+            <option value="" disabled>
+              Choose your city
+            </option>
+            {site.cities.map((c) => (
+              <option key={c.slug} value={c.slug}>
+                {c.name}
+              </option>
+            ))}
+          </SelectInput>
+        )}
+      </FormField>
+      <FormField label="Home address" error={errors.address} required>{(id) => <TextArea id={id} name="address" required />}</FormField>
+      <div className="grid gap-5 sm:grid-cols-2">
+        <FormField label="Bike number" error={errors.vehicleNumber} required>{(id) => <TextInput id={id} name="vehicleNumber" placeholder="MH12 AB 1234" required />}</FormField>
+        <FormField label="Driving licence number" error={errors.licenceNumber} required>{(id) => <TextInput id={id} name="licenceNumber" required />}</FormField>
+      </div>
+      <fieldset className="flex flex-col gap-4 border border-line p-4">
+        <legend className="px-1 text-sm font-medium">Documents (photo or PDF, up to 10 MB each)</legend>
+        <FormField label="Driving licence" error={errors.licence} required>{(id) => <input id={id} name="licence" type="file" accept={DOC_ACCEPT} required className="text-sm" />}</FormField>
+        <FormField label="Bike RC (registration certificate)" error={errors.rc} required>{(id) => <input id={id} name="rc" type="file" accept={DOC_ACCEPT} required className="text-sm" />}</FormField>
+        <FormField label="Address proof (electricity bill, rent agreement or passport; not Aadhaar)" error={errors.addressProof} required>
+          {(id) => <input id={id} name="addressProof" type="file" accept={DOC_ACCEPT} required className="text-sm" />}
+        </FormField>
+      </fieldset>
+      <div>
+        <SubmitButton busy={busy}>Send application</SubmitButton>
+      </div>
+    </form>
+  );
+}

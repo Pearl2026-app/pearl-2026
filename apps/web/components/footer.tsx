@@ -15,6 +15,7 @@ export function Footer({ site }: { site: Site }) {
     { href: '/shipping-policy', label: 'Shipping / Delivery Policy' },
     { href: '/faq', label: 'FAQ' },
     { href: '/careers', label: 'Careers' },
+    { href: '/deliver-with-us', label: 'Deliver with us' },
   ];
   const discover = [
     { href: '/pearl-guide', label: 'Pearl Guide' },

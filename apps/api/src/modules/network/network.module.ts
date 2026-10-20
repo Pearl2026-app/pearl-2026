@@ -1,4 +1,6 @@
 import { Module } from '@nestjs/common';
+import { MediaModule } from '../media/media.module';
+import { RiderApplicationsController } from './rider-applications';
 import { z } from 'zod';
 import { email, phoneE164, slug, slugify, paise } from '@sahyadri/shared';
 import { cityLinks, crudController } from '../../common/crud';
@@ -167,10 +169,11 @@ export const DeliveryPartnersController = crudController({
   searchFields: ['name', 'phone'],
   sortFields: ['name', 'createdAt'],
   defaultSort: { name: 'asc' },
-  filters: { isActive: 'boolean' },
+  filters: { isActive: 'boolean', approvalStatus: 'string' },
   include: {
     cities: { include: { city: { select: { id: true, name: true } } } },
     user: { select: { id: true, isActive: true } },
+    vendor: { select: { id: true, name: true } },
     _count: { select: { deliveries: true } },
   },
   remove: 'deactivate',
@@ -179,15 +182,23 @@ export const DeliveryPartnersController = crudController({
       ? { cities: { some: { cityId: u.cityId ?? '__none__' } } }
       : u.role === 'DELIVERY_PARTNER'
         ? { id: u.deliveryPartnerId ?? '__none__' }
-        : {},
-  toData: vendorData,
+        : u.role === 'VENDOR'
+          ? { vendorId: u.vendorId ?? '__none__' }
+          : {},
+  // A vendor's riders always belong to that vendor.
+  toData: (d: any, mode: 'create' | 'update') => vendorData(d, mode),
   checkWrite: (u, data) => {
+    if (u.role === 'VENDOR') {
+      if ('vendorId' in data && data.vendorId !== u.vendorId) throw forbidden('You can only manage your own riders.');
+      (data as Record<string, unknown>).vendorId = u.vendorId;
+    }
     // A city manager may edit their partners' details but not move them to other cities.
     if (u.role === 'CITY_MANAGER' && 'cities' in data && !Array.isArray(data.cities)) throw forbidden('Only head office can change partner cities.');
   },
 });
 
 @Module({
-  controllers: [CitiesController, VendorsController, FranchisesController, ManufacturersController, DeliveryPartnersController],
+  imports: [MediaModule],
+  controllers: [CitiesController, VendorsController, FranchisesController, ManufacturersController, DeliveryPartnersController, RiderApplicationsController],
 })
 export class NetworkModule {}

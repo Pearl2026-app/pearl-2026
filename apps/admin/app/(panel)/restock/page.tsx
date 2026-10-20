@@ -1,0 +1,125 @@
+'use client';
+import Link from 'next/link';
+import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { Alert, Badge, Card } from '@sahyadri/ui';
+import { PageHeader } from '@/components/shell';
+import { api, errorText } from '@/lib/api';
+import { useMe } from '@/lib/session';
+
+interface Row {
+  id: string;
+  name: string;
+  sku: string;
+  quantity: number;
+  level: number;
+  sold30: number;
+  suggest: number;
+  low: boolean;
+  outOfStock: boolean;
+  sizeMm: number | null;
+  category: { name: string };
+  farm: { name: string } | null;
+  vendor: { name: string } | null;
+}
+
+/**
+ * What to make (meeting of 19 Oct): pieces sold by quantity that are at or below their alert level, with last
+ * month's sales so the manufacturer knows how many to make. Alerts go out by email/WhatsApp when a piece crosses
+ * its level.
+ */
+export default function RestockPage() {
+  const { data: me } = useMe();
+  const [all, setAll] = useState(false);
+  const q = useQuery({
+    queryKey: ['/admin/restock', all],
+    queryFn: () => api<{ items: Row[]; defaultThreshold: number }>(`/admin/restock${all ? '?all=true' : ''}`),
+  });
+  const lowCount = q.data?.items.filter((r) => r.low).length ?? 0;
+  const csv = () => {
+    const rows = [['SKU', 'Piece', 'Category', 'Size (mm)', 'In stock', 'Alert level', 'Sold last 30 days', 'Make'], ...(q.data?.items ?? []).map((r) => [r.sku, r.name, r.category.name, r.sizeMm ?? '', r.quantity, r.level, r.sold30, r.suggest])];
+    const blob = new Blob([rows.map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n')], { type: 'text/csv' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `restock-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+  };
+
+  return (
+    <div>
+      <PageHeader
+        title="Restock list"
+        description={`Pieces running low. Alerts go to head office, the vendor and the manufacturers when a piece falls to its alert level (default ${q.data?.defaultThreshold ?? 3}; set per piece on the product page).`}
+        actions={
+          <>
+            <button type="button" onClick={csv} className="inline-flex min-h-9 items-center rounded-sm border border-line bg-surface px-3 text-sm">
+              Download for Excel
+            </button>
+            {me && ['SUPER_ADMIN', 'STAFF'].includes(me.role) && (
+              <Link href="/purchase-orders/new" className="inline-flex min-h-9 items-center rounded-sm bg-accent px-3 text-sm font-medium text-white">
+                New purchase order
+              </Link>
+            )}
+          </>
+        }
+      />
+      <div className="mb-3 flex items-center gap-3">
+        <Badge tone={lowCount ? 'waiting' : 'success'}>{lowCount ? `${lowCount} pieces to restock` : 'Nothing running low'}</Badge>
+        <label className="flex items-center gap-2 text-sm">
+          <input type="checkbox" checked={all} onChange={(e) => setAll(e.target.checked)} /> Show all pieces sold by quantity
+        </label>
+      </div>
+      {q.isError && <Alert tone="danger">{errorText(q.error)}</Alert>}
+      <Card className="overflow-x-auto p-0">
+        <table className="w-full min-w-[720px] text-sm">
+          <thead className="border-b border-line text-left text-muted">
+            <tr>
+              <th className="px-3 py-2 font-normal">Piece</th>
+              <th className="px-3 py-2 font-normal">Category</th>
+              <th className="px-3 py-2 text-right font-normal">Size</th>
+              <th className="px-3 py-2 text-right font-normal">In stock</th>
+              <th className="px-3 py-2 text-right font-normal">Alert at</th>
+              <th className="px-3 py-2 text-right font-normal">Sold (30 days)</th>
+              <th className="px-3 py-2 text-right font-normal">Make</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-line">
+            {q.data?.items.map((r) => (
+              <tr key={r.id} className={r.low ? 'bg-[#FBF0DC]/40' : ''}>
+                <td className="px-3 py-2">
+                  {me?.permissions.PRODUCTS?.includes('edit') ? (
+                    <Link href={`/products/${r.id}`} className="font-medium hover:underline">
+                      {r.name}
+                    </Link>
+                  ) : (
+                    <span className="font-medium">{r.name}</span>
+                  )}
+                  <span className="block text-xs text-muted">
+                    {r.sku}
+                    {r.farm ? ` · ${r.farm.name}` : ''}
+                    {r.vendor ? ` · ${r.vendor.name}` : ''}
+                  </span>
+                </td>
+                <td className="px-3 py-2">{r.category.name}</td>
+                <td className="px-3 py-2 text-right">{r.sizeMm ? `${r.sizeMm} mm` : '—'}</td>
+                <td className="px-3 py-2 text-right">
+                  {r.outOfStock || r.quantity === 0 ? <Badge tone="danger">Out</Badge> : r.quantity}
+                </td>
+                <td className="px-3 py-2 text-right">{r.level}</td>
+                <td className="px-3 py-2 text-right">{r.sold30}</td>
+                <td className="px-3 py-2 text-right font-semibold">{r.suggest || '—'}</td>
+              </tr>
+            ))}
+            {q.data && !q.data.items.length && (
+              <tr>
+                <td colSpan={7} className="px-3 py-6 text-center text-muted">
+                  Nothing is running low.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </Card>
+    </div>
+  );
+}

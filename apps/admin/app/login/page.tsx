@@ -56,7 +56,7 @@ function LoginForm() {
       });
       await qc.invalidateQueries();
       const next = params.get('next');
-      router.replace(next && next.startsWith('/') && !next.startsWith('//') ? next : r.user.role === 'DELIVERY_PARTNER' ? '/delivery' : '/');
+      router.replace(next && next.startsWith('/') && !next.startsWith('//') ? next : r.user.role === 'DELIVERY_PARTNER' ? '/delivery' : r.user.role === 'MANUFACTURER' ? '/restock' : r.user.role === 'FARMER' ? '/farm-sales' : '/');
     });
 
   const byEmail = () =>

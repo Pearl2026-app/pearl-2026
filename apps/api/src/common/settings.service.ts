@@ -35,6 +35,14 @@ export const SETTING_SCHEMAS = {
     refereeRewardPaise: z.number().int().nonnegative().default(50_000),
     rewardValidDays: z.number().int().positive().default(90),
   }),
+  /** Low-stock alerts to head office, the vendor and the manufacturers (meeting of 19 Oct). */
+  stock_alert: z.object({
+    enabled: z.boolean().default(true),
+    /** Alert when a piece sold by quantity falls to this many, unless the piece has its own level */
+    defaultThreshold: z.number().int().min(0).max(10_000).default(3),
+    /** Extra address that gets every alert, e.g. the purchase team */
+    alertEmail: z.string().default(''),
+  }),
   cart_reminder: z.object({ enabled: z.boolean().default(true), delayMinutes: z.number().int().min(5).default(120) }),
   review_request: z.object({ enabled: z.boolean().default(true), delayDays: z.number().int().min(0).default(3) }),
   delivery_proof: z.object({ otpAbovePaise: z.number().int().nonnegative().default(5_000_000) }),

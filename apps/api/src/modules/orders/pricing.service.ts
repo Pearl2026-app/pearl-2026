@@ -55,10 +55,17 @@ export class PricingService {
       where: { id: { in: req.items.map((i) => i.productId) } },
       include: { category: { select: { gstRateBp: true, hsnCode: true } }, farm: { select: { name: true } }, images: { orderBy: [{ kind: 'asc' }, { sortOrder: 'asc' }], take: 1, select: { url: true } } },
     });
+    // Approved business buyers get the business price once they order the minimum quantity.
+    const business =
+      !!req.customerId &&
+      (await db.customer.findUnique({ where: { id: req.customerId }, select: { b2bStatus: true } }))?.b2bStatus === 'APPROVED';
     const lines: PricedLine[] = [];
     for (const i of req.items) {
       const p = products.find((x) => x.id === i.productId);
       if (!p) continue;
+      if (p.b2bOnly && !business && i.unitPricePaise == null) continue;
+      const qty = p.stockType === 'UNIQUE' ? 1 : i.quantity;
+      const b2bPrice = business && p.b2bPricePaise != null && qty >= (p.b2bMinQty ?? 1) ? p.b2bPricePaise : null;
       lines.push({
         productId: p.id,
         sku: p.sku,
@@ -66,8 +73,8 @@ export class PricingService {
         imageUrl: p.images[0]?.url ?? null,
         hsnCode: p.category.hsnCode,
         categoryId: p.categoryId,
-        quantity: p.stockType === 'UNIQUE' ? 1 : i.quantity,
-        unitPricePaise: i.unitPricePaise ?? p.pricePaise,
+        quantity: qty,
+        unitPricePaise: i.unitPricePaise ?? b2bPrice ?? p.pricePaise,
         gstRateBp: p.category.gstRateBp,
         vendorId: p.vendorId,
         priceOnRequest: p.priceOnRequest,
@@ -82,7 +89,7 @@ export class PricingService {
     let couponError: string | null = null;
     let lineDiscounts: number[] | undefined;
     if (req.couponCode) {
-      const r = await this.evaluate(db, req.couponCode, pricing, req.customerId ?? null, req.phone ?? null);
+      const r = await this.evaluate(db, req.couponCode, pricing, req.customerId ?? null, req.phone ?? null, req.cityId ?? null);
       if (r.result.ok) {
         lineDiscounts = r.result.perLineDiscountPaise;
         coupon = { code: r.code, id: r.id!, discountPaise: r.result.discountPaise };
@@ -98,12 +105,18 @@ export class PricingService {
     return { lines, totals, coupon, couponError };
   }
 
-  private async evaluate(db: Db, rawCode: string, lines: PricingLine[], customerId: string | null, phone: string | null): Promise<{ code: string; id?: string; result: CouponResult }> {
+  private async evaluate(db: Db, rawCode: string, lines: PricingLine[], customerId: string | null, phone: string | null, cityId: string | null = null): Promise<{ code: string; id?: string; result: CouponResult }> {
     const code = rawCode.trim().toUpperCase();
     const c = await db.coupon.findUnique({ where: { code }, include: { categories: true, products: true } });
     if (!c) return { code, result: { ok: false, reason: 'INACTIVE', message: 'That code is not valid.' } };
     // Personal coupons (referral rewards) work only for their owner.
     if (c.customerId && c.customerId !== customerId) return { code, result: { ok: false, reason: 'INACTIVE', message: 'That code is not valid for this account.' } };
+    // Area offers (made by a vendor or city manager) work only for deliveries in their city. A code with no city,
+    // like the physical coupons from partner brands, works anywhere in India.
+    if (c.cityId && cityId && c.cityId !== cityId) {
+      const city = await db.city.findUnique({ where: { id: c.cityId }, select: { name: true } });
+      return { code, result: { ok: false, reason: 'INACTIVE', message: `That code is valid only for deliveries in ${city?.name ?? 'another city'}.` } };
+    }
     const buyer = customerId ?? (phone ? (await db.customer.findFirst({ where: { user: { phone } }, select: { id: true } }))?.id : null) ?? null;
     const [total, mine, previous] = await Promise.all([
       db.couponRedemption.count({ where: { couponId: c.id } }),

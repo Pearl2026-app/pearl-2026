@@ -66,6 +66,8 @@ export class StockService implements OnModuleInit {
       } else {
         if (p.quantity < line.quantity) throw unavailable(p.quantity > 0 ? `has only ${p.quantity} left.` : 'is out of stock.');
         await tx.product.update({ where: { id: p.id }, data: { quantity: { decrement: line.quantity } } });
+        // Stock just fell to the alert level or below: tell head office, the vendor and the manufacturers.
+        await this.jobs.add('stock.low', { productId: p.id, before: p.quantity, after: p.quantity - line.quantity }, { delayMs: 5_000 });
       }
       try {
         await tx.stockHold.create({

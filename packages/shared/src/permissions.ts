@@ -69,7 +69,7 @@ export const MODULE_LABEL: Record<Module, string> = {
 };
 
 /** How a role's data is limited. Applied to every query in the API. */
-export type ScopeKind = 'global' | 'city' | 'vendor' | 'franchise' | 'delivery' | 'self';
+export type ScopeKind = 'global' | 'city' | 'vendor' | 'franchise' | 'delivery' | 'self' | 'manufacturer' | 'farm';
 
 export const ROLE_SCOPE: Record<Role, ScopeKind> = {
   SUPER_ADMIN: 'global',
@@ -79,10 +79,12 @@ export const ROLE_SCOPE: Record<Role, ScopeKind> = {
   FRANCHISE: 'franchise',
   DELIVERY_PARTNER: 'delivery',
   CUSTOMER: 'self',
+  MANUFACTURER: 'manufacturer',
+  FARMER: 'farm',
 };
 
 /** Roles that use the admin app. */
-export const PANEL_ROLES: Role[] = ['SUPER_ADMIN', 'STAFF', 'CITY_MANAGER', 'VENDOR', 'FRANCHISE', 'DELIVERY_PARTNER'];
+export const PANEL_ROLES: Role[] = ['SUPER_ADMIN', 'STAFF', 'CITY_MANAGER', 'VENDOR', 'FRANCHISE', 'DELIVERY_PARTNER', 'MANUFACTURER', 'FARMER'];
 /** Roles that sign in with email + password + OTP. */
 export const PASSWORD_ROLES: Role[] = ['SUPER_ADMIN', 'STAFF', 'CITY_MANAGER'];
 
@@ -108,7 +110,8 @@ export const ROLE_GRANTS: Record<Exclude<Role, 'SUPER_ADMIN' | 'STAFF'>, Grants>
     CUSTOM_ORDERS: VCE,
     PURCHASE_ORDERS: V,
     ENQUIRIES: VCE,
-    COUPONS: V,
+    // Area offers for their city
+    COUPONS: VCE,
     CITIES: V,
     VENDORS: V,
     FRANCHISES: V,
@@ -126,6 +129,9 @@ export const ROLE_GRANTS: Record<Exclude<Role, 'SUPER_ADMIN' | 'STAFF'>, Grants>
     FARMS: V,
     PRODUCTS: VCE,
     ORDERS: VE,
+    // Area offers for the cities it serves
+    COUPONS: VCE,
+    DELIVERY_PARTNERS: VE,
     REPORTS: V,
   },
   FRANCHISE: {
@@ -146,6 +152,16 @@ export const ROLE_GRANTS: Record<Exclude<Role, 'SUPER_ADMIN' | 'STAFF'>, Grants>
     PAYMENTS: VC,
   },
   CUSTOMER: {},
+  // Sees what to make: the restock list (low-stock pieces) and its own purchase orders.
+  MANUFACTURER: {
+    PRODUCTS: V,
+    PURCHASE_ORDERS: VE,
+  },
+  // A partner farm sees the pieces made with its pearls and how they sell.
+  FARMER: {
+    PRODUCTS: V,
+    REPORTS: V,
+  },
 };
 
 /** Modules a STAFF grant may never include, whatever a Super Admin ticks. */

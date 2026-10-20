@@ -165,6 +165,13 @@ async function seedTemplates() {
       'Order {{orderNumber}}: {{status}}',
     ],
     ['ORDER_STATUS', 'PUSH', 'Order {{orderNumber}} is now {{status}}.', 'Order update'],
+    [
+      'LOW_STOCK',
+      'EMAIL',
+      'Low stock: {{productName}} ({{sku}}) is down to {{quantity}} (alert level {{level}}).\n\nSee what to make on the restock list: {{restockUrl}}\n\nSahyadri Pearls',
+      'Low stock: {{productName}}',
+    ],
+    ['LOW_STOCK', 'WHATSAPP', 'Sahyadri Pearls: {{productName}} ({{sku}}) is down to {{quantity}}. Restock list: {{restockUrl}}'],
     ['CART_REMINDER', 'WHATSAPP', 'Hi {{name}}, your pearls are waiting in your cart: {{cartUrl}}'],
     [
       'CART_REMINDER',
@@ -1473,10 +1480,53 @@ async function partnerFarms() {
         });
     }
   }
+  await partnerLogins(ids[0]!);
   if (!(await prisma.product.count({ where: { isExclusive: true } })))
     await prisma.product.updateMany({
       where: { slug: { in: ['royal-peshwai-haar', 'monsoon-rain-necklace', 'collector-golden-pearl-12mm'].map((x) => x) } },
       data: { isExclusive: true },
+    });
+}
+
+/**
+ * Logins and sample data for the partner features (meeting of 19 Oct): a manufacturer and a farm partner login,
+ * two pieces running low (restock list), business prices on loose pearls, and one rider application waiting.
+ */
+async function partnerLogins(swastikFarmId: string) {
+  const maker = await prisma.manufacturer.findFirst({ where: { name: 'Pune Silver Studio' } });
+  const logins = [
+    maker && { role: 'MANUFACTURER' as const, name: 'Sameer Joshi', email: 'maker@sahyadripearls.test', phone: '+919800000033', manufacturerId: maker.id },
+    { role: 'FARMER' as const, name: 'Swastik Pearl Farm', email: 'farm@sahyadripearls.test', phone: '+919800000034', farmId: swastikFarmId },
+  ].filter(Boolean) as Array<{ role: 'MANUFACTURER' | 'FARMER'; name: string; email: string; phone: string; manufacturerId?: string; farmId?: string }>;
+  for (const u of logins)
+    if (!(await prisma.user.findFirst({ where: { OR: [{ email: u.email }, { phone: u.phone }] } }))) await prisma.user.create({ data: u });
+
+  // Two quantity pieces near their alert level, so the restock list has something to show.
+  const qtyPieces = await prisma.product.findMany({ where: { stockType: 'QUANTITY', archivedAt: null }, orderBy: { sku: 'asc' }, take: 2, select: { id: true, lowStockAt: true } });
+  for (const [i, p] of qtyPieces.entries())
+    if (p.lowStockAt == null) await prisma.product.update({ where: { id: p.id }, data: { lowStockAt: 5, quantity: i === 0 ? 2 : 4 } });
+
+  // Business prices: loose pearls at 20% off from 50 pieces.
+  for (const p of await prisma.product.findMany({ where: { category: { slug: 'loose-pearls' }, b2bPricePaise: null, priceOnRequest: false }, select: { id: true, pricePaise: true } }))
+    await prisma.product.update({ where: { id: p.id }, data: { b2bPricePaise: Math.round((p.pricePaise * 0.8) / 100) * 100, b2bMinQty: 50 } });
+
+  // One rider application waiting for approval (documents are not included in the sample).
+  const pune = await prisma.city.findFirst({ where: { slug: 'pune' } });
+  if (pune && !(await prisma.deliveryPartner.findUnique({ where: { phone: '+919800000035' } })))
+    await prisma.deliveryPartner.create({
+      data: {
+        name: 'Ganesh Kale',
+        phone: '+919800000035',
+        vehicleInfo: 'Two-wheeler MH12 GK 4521',
+        vehicleNumber: 'MH12 GK 4521',
+        licenceNumber: 'MH1220190045123',
+        address: 'Flat 3, Shanti Niwas, Kothrud, Pune 411038',
+        approvalStatus: 'PENDING',
+        appliedAt: new Date(),
+        isActive: false,
+        isAvailable: false,
+        cities: { create: [{ cityId: pune.id }] },
+      },
     });
 }
 

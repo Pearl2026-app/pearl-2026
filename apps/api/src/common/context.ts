@@ -12,6 +12,8 @@ export interface AuthUser {
   vendorId: string | null;
   franchiseId: string | null;
   deliveryPartnerId: string | null;
+  manufacturerId: string | null;
+  farmId: string | null;
   customerId: string | null;
   sessionId: string | null;
   grants: StaffGrant[];

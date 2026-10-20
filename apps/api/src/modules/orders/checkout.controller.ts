@@ -60,7 +60,7 @@ export class CartController {
     @CurrentUser() user: AuthUser | null,
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
-    @Body(new ZodValidationPipe(z.object({ productId: z.string().min(1).max(40), quantity: z.number().int().min(1).max(20).default(1) }))) dto: { productId: string; quantity: number },
+    @Body(new ZodValidationPipe(z.object({ productId: z.string().min(1).max(40), quantity: z.number().int().min(1).max(10_000).default(1) }))) dto: { productId: string; quantity: number },
   ) {
     const cart = (await this.carts.resolve(user, cartToken(req), true))!;
     await this.carts.add(cart, dto.productId, dto.quantity);
@@ -70,7 +70,7 @@ export class CartController {
 
   @Public()
   @Patch('items/:productId')
-  async setQty(@CurrentUser() user: AuthUser | null, @Req() req: Request, @Param('productId') productId: string, @Body(new ZodValidationPipe(z.object({ quantity: z.number().int().min(0).max(20) }))) dto: { quantity: number }) {
+  async setQty(@CurrentUser() user: AuthUser | null, @Req() req: Request, @Param('productId') productId: string, @Body(new ZodValidationPipe(z.object({ quantity: z.number().int().min(0).max(10_000) }))) dto: { quantity: number }) {
     const cart = await this.carts.resolve(user, cartToken(req), false);
     if (cart) await this.carts.setQuantity(cart, productId, dto.quantity);
     return this.carts.view(cart, user);

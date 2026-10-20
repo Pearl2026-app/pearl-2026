@@ -179,7 +179,9 @@ export class AuthService {
         vendor: { select: { id: true, name: true } },
         franchise: { select: { id: true, name: true, area: true } },
         deliveryPartner: { select: { id: true, name: true } },
-        customer: { select: { id: true, referralCode: true, cityId: true, preferredPaymentMethod: true } },
+        manufacturer: { select: { id: true, name: true } },
+        farm: { select: { id: true, name: true } },
+        customer: { select: { id: true, referralCode: true, cityId: true, preferredPaymentMethod: true, b2bStatus: true, businessName: true } },
       },
     });
     const au = toAuthUser(u, null);

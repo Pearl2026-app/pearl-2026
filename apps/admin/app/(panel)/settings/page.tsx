@@ -55,6 +55,15 @@ const GROUPS: Array<{ key: string; title: string; fields: FieldDef[] }> = [
       { name: 'rewardValidDays', label: 'Reward coupon valid for (days)', type: 'number' },
     ],
   },
+  {
+    key: 'stock_alert',
+    title: 'Low-stock alerts',
+    fields: [
+      { name: 'enabled', label: 'Send low-stock alerts', type: 'switch' },
+      { name: 'defaultThreshold', label: 'Alert when stock falls to', type: 'number', hint: 'For pieces sold by quantity; a piece can have its own level.' },
+      { name: 'alertEmail', label: 'Also email', hint: 'E.g. the purchase team. Head office, the vendor and the manufacturers always get it.' },
+    ],
+  },
   { key: 'cart_reminder', title: 'Abandoned cart reminder', fields: [{ name: 'enabled', label: 'Send reminders', type: 'switch' }, { name: 'delayMinutes', label: 'Send after (minutes)', type: 'number' }] },
   { key: 'review_request', title: 'Review requests', fields: [{ name: 'enabled', label: 'Ask for reviews after delivery', type: 'switch' }, { name: 'delayDays', label: 'Days after delivery', type: 'number' }] },
   { key: 'delivery_proof', title: 'Proof of delivery', fields: [{ name: 'otpAbovePaise', label: 'Require customer OTP for orders at or above', type: 'money' }] },

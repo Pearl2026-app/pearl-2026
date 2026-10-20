@@ -1,3 +1,4 @@
+import { FarmSalesController } from './farm-sales';
 import { Controller, Get, Module, Param, Query, Res } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import type { Response } from 'express';
@@ -322,5 +323,5 @@ export class ReportsController {
   }
 }
 
-@Module({ controllers: [ReportsController] })
+@Module({ controllers: [ReportsController, FarmSalesController] })
 export class ReportsModule {}

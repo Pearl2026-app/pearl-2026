@@ -1,4 +1,5 @@
 import { Body, Controller, Get, HttpCode, Param, Post, Query, Res, UploadedFile, UseInterceptors, Module } from '@nestjs/common';
+import { LowStockAlerts, RestockController } from './restock';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiConsumes, ApiTags } from '@nestjs/swagger';
 import type { Response } from 'express';
@@ -245,8 +246,8 @@ class UploadsController {
 }
 
 @Module({
-  controllers: [CategoriesController, CollectionsController, FarmsController, ProductsController, CertificatesController, ReviewsAdminController, UploadsController],
-  providers: [ProductsService, ProductImportService],
+  controllers: [CategoriesController, CollectionsController, FarmsController, ProductsController, CertificatesController, ReviewsAdminController, UploadsController, RestockController],
+  providers: [ProductsService, ProductImportService, LowStockAlerts],
   exports: [ProductsService],
 })
 export class CatalogueModule {}

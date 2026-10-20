@@ -56,15 +56,25 @@ export class CartService {
     if (from?.couponCode) await this.prisma.cart.update({ where: { id: toId }, data: { couponCode: from.couponCode } });
   }
 
+  /** Approved business buyers may order in bulk and see business-only pieces. */
+  private async isBusiness(cart: Cart) {
+    if (!cart.customerId) return false;
+    const c = await this.prisma.customer.findUnique({ where: { id: cart.customerId }, select: { b2bStatus: true } });
+    return c?.b2bStatus === 'APPROVED';
+  }
+
   async add(cart: Cart, productId: string, quantity: number) {
     const p = await this.prisma.product.findFirst({ where: { id: productId, status: 'PUBLISHED', archivedAt: null } });
     if (!p) throw badRequest('INVALID_PRODUCT', 'That piece is not available.');
+    const business = await this.isBusiness(cart);
+    if (p.b2bOnly && !business) throw badRequest('BUSINESS_ONLY', 'This piece is for approved business buyers.');
+    const maxQty = business ? 10_000 : MAX_QTY;
     if (p.priceOnRequest) throw badRequest('PRICE_ON_REQUEST', 'This piece is priced on request. Please enquire on WhatsApp.');
     if (p.soldAt || p.outOfStock || p.quantity <= 0) throw conflict('OUT_OF_STOCK', `${p.name} is no longer available.`);
     const count = await this.prisma.cartItem.count({ where: { cartId: cart.id } });
     const existing = await this.prisma.cartItem.findUnique({ where: { cartId_productId: { cartId: cart.id, productId } } });
     if (!existing && count >= MAX_LINES) throw badRequest('CART_FULL', 'Your cart is full.');
-    const qty = p.stockType === 'UNIQUE' ? 1 : Math.min(MAX_QTY, p.quantity, (existing?.quantity ?? 0) + quantity);
+    const qty = p.stockType === 'UNIQUE' ? 1 : Math.min(maxQty, p.quantity, (existing?.quantity ?? 0) + quantity);
     await this.prisma.cartItem.upsert({ where: { cartId_productId: { cartId: cart.id, productId } }, create: { cartId: cart.id, productId, quantity: qty }, update: { quantity: qty } });
     await this.touch(cart.id);
   }
@@ -75,7 +85,8 @@ export class CartService {
     } else {
       const p = await this.prisma.product.findUnique({ where: { id: productId } });
       if (!p) throw badRequest('INVALID_PRODUCT', 'That piece is not available.');
-      const qty = p.stockType === 'UNIQUE' ? 1 : Math.min(MAX_QTY, Math.max(1, quantity), Math.max(1, p.quantity));
+      const maxQty = (await this.isBusiness(cart)) ? 10_000 : MAX_QTY;
+      const qty = p.stockType === 'UNIQUE' ? 1 : Math.min(maxQty, Math.max(1, quantity), Math.max(1, p.quantity));
       await this.prisma.cartItem.updateMany({ where: { cartId: cart.id, productId }, data: { quantity: qty } });
     }
     await this.touch(cart.id);

@@ -1,3 +1,4 @@
+import { BusinessAccountController, BusinessBuyersAdminController } from './business';
 import { Module } from '@nestjs/common';
 import { AuthModule } from '../../auth/auth.module';
 import { AbandonedCartsController, AbandonedCartService } from './abandoned-carts';
@@ -15,7 +16,7 @@ import { StockService } from './stock.service';
 
 @Module({
   imports: [AuthModule, EnquiriesModule],
-  controllers: [CartController, CheckoutController, AccountController, AdminOrdersController, EnquiryConvertController, ReturnsController, CouponUsageController, CouponsController, AdminPaymentsController, AbandonedCartsController],
+  controllers: [CartController, CheckoutController, BusinessAccountController, BusinessBuyersAdminController, AccountController, AdminOrdersController, EnquiryConvertController, ReturnsController, CouponUsageController, CouponsController, AdminPaymentsController, AbandonedCartsController],
   providers: [StockService, PricingService, CartService, OrdersService, PaymentsService, InvoiceService, AfterDeliveryService, AbandonedCartService],
   exports: [StockService, PricingService, OrdersService, PaymentsService, InvoiceService, CartService],
 })

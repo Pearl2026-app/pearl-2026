@@ -30,6 +30,8 @@ export interface ResourceDef<T = any> {
   toBody?: (values: Record<string, unknown>, mode: 'create' | 'edit') => Record<string, unknown>;
   sortDefault?: string;
   extraActions?: (row: T) => ReactNode;
+  /** Extra links in the page header, e.g. to a related page */
+  headerLinks?: ReactNode;
   csv?: boolean;
   createLabel?: string;
 }
@@ -48,6 +50,7 @@ export function ResourceList<T extends { id: string }>({ def }: { def: ResourceD
         description={def.description}
         actions={
           <>
+            {def.headerLinks}
             {def.csv !== false && (
               <a className="inline-flex min-h-9 items-center rounded-sm border border-line bg-surface px-3 text-sm hover:border-ink" href={`/api/v1${def.api}${qs({ ...params, format: 'csv', page: undefined, pageSize: undefined })}`}>
                 Export CSV

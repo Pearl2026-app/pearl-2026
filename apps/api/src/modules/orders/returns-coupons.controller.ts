@@ -132,6 +132,8 @@ const couponBase = z.object({
   showOnOffersPage: z.boolean().optional(),
   categoryIds: z.array(z.string()).optional(),
   productIds: z.array(z.string()).optional(),
+  /** Area offer: valid only for deliveries in this city (empty = anywhere) */
+  cityId: z.string().optional().nullable(),
 });
 const couponCheck = (v: { discountType?: string; discountValue?: number }) => !(v.discountType === 'PERCENT' && v.discountValue != null && v.discountValue > 10_000);
 export const CouponsController = crudController({
@@ -145,9 +147,23 @@ export const CouponsController = crudController({
   searchFields: ['code', 'description'],
   sortFields: ['code', 'createdAt', 'endsAt'],
   defaultSort: { createdAt: 'desc' },
-  filters: { isActive: 'boolean' },
-  include: { categories: { include: { category: { select: { id: true, name: true } } } }, products: { include: { product: { select: { id: true, name: true, sku: true } } } }, _count: { select: { redemptions: true } } },
+  filters: { isActive: 'boolean', cityId: 'string' },
+  include: { city: { select: { id: true, name: true } }, categories: { include: { category: { select: { id: true, name: true } } } }, products: { include: { product: { select: { id: true, name: true, sku: true } } } }, _count: { select: { redemptions: true } } },
   remove: 'deactivate',
+  // Vendors and city managers make offers for their own area only and see only those; head office sees all.
+  scope: (u: AuthUser) =>
+    u.role === 'VENDOR' ? { vendorId: u.vendorId ?? '__none__' } : u.role === 'CITY_MANAGER' ? { cityId: u.cityId ?? '__none__' } : {},
+  checkWrite: (u: AuthUser, data: Record<string, unknown>) => {
+    if (u.role === 'CITY_MANAGER') {
+      if (data.cityId && data.cityId !== u.cityId) throw forbidden('You can make offers only for your city.');
+      data.cityId = u.cityId;
+    }
+    if (u.role === 'VENDOR') {
+      if (data.vendorId && data.vendorId !== u.vendorId) throw forbidden('You can change only your own offers.');
+      data.vendorId = u.vendorId;
+      if (!data.cityId) throw badRequest('CITY_REQUIRED', 'Choose the city this offer is for.', { cityId: 'Required' });
+    }
+  },
   toData: ({ categoryIds, productIds, ...rest }: any, mode) => ({
     ...rest,
     ...(categoryIds !== undefined ? { categories: mode === 'create' ? { create: categoryIds.map((categoryId: string) => ({ categoryId })) } : { deleteMany: {}, create: categoryIds.map((categoryId: string) => ({ categoryId })) } } : {}),

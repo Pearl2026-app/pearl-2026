@@ -23,7 +23,7 @@ const grant = z.object({
   canEdit: z.boolean(),
   canDelete: z.boolean(),
 });
-const staffRoles = ['SUPER_ADMIN', 'STAFF', 'CITY_MANAGER', 'VENDOR', 'FRANCHISE', 'DELIVERY_PARTNER'] as const;
+const staffRoles = ['SUPER_ADMIN', 'STAFF', 'CITY_MANAGER', 'VENDOR', 'FRANCHISE', 'DELIVERY_PARTNER', 'MANUFACTURER', 'FARMER'] as const;
 const userCreate = z.object({
   role: z.enum(staffRoles),
   name: z.string().trim().min(2).max(120),
@@ -34,6 +34,8 @@ const userCreate = z.object({
   vendorId: z.string().optional().nullable(),
   franchiseId: z.string().optional().nullable(),
   deliveryPartnerId: z.string().optional().nullable(),
+  manufacturerId: z.string().optional().nullable(),
+  farmId: z.string().optional().nullable(),
   grants: z.array(grant).optional(),
 });
 const userUpdate = userCreate.omit({ role: true, password: true }).partial();
@@ -44,6 +46,8 @@ const USER_SELECT = {
   vendor: { select: { id: true, name: true } },
   franchise: { select: { id: true, name: true } },
   deliveryPartner: { select: { id: true, name: true } },
+  manufacturer: { select: { id: true, name: true } },
+  farm: { select: { id: true, name: true } },
   permissions: { select: { module: true, canView: true, canCreate: true, canEdit: true, canDelete: true } },
 } satisfies Prisma.UserSelect;
 
@@ -77,7 +81,15 @@ class UsersController {
   }
 
   private async links(role: Role, d: z.infer<typeof userUpdate>) {
-    const data: Prisma.UserUncheckedUpdateInput = { cityId: null, vendorId: null, franchiseId: null, deliveryPartnerId: null };
+    const data: Prisma.UserUncheckedUpdateInput = { cityId: null, vendorId: null, franchiseId: null, deliveryPartnerId: null, manufacturerId: null, farmId: null };
+    if (role === 'MANUFACTURER') {
+      if (!d.manufacturerId) throw badRequest('MANUFACTURER_REQUIRED', 'Choose the manufacturer.', { manufacturerId: 'Required' });
+      data.manufacturerId = d.manufacturerId;
+    }
+    if (role === 'FARMER') {
+      if (!d.farmId) throw badRequest('FARM_REQUIRED', 'Choose the farm.', { farmId: 'Required' });
+      data.farmId = d.farmId;
+    }
     if (role === 'CITY_MANAGER') {
       if (!d.cityId) throw badRequest('CITY_REQUIRED', 'Choose the city this manager runs.', { cityId: 'Required' });
       data.cityId = d.cityId;
@@ -120,7 +132,7 @@ class UsersController {
           email: dto.email ?? null,
           phone: dto.phone ?? null,
           passwordHash: dto.password ? await hashPassword(dto.password) : null,
-          ...(links as Pick<Prisma.UserUncheckedCreateInput, 'cityId' | 'vendorId' | 'franchiseId' | 'deliveryPartnerId'>),
+          ...(links as Pick<Prisma.UserUncheckedCreateInput, 'cityId' | 'vendorId' | 'franchiseId' | 'deliveryPartnerId' | 'manufacturerId' | 'farmId'>),
           permissions: dto.role === 'STAFF' && dto.grants ? { create: dto.grants } : undefined,
         },
         select: USER_SELECT,
@@ -134,7 +146,7 @@ class UsersController {
   async update(@Param('id') id: string, @Body(new ZodValidationPipe(userUpdate)) dto: z.infer<typeof userUpdate>) {
     const before = await this.get(id);
     const { grants, ...rest } = dto;
-    const touchesLinks = ['cityId', 'vendorId', 'franchiseId', 'deliveryPartnerId'].some((k) => k in rest);
+    const touchesLinks = ['cityId', 'vendorId', 'franchiseId', 'deliveryPartnerId', 'manufacturerId', 'farmId'].some((k) => k in rest);
     const links = touchesLinks ? await this.links(before.role, { ...linkIds(before), ...rest }) : {};
     return this.prisma.$transaction(async (tx) => {
       const u = await tx.user.update({
@@ -191,11 +203,20 @@ class UsersController {
   }
 }
 
-const linkIds = (u: { city: { id: string } | null; vendor: { id: string } | null; franchise: { id: string } | null; deliveryPartner: { id: string } | null }) => ({
+const linkIds = (u: {
+  city: { id: string } | null;
+  vendor: { id: string } | null;
+  franchise: { id: string } | null;
+  deliveryPartner: { id: string } | null;
+  manufacturer: { id: string } | null;
+  farm: { id: string } | null;
+}) => ({
   cityId: u.city?.id ?? null,
   vendorId: u.vendor?.id ?? null,
   franchiseId: u.franchise?.id ?? null,
   deliveryPartnerId: u.deliveryPartner?.id ?? null,
+  manufacturerId: u.manufacturer?.id ?? null,
+  farmId: u.farm?.id ?? null,
 });
 
 @ApiTags('users')

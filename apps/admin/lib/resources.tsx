@@ -1,4 +1,5 @@
 'use client';
+import Link from 'next/link';
 // Configuration for every simple admin resource. Business settings are data (rule 4): adding a city,
 // vendor, franchise, manufacturer or delivery partner is a form, not a deployment.
 import { Badge, StatusBadge } from '@sahyadri/ui';
@@ -129,12 +130,24 @@ export const RESOURCES: Record<string, ResourceDef> = {
     key: 'delivery-partners',
     title: 'Delivery partners',
     singular: 'Delivery partner',
-    description: 'Create the partner here, then give them a login under Staff & partner logins.',
+    description: 'Riders can also apply on the website with their documents; approve them under Rider applications.',
     api: '/admin/delivery-partners',
     module: 'DELIVERY_PARTNERS',
+    headerLinks: (
+      <Link href="/rider-applications" className="inline-flex min-h-9 items-center rounded-sm border border-line bg-surface px-3 text-sm hover:border-ink">
+        Rider applications
+      </Link>
+    ),
     columns: [
       { key: 'name', label: 'Name', sortable: true },
       { key: 'phone', label: 'Phone' },
+      { key: 'vendor', label: 'Vendor', render: (r) => r.vendor?.name ?? '—' },
+      {
+        key: 'approvalStatus',
+        label: 'Approval',
+        render: (r) =>
+          r.approvalStatus === 'PENDING' ? <Badge tone="waiting">Waiting</Badge> : r.approvalStatus === 'REJECTED' ? <Badge tone="danger">Rejected</Badge> : <Badge tone="success">Approved</Badge>,
+      },
       { key: 'cities', label: 'Cities', render: cityNames },
       { key: 'user', label: 'Login', render: (r) => (r.user ? <Badge tone="success">Yes</Badge> : <Badge tone="waiting">No login</Badge>) },
       { key: '_count', label: 'Deliveries', render: (r) => r._count?.deliveries ?? 0 },
@@ -398,9 +411,10 @@ export const RESOURCES: Record<string, ResourceDef> = {
     singular: 'Coupon',
     api: '/admin/coupons',
     module: 'COUPONS',
-    description: 'Codes customers enter at checkout. Ticking “Show on offers page” lists the code publicly.',
+    description: 'Codes customers enter at checkout, including printed coupons from partner brands. Leave the city empty for a code that works anywhere; pick a city for an area offer.',
     columns: [
       { key: 'code', label: 'Code', sortable: true },
+      { key: 'city', label: 'Where', render: (r) => r.city?.name ?? 'All India' },
       { key: 'discount', label: 'Discount', render: (r) => (r.discountType === 'PERCENT' ? `${r.discountValue / 100}%` : inr(r.discountValue)) },
       { key: 'minOrderPaise', label: 'Min order', render: (r) => (r.minOrderPaise ? inr(r.minOrderPaise) : '—') },
       { key: 'endsAt', label: 'Ends', sortable: true, render: (r) => (r.endsAt ? date(r.endsAt) : 'No end') },
@@ -416,6 +430,7 @@ export const RESOURCES: Record<string, ResourceDef> = {
       { name: 'flatValue', label: 'Amount off', type: 'money', showIf: (v) => v.discountType === 'FLAT', read: (r) => (r.discountType === 'FLAT' ? r.discountValue : null) },
       { name: 'maxDiscountPaise', label: 'Maximum discount (optional)', type: 'money', showIf: (v) => v.discountType === 'PERCENT' },
       { name: 'minOrderPaise', label: 'Minimum order value', type: 'money' },
+      { name: 'cityId', label: 'Only for deliveries in (optional)', type: 'ref', ref: cityRef, hint: 'Area offer. Vendors and city managers must pick their city.' },
       { name: 'startsAt', label: 'Starts', type: 'datetime' },
       { name: 'endsAt', label: 'Ends', type: 'datetime' },
       { name: 'usageLimit', label: 'Total uses allowed (optional)', type: 'number' },
