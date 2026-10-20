@@ -83,6 +83,7 @@ const SECTIONS: Array<{ title: string; fields: FieldDef[] }> = [
       { name: 'quantity', label: 'Quantity', type: 'number', showIf: (v) => v.stockType === 'QUANTITY' },
       { name: 'outOfStock', label: 'Mark out of stock', type: 'switch' },
       { name: 'isFeatured', label: 'Feature on the home page', type: 'switch' },
+      { name: 'isExclusive', label: 'Exclusive / designer piece', type: 'switch' },
       { name: 'sortOrder', label: 'Sort order', type: 'number' },
     ],
   },
@@ -102,7 +103,7 @@ const SECTIONS: Array<{ title: string; fields: FieldDef[] }> = [
   },
 ];
 const ALL_FIELDS = SECTIONS.flatMap((s) => s.fields);
-const VENDOR_HIDDEN = new Set(['vendorId', 'isFeatured', 'sortOrder']);
+const VENDOR_HIDDEN = new Set(['vendorId', 'isFeatured', 'isExclusive', 'sortOrder']);
 const COST_FIELDS = new Set(['metalCostPaise', 'labourCostPaise', 'pearlCostPaise']);
 
 function SortableImage({ img, onMain, onRemove, disabled }: { img: Img; onMain: () => void; onRemove: () => void; disabled: boolean }) {

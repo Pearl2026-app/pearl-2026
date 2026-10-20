@@ -349,6 +349,12 @@ export default function OrderPage() {
                 .join(', ')}
             </p>
             <p className="mt-1 text-sm">City: {o.city.name}</p>
+            {o.buyerGstin && (
+              <p className="mt-1 text-sm">
+                GSTIN: <strong>{o.buyerGstin}</strong>
+                {o.buyerBusinessName ? ` · ${o.buyerBusinessName}` : ''}
+              </p>
+            )}
             {o.customerNote && (
               <p className="mt-2 rounded-sm bg-surface-muted p-2 text-sm">Note: {o.customerNote}</p>
             )}

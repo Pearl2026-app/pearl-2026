@@ -4,7 +4,7 @@ import { IconFor } from '@/components/icons';
 import { ProductCard as Card, ProductGrid } from '@/components/product-card';
 import { ButtonLink, Container, SectionHeading } from '@/components/ui';
 import { JsonLd, meta, SITE_URL } from '@/lib/seo';
-import { get } from '@/lib/server-api';
+import { cityFromCookie, get } from '@/lib/server-api';
 import type { ProductCard, Site } from '@/lib/types';
 
 interface Banner {
@@ -22,6 +22,8 @@ interface Home {
   blocks: Record<string, { title: string | null; kind: string; data: any }>;
   featured: ProductCard[];
   newest: ProductCard[];
+  farms?: Array<{ name: string; slug: string; location: string; summary: string | null; heroImageUrl: string | null; productCount: number }>;
+  exclusive?: ProductCard[];
   testimonials: Array<{
     id: string;
     name: string;
@@ -49,7 +51,7 @@ const BannerButton = ({ label, light }: { label: string; light?: boolean }) => (
 
 export default async function HomePage() {
   const [h, site] = await Promise.all([
-    get<Home>('/content/home', { revalidate: 60 }),
+    cityFromCookie().then((city) => get<Home>(`/content/home${city ? `?city=${encodeURIComponent(city)}` : ''}`, { revalidate: 60 })),
     get<Site>('/site', { revalidate: 300 }),
   ]);
   if (!h) return null;
@@ -87,6 +89,37 @@ export default async function HomePage() {
                     )}
                   </span>
                   <span className="text-sm text-ink lg:text-[15px]">{c.name}</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </Container>
+      )}
+
+      {/* Shop by farm: every pearl comes from a named farm, so customers can start from the farm they trust. */}
+      {(h.farms?.length ?? 0) > 0 && (
+        <Container className="pt-16 lg:pt-24">
+          <SectionHeading
+            title="Shop by farm"
+            action={
+              <ButtonLink href="/our-farm" variant="text">
+                Meet the farms
+              </ButtonLink>
+            }
+          />
+          <ul className="no-scrollbar -mx-4 flex snap-x gap-4 overflow-x-auto px-4 pb-2 lg:mx-0 lg:grid lg:grid-cols-4 lg:gap-6 lg:overflow-visible lg:px-0">
+            {h.farms!.map((f) => (
+              <li key={f.slug} className="w-[70%] shrink-0 snap-start sm:w-[45%] lg:w-auto">
+                <Link href={`/jewellery?farm=${encodeURIComponent(f.slug)}`} className="group block">
+                  <span className="nacre block aspect-[4/5] overflow-hidden">
+                    {f.heroImageUrl && (
+                      <img src={f.heroImageUrl} alt="" loading="lazy" width={480} height={600} className="img-zoom h-full w-full object-cover" />
+                    )}
+                  </span>
+                  <span className="mt-3 block font-serif text-xl">{f.name}</span>
+                  <span className="block text-sm text-muted">
+                    {f.location} · {f.productCount} {f.productCount === 1 ? 'piece' : 'pieces'}
+                  </span>
                 </Link>
               </li>
             ))}
@@ -165,6 +198,21 @@ export default async function HomePage() {
               </li>
             ))}
           </ul>
+        </Container>
+      )}
+
+      {/* Exclusive and designer pieces: limited, premium work shown on its own. */}
+      {(h.exclusive?.length ?? 0) > 0 && (
+        <Container className="pt-16 lg:pt-24">
+          <SectionHeading
+            title="Exclusive designer pieces"
+            action={
+              <ButtonLink href="/jewellery?exclusive=1" variant="text">
+                View all
+              </ButtonLink>
+            }
+          />
+          <ProductGrid products={h.exclusive!.slice(0, 4)} />
         </Container>
       )}
 

@@ -30,6 +30,9 @@ export interface PricedLine {
   vendorId: string | null;
   priceOnRequest: boolean;
   hasPriceOverride: boolean;
+  /** Printed on the invoice: the farm the pearls came from and their carat weight */
+  farmName: string | null;
+  caratWeight: string | null;
 }
 
 export interface Priced {
@@ -50,7 +53,7 @@ export class PricingService {
   async price(req: PriceRequest, db: Db = this.prisma): Promise<Priced> {
     const products = await db.product.findMany({
       where: { id: { in: req.items.map((i) => i.productId) } },
-      include: { category: { select: { gstRateBp: true, hsnCode: true } }, images: { orderBy: [{ kind: 'asc' }, { sortOrder: 'asc' }], take: 1, select: { url: true } } },
+      include: { category: { select: { gstRateBp: true, hsnCode: true } }, farm: { select: { name: true } }, images: { orderBy: [{ kind: 'asc' }, { sortOrder: 'asc' }], take: 1, select: { url: true } } },
     });
     const lines: PricedLine[] = [];
     for (const i of req.items) {
@@ -69,6 +72,8 @@ export class PricingService {
         vendorId: p.vendorId,
         priceOnRequest: p.priceOnRequest,
         hasPriceOverride: i.unitPricePaise != null,
+        farmName: p.farm?.name ?? null,
+        caratWeight: p.caratWeight != null ? p.caratWeight.toString() : null,
       });
     }
     const pricing: PricingLine[] = lines.map((l) => ({ productId: l.productId, categoryId: l.categoryId, unitPricePaise: l.unitPricePaise, quantity: l.quantity, gstRateBp: l.gstRateBp }));

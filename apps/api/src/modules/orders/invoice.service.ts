@@ -14,7 +14,7 @@ export class InvoiceService {
   ) {}
 
   async pdf(orderId: string): Promise<{ buffer: Buffer; filename: string }> {
-    const o = await this.prisma.order.findUnique({ where: { id: orderId }, include: { items: true, invoice: true } });
+    const o = await this.prisma.order.findUnique({ where: { id: orderId }, include: { items: true, invoice: true, payments: { where: { status: 'CAPTURED' }, orderBy: { createdAt: 'desc' } } } });
     if (!o?.invoice) throw notFound('Invoice');
     const store = await this.settings.get('store');
     const addr = o.addressSnapshot as Record<string, string>;
@@ -27,10 +27,12 @@ export class InvoiceService {
       orderNumber: o.number,
       placeOfSupply: o.invoice.placeOfSupply,
       isInterState: o.invoice.isInterState,
-      billTo: { name: addr.name ?? o.contactName, phone: addr.phone ?? o.contactPhone, address: formatAddress(addr), gstin: o.invoice.buyerGstin },
+      billTo: { name: addr.name ?? o.contactName, phone: addr.phone ?? o.contactPhone, address: formatAddress(addr), gstin: o.invoice.buyerGstin ?? o.buyerGstin, businessName: o.buyerBusinessName },
       lines: o.items.map((i) => ({
         name: i.name,
         sku: i.sku,
+        farm: i.farmName,
+        carat: i.caratWeight?.toString() ?? null,
         hsn: i.hsnCode,
         qty: i.quantity,
         unitPaise: i.unitPricePaise,
@@ -42,6 +44,9 @@ export class InvoiceService {
       })),
       delivery: { taxablePaise: delivery.taxablePaise, gstPaise: delivery.gstPaise, totalPaise: o.deliveryPaise, rateBp: maxRate },
       totals: { taxablePaise: o.taxablePaise, cgstPaise: o.invoice.cgstPaise, sgstPaise: o.invoice.sgstPaise, igstPaise: o.invoice.igstPaise, totalPaise: o.totalPaise },
+      summary: { subtotalPaise: o.subtotalPaise, discountPaise: o.discountPaise, couponCode: o.couponCode, deliveryPaise: o.deliveryPaise },
+      paymentStatus: o.paymentStatus === 'PAID' ? 'paid' : o.paymentStatus === 'COD_PENDING' ? 'to be collected' : o.paymentStatus.replace(/_/g, ' ').toLowerCase(),
+      paymentReference: ((p) => (p?.raw as { reference?: string } | null)?.reference ?? p?.providerPaymentId ?? null)(o.payments[0]),
       paymentMethod: o.paymentMethod === 'COD' ? 'Cash on delivery' : o.paymentMethod === 'ONLINE' ? 'Paid online' : o.paymentMethod.replace('_', ' ').toLowerCase(),
       // Until a GSTIN is set, invoices are clearly marked as samples (OPEN-QUESTIONS Q5).
       isSample: !store.gstin,

@@ -126,6 +126,65 @@ export class ProductsController {
     return this.products.bulkImages(user, files ?? []);
   }
 
+  /**
+   * Festival and clearance offers on chosen pieces: "X% off" sets the old price as the struck-through price and
+   * lowers the selling price; "end offer" puts the old price back. Works on picked pieces or a whole category,
+   * farm or collection. Head office only.
+   */
+  @Post('discount')
+  @HttpCode(200)
+  @Requires('PRODUCTS', 'edit')
+  async discount(@CurrentUser() user: AuthUser, @Body() body: unknown) {
+    if (user.role !== 'SUPER_ADMIN' && user.role !== 'STAFF') throw forbidden('Only head office can run offers.');
+    const dto = z
+      .object({
+        action: z.enum(['apply', 'remove']),
+        percent: z.number().min(1).max(90).optional(),
+        productIds: z.array(z.string()).max(500).optional(),
+        categoryId: z.string().optional(),
+        farmId: z.string().optional(),
+        collectionId: z.string().optional(),
+      })
+      .parse(body);
+    if (dto.action === 'apply' && !dto.percent) throw badRequest('PERCENT_REQUIRED', 'Enter the discount %.', { percent: 'Required' });
+    const scope: Prisma.ProductWhereInput[] = [];
+    if (dto.productIds?.length) scope.push({ id: { in: dto.productIds } });
+    if (dto.categoryId) scope.push({ categoryId: dto.categoryId });
+    if (dto.farmId) scope.push({ farmId: dto.farmId });
+    if (dto.collectionId) scope.push({ collectionId: dto.collectionId });
+    if (!scope.length) throw badRequest('NO_SCOPE', 'Pick pieces, a category, a farm or a collection.');
+    const rows = await this.prisma.product.findMany({
+      where: { AND: [{ archivedAt: null, priceOnRequest: false }, ...scope] },
+      select: { id: true, pricePaise: true, compareAtPaise: true },
+    });
+    let changed = 0;
+    await this.prisma.$transaction(async (tx) => {
+      for (const p of rows) {
+        if (dto.action === 'apply') {
+          // The original price is kept as the struck-through price, so a second offer works from it, not from the
+          // already-discounted price.
+          const base = p.compareAtPaise && p.compareAtPaise > p.pricePaise ? p.compareAtPaise : p.pricePaise;
+          const price = Math.round((base * (100 - dto.percent!)) / 100 / 100) * 100;
+          await tx.product.update({ where: { id: p.id }, data: { compareAtPaise: base, pricePaise: price } });
+          changed++;
+        } else if (p.compareAtPaise && p.compareAtPaise > p.pricePaise) {
+          await tx.product.update({ where: { id: p.id }, data: { pricePaise: p.compareAtPaise, compareAtPaise: null } });
+          changed++;
+        }
+      }
+      await tx.auditLog.create({
+        data: {
+          actorId: user.id,
+          entity: 'Product',
+          entityId: 'bulk',
+          action: dto.action === 'apply' ? 'OFFER_APPLY' : 'OFFER_REMOVE',
+          after: { ...dto, changed } as Prisma.InputJsonValue,
+        },
+      });
+    });
+    return { changed, matched: rows.length };
+  }
+
   @Get(':id')
   @Requires('PRODUCTS', 'view')
   async get(@CurrentUser() user: AuthUser, @Param('id') id: string) {

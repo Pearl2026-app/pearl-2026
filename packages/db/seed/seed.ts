@@ -1019,6 +1019,7 @@ async function main() {
     );
   }
   await useSamplePhotos();
+  await partnerFarms();
   const blocks: Array<[string, Prisma.ContentBlockCreateInput['kind'], string | null, unknown]> = [
     [
       'home.story',
@@ -1363,6 +1364,59 @@ async function useSamplePhotos() {
         data: { imageUrl: pick.wide ? photo.wide(pick.id) : photo.tile(pick.id) },
       });
   }
+}
+
+/**
+ * The partner farms the pearls come from (meeting of 19 Oct): sample pieces are spread across them so the
+ * storefront can be browsed by farm, and three high-value pieces are marked exclusive.
+ */
+async function partnerFarms() {
+  const partners = [
+    ['Swastik Pearl Farm', 'swastik-pearl-farm', 'Nashik, Maharashtra', '1649502066352-9cd7ade30316', 'Round and near-round freshwater pearls, 2 to 3 carat.'],
+    ['Swati Pearl Farm', 'swati-pearl-farm', 'Kolhapur, Maharashtra', '1654699991494-892326ee8171', 'Cream and golden pearls with a soft, even lustre, 3 to 4 carat.'],
+    ['Nilgiri Pearl Farm', 'nilgiri-pearl-farm', 'Satara, Maharashtra', '1595345705177-ffe090eb0784', 'Hill-water pearls known for bright white lustre, 4 to 5 carat.'],
+    ['Jeeva Pearl Farm', 'jeeva-pearl-farm', 'Sindhudurg, Maharashtra', '1654699991520-aaaf4dd2608b', 'Larger baroque and coin pearls from coastal creeks, 5 to 6 carat.'],
+  ] as const;
+  const ids: string[] = [];
+  for (const [i, [name, slug, location, img, summary]] of partners.entries()) {
+    const f = await prisma.farm.upsert({
+      where: { slug },
+      create: { name, slug, location, summary, story: `${summary} Every harvest is graded and logged, so each piece can be traced back to ${name}.`, heroImageUrl: photo.tile(img), galleryUrls: [], sortOrder: 3 + i },
+      update: {},
+    });
+    ids.push(f.id);
+  }
+  // The two original farms get photos too.
+  for (const [slug, img] of [['mulshi-lake-farm', '1515562141207-7a88fb7ce338'], ['konkan-coast-farm', '1586115180241-b3e4f01ed837']] as const) {
+    const f = await prisma.farm.findUnique({ where: { slug }, select: { heroImageUrl: true } });
+    if (f?.heroImageUrl?.startsWith('/media/samples/')) await prisma.farm.update({ where: { slug }, data: { heroImageUrl: photo.tile(img) } });
+  }
+  // Spread the sample pieces over all six farms, once (only pieces still on the two original farms move).
+  const original = await prisma.farm.findMany({ where: { slug: { in: ['mulshi-lake-farm', 'konkan-coast-farm'] } }, select: { id: true } });
+  const onNew = await prisma.product.count({ where: { farmId: { in: ids } } });
+  if (!onNew) {
+    for (const [i, [name]] of SAMPLE_PRODUCTS.entries()) {
+      if (i % 3 === 0) continue;
+      const p = await prisma.product.findFirst({
+        where: { slug: sampleSlug(name), farmId: { in: original.map((o) => o.id) } },
+        select: { id: true, description: true },
+      });
+      const k = i % ids.length;
+      if (p)
+        await prisma.product.update({
+          where: { id: p.id },
+          data: {
+            farmId: ids[k]!,
+            description: p.description?.replace(/Mulshi Lake Farm|Konkan Coast Farm/g, partners[k]![0]) ?? null,
+          },
+        });
+    }
+  }
+  if (!(await prisma.product.count({ where: { isExclusive: true } })))
+    await prisma.product.updateMany({
+      where: { slug: { in: ['royal-peshwai-haar', 'monsoon-rain-necklace', 'collector-golden-pearl-12mm'].map((x) => x) } },
+      data: { isExclusive: true },
+    });
 }
 
 async function findOrCreate<T>(find: () => Promise<T | null>, create: () => Promise<T>): Promise<T> {

@@ -103,6 +103,11 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
                 {p.collection.name} collection
               </Link>
             )}
+            {p.isExclusive && (
+              <Link href="/jewellery?exclusive=1" className="mt-2 inline-block rounded-full bg-ink px-3 py-1 text-xs tracking-wide text-white">
+                Exclusive designer piece
+              </Link>
+            )}
             <h1 className="mt-2 font-serif text-4xl leading-tight lg:text-5xl">{p.name}</h1>
             <p className="mt-2 flex flex-wrap items-center gap-3 text-sm text-muted">
               {p.rating.count > 0 && (

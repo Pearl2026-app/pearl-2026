@@ -78,6 +78,7 @@ const productFields = {
   quantity: z.number().int().min(0).max(1_000_000).optional(),
   outOfStock: z.boolean().optional(),
   isFeatured: z.boolean().optional(),
+  isExclusive: z.boolean().optional(),
   sortOrder: z.number().int().optional(),
   status: z.enum(['DRAFT', 'PUBLISHED', 'UNPUBLISHED']).optional(),
   cityIds: z.array(z.string()).optional(),
@@ -91,7 +92,7 @@ export type ProductInput = z.infer<typeof productCreate>;
 /** Fields a vendor may change directly without approval. */
 export const VENDOR_DIRECT_FIELDS = ['quantity', 'outOfStock'] as const;
 /** Fields only head office may set. */
-export const ADMIN_ONLY_FIELDS = ['vendorId', 'status', 'isFeatured', 'sortOrder'] as const;
+export const ADMIN_ONLY_FIELDS = ['vendorId', 'status', 'isFeatured', 'isExclusive', 'sortOrder'] as const;
 /** Cost fields hidden from franchise and city-manager responses. */
 export const COST_FIELDS = ['metalCostPaise', 'labourCostPaise', 'pearlCostPaise'] as const;
 

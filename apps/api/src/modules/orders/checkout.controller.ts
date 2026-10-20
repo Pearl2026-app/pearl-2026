@@ -118,6 +118,16 @@ const checkoutInput = z.object({
   giftWrap: z.boolean().optional(),
   giftMessage: z.string().trim().max(200).optional().nullable(),
   saveAddress: z.boolean().optional(),
+  /** Optional, for a GST invoice in the business's name */
+  gstin: z
+    .string()
+    .trim()
+    .toUpperCase()
+    .regex(/^\d{2}[A-Z]{5}\d{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/, 'Enter a valid 15-character GSTIN')
+    .optional()
+    .nullable()
+    .or(z.literal('')),
+  businessName: z.string().trim().max(160).optional().nullable(),
   source: z.string().max(80).optional(),
   utm: z.record(z.string().max(200)).optional(),
 });
@@ -196,6 +206,8 @@ export class CheckoutController {
       // Gift packing is free; it is offered only while the storefront setting allows it.
       giftWrap: !!dto.giftWrap && (await this.settings.get('storefront')).giftWrapEnabled,
       giftMessage: dto.giftMessage || null,
+      buyerGstin: dto.gstin || null,
+      buyerBusinessName: dto.businessName || null,
       convertStock: dto.paymentMethod === 'COD',
     });
     if (dto.saveAddress && customerId && !dto.addressId) {

@@ -53,6 +53,9 @@ export interface CreateOrderInput {
   giftMessage?: string | null;
   internalNote?: string | null;
   franchiseId?: string | null;
+  /** Business buyers: their GSTIN and registered name, printed on the tax invoice */
+  buyerGstin?: string | null;
+  buyerBusinessName?: string | null;
   /** COD and manual orders sell immediately; online orders hold for 15 minutes. */
   convertStock: boolean;
   /** Manual sale already paid (bank transfer, UPI to the shop…) */
@@ -243,6 +246,8 @@ export class OrdersService implements OnModuleInit {
             contactName: input.contact.name,
             contactPhone: input.contact.phone,
             contactEmail: input.contact.email ?? null,
+            buyerGstin: input.buyerGstin?.trim().toUpperCase() || null,
+            buyerBusinessName: input.buyerGstin ? input.buyerBusinessName?.trim() || null : null,
             vendorId: vendors.length === 1 ? vendors[0]! : null,
             fulfilmentVendorId: fulfilment?.id ?? null,
             franchiseId,
@@ -286,6 +291,8 @@ export class OrdersService implements OnModuleInit {
                     name: l.name,
                     imageUrl: l.imageUrl,
                     hsnCode: l.hsnCode,
+                    farmName: l.farmName,
+                    caratWeight: l.caratWeight,
                     quantity: l.quantity,
                     unitPricePaise: l.unitPricePaise,
                     discountPaise: l.discountPaise,
@@ -378,6 +385,7 @@ export class OrdersService implements OnModuleInit {
         financialYear: fy,
         sequence: seq,
         sellerGstin: s.gstin,
+        buyerGstin: order.buyerGstin,
         placeOfSupply: addr.state,
         isInterState,
         ...split,
@@ -453,6 +461,9 @@ export class OrdersService implements OnModuleInit {
       if (to === 'DELIVERED') data.deliveredAt = now;
       if (to === 'CANCELLED') data.cancelledAt = now;
       const updated = await tx.order.update({ where: { id: orderId }, data });
+      // The tax invoice is ready once the order is confirmed, so the vendor can print it and pack it with the
+      // pieces; for cash on delivery it shows the amount as "to be collected".
+      if (to === 'CONFIRMED' || to === 'PACKED') await this.issueInvoice(tx, orderId);
       // Stock goes back when an order is cancelled before dispatch or comes back undelivered.
       if (to === 'CANCELLED' || (to === 'RETURNED' && order.status !== 'DELIVERED')) {
         await this.stock.release(tx, orderId, to === 'CANCELLED' ? 'cancelled' : 'returned-undelivered', {

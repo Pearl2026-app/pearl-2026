@@ -2,6 +2,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
+import { rememberOrder } from '@/components/order-strip';
 import { formatINR } from '@sahyadri/shared';
 import { FormField, Notice, SelectInput, TextInput } from '@/components/form-bits';
 import { useSession } from '@/components/session';
@@ -46,6 +47,9 @@ export default function CheckoutPage() {
   const [note, setNote] = useState('');
   const [gift, setGift] = useState(false);
   const [giftMessage, setGiftMessage] = useState('');
+  const [business, setBusiness] = useState(false);
+  const [gstin, setGstin] = useState('');
+  const [businessName, setBusinessName] = useState('');
   const [saveAddress, setSaveAddress] = useState(true);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
@@ -113,6 +117,7 @@ export default function CheckoutPage() {
         cityId,
         paymentMethod: method,
         note: note || null,
+        ...(business && gstin.trim() ? { gstin: gstin.trim().toUpperCase(), businessName: businessName.trim() || null } : {}),
         ...(gift ? { giftWrap: true, giftMessage: giftMessage.trim() || null } : {}),
         saveAddress: !!me && addressId === 'new' && saveAddress,
         ...attribution(),
@@ -120,6 +125,7 @@ export default function CheckoutPage() {
       const r = await api<{ order: { number: string; token: string; totalPaise: number }; payment: Record<string, any> | null }>('/checkout', { method: 'POST', json: body });
       setCartCount(0);
       const done = `/order/${encodeURIComponent(r.order.number)}/confirmed?t=${r.order.token}`;
+      rememberOrder(r.order.number, r.order.token);
       if (!r.payment) return router.push(done);
       if (r.payment.mode === 'sandbox') return router.push(`/pay/sandbox?po=${r.payment.orderId}&n=${encodeURIComponent(r.order.number)}&t=${r.order.token}&a=${r.order.totalPaise}`);
       await loadRazorpay();
@@ -230,6 +236,22 @@ export default function CheckoutPage() {
               </div>
             )}
             <FormField label="Delivery note (optional)">{(id) => <TextInput id={id} value={note} onChange={(e) => setNote(e.target.value)} placeholder="Gate code, best time to deliver…" />}</FormField>
+            <div className={`border p-4 ${business ? 'border-accent bg-accent-soft' : 'border-line bg-surface'}`}>
+              <label className="flex min-h-11 cursor-pointer items-center gap-3 text-sm">
+                <input type="checkbox" checked={business} onChange={(e) => setBusiness(e.target.checked)} className="h-5 w-5" />
+                <span><strong>Buying for a business?</strong> · add your GST number for a GST invoice</span>
+              </label>
+              {business && (
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <FormField label="GSTIN" error={errors.gstin}>
+                    {(id, d) => <TextInput id={id} aria-describedby={d} value={gstin} maxLength={15} onChange={(e) => setGstin(e.target.value.toUpperCase())} placeholder="27ABCDE1234F1Z5" autoCapitalize="characters" />}
+                  </FormField>
+                  <FormField label="Registered business name">
+                    {(id) => <TextInput id={id} value={businessName} maxLength={160} onChange={(e) => setBusinessName(e.target.value)} />}
+                  </FormField>
+                </div>
+              )}
+            </div>
             {site.storefront.giftWrapEnabled && (
               <div className={`border p-4 ${gift ? 'border-accent bg-accent-soft' : 'border-line bg-surface'}`}>
                 <label className="flex min-h-11 cursor-pointer items-center gap-3 text-sm">

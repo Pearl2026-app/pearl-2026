@@ -174,6 +174,22 @@ export class AccountController {
     );
   }
 
+  /** The customer's latest order still on its way, for the "Track your order" strip on the site. */
+  @Get('active-order')
+  async activeOrder(@CurrentUser() user: AuthUser) {
+    const o = await this.prisma.order.findFirst({
+      where: {
+        customerId: this.cid(user),
+        archivedAt: null,
+        status: { notIn: ['DELIVERED', 'CANCELLED', 'REFUNDED', 'RETURNED', 'FAILED'] },
+        placedAt: { gte: new Date(Date.now() - 45 * 24 * 3600_000) },
+      },
+      orderBy: { placedAt: 'desc' },
+      select: { number: true, status: true, placedAt: true, items: { select: { name: true }, take: 1 }, _count: { select: { items: true } } },
+    });
+    return { order: o };
+  }
+
   @Get('orders/:number')
   async myOrder(@CurrentUser() user: AuthUser, @Param('number') number: string) {
     const o = await this.prisma.order.findFirst({

@@ -712,6 +712,8 @@ model Product {
   quantity   Int       @default(1)
   outOfStock Boolean   @default(false) // manual switch
   isFeatured Boolean   @default(false) // shown in Featured Pieces on the home page
+  /// Designer and limited pieces, shown with an "Exclusive" tag and on the Exclusive page
+  isExclusive Boolean  @default(false)
   sortOrder  Int       @default(0)
   soldAt     DateTime? // set when a UNIQUE piece is sold
 
@@ -996,6 +998,9 @@ model Order {
   contactName     String
   contactPhone    String
   contactEmail    String?
+  /// Business buyers enter their GSTIN at checkout; it goes on the tax invoice
+  buyerGstin        String?
+  buyerBusinessName String?
 
   // Assignments
   vendorId       String?
@@ -1079,6 +1084,9 @@ model OrderItem {
   name           String
   imageUrl       String?
   hsnCode        String?
+  /// Printed on the invoice
+  farmName       String?
+  caratWeight    Decimal? @db.Decimal(8, 3)
   quantity       Int
   unitPricePaise Int
   discountPaise  Int      @default(0)

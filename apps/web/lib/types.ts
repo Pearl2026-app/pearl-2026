@@ -19,6 +19,7 @@ export interface ProductCard {
   colour: string | null;
   metal: string | null;
   isUnique: boolean;
+  isExclusive?: boolean;
   isSold: boolean;
   available: boolean;
   farm: { name: string; slug: string } | null;

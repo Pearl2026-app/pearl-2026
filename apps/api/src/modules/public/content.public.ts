@@ -1,5 +1,5 @@
 import { config, limit } from '../../config/config';
-import { Body, Controller, Get, Param, Post, UploadedFile, UseInterceptors } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Query, UploadedFile, UseInterceptors } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiConsumes, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
@@ -93,15 +93,25 @@ export class PublicContentController {
 
   @Public()
   @Get('content/home')
-  async home() {
-    const [banners, blocks, collections, featured, testimonials, gallery, newest] = await Promise.all([
+  async home(@Query('city') citySlug?: string) {
+    // The shopper's city (chosen in the header or worked out from their PIN code) narrows the pieces shown.
+    const cityId = citySlug
+      ? ((await this.prisma.city.findFirst({ where: { slug: citySlug, isActive: true }, select: { id: true } }))?.id ?? null)
+      : null;
+    const [banners, blocks, collections, featured, testimonials, gallery, newest, farms, exclusive] = await Promise.all([
       this.prisma.banner.findMany({ where: { placement: { in: ['HOME_HERO', 'HOME_SECONDARY'] }, ...live() }, orderBy: { sortOrder: 'asc' } }),
       this.prisma.contentBlock.findMany({ where: { isActive: true, key: { startsWith: 'home.' } }, orderBy: { sortOrder: 'asc' } }),
       this.prisma.collection.findMany({ where: { isActive: true, isFeatured: true, archivedAt: null }, orderBy: { sortOrder: 'asc' }, select: { name: true, slug: true, description: true, imageUrl: true } }),
-      this.prisma.product.findMany({ where: { AND: [publicWhere(), { isFeatured: true }] }, select: CARD_SELECT, orderBy: [{ soldAt: { sort: 'desc', nulls: 'first' } }, { sortOrder: 'asc' }], take: 8 }),
+      this.prisma.product.findMany({ where: { AND: [publicWhere(cityId), { isFeatured: true }] }, select: CARD_SELECT, orderBy: [{ soldAt: { sort: 'desc', nulls: 'first' } }, { sortOrder: 'asc' }], take: 8 }),
       this.prisma.testimonial.findMany({ where: { isActive: true }, orderBy: { sortOrder: 'asc' }, take: 6 }),
       this.prisma.galleryItem.findMany({ where: { isActive: true }, orderBy: { sortOrder: 'asc' }, take: 6 }),
-      this.prisma.product.findMany({ where: { AND: [publicWhere(), { soldAt: null }] }, select: CARD_SELECT, orderBy: { publishedAt: 'desc' }, take: 8 }),
+      this.prisma.product.findMany({ where: { AND: [publicWhere(cityId), { soldAt: null }] }, select: CARD_SELECT, orderBy: { publishedAt: 'desc' }, take: 8 }),
+      this.prisma.farm.findMany({
+        where: { isActive: true, archivedAt: null },
+        orderBy: { sortOrder: 'asc' },
+        select: { name: true, slug: true, location: true, summary: true, heroImageUrl: true, _count: { select: { products: { where: publicWhere(cityId) } } } },
+      }),
+      this.prisma.product.findMany({ where: { AND: [publicWhere(cityId), { isExclusive: true }] }, select: CARD_SELECT, orderBy: [{ soldAt: { sort: 'desc', nulls: 'first' } }, { sortOrder: 'asc' }], take: 8 }),
     ]);
     return {
       banners,
@@ -109,6 +119,8 @@ export class PublicContentController {
       collections,
       featured: (featured.length ? featured : newest).map(toCard),
       newest: newest.map(toCard),
+      farms: farms.map(({ _count, ...f }) => ({ ...f, productCount: _count.products })),
+      exclusive: exclusive.map(toCard),
       testimonials,
       gallery,
     };

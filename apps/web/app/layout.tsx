@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import localFont from 'next/font/local';
 import { Footer } from '@/components/footer';
 import { Header } from '@/components/header';
+import { OrderStrip } from '@/components/order-strip';
 import { SessionProvider } from '@/components/session';
 import { SiteProvider } from '@/components/site-context';
 import { WhatsAppFloat } from '@/components/whatsapp';
@@ -51,6 +52,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <SiteProvider site={site}>
           <SessionProvider>
             <Header />
+            <OrderStrip />
             <main id="main">{children}</main>
             <Footer site={site} />
             <WhatsAppFloat />

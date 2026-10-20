@@ -97,14 +97,48 @@ function Range({ label, minKey, maxKey, unit, bounds }: { label: string; minKey:
   );
 }
 
+/** The carat bands the farms sell by, as one-tap choices; the free range stays below for anything else. */
+const CARAT_BANDS = [
+  { label: 'Under 2 ct', min: null, max: '2' },
+  { label: '2–3 ct', min: '2', max: '3' },
+  { label: '3–4 ct', min: '3', max: '4' },
+  { label: '4–5 ct', min: '4', max: '5' },
+  { label: '5 ct +', min: '5', max: null },
+];
+
+function CaratBands() {
+  const { sp, update } = useParamsUpdate();
+  const min = sp.get('carat_min');
+  const max = sp.get('carat_max');
+  return (
+    <div className="flex flex-wrap gap-2 pb-1 pt-5">
+      {CARAT_BANDS.map((b) => {
+        const on = min === b.min && max === b.max;
+        return (
+          <button
+            key={b.label}
+            type="button"
+            aria-pressed={on}
+            onClick={() => update(on ? { carat_min: null, carat_max: null } : { carat_min: b.min, carat_max: b.max })}
+            className={cx('min-h-10 border px-3 text-sm transition-colors', on ? 'border-accent bg-accent text-white' : 'border-line bg-surface hover:border-ink')}
+          >
+            {b.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 function Panel({ filters, hide }: { filters: Filters; hide: string[] }) {
   const { sp, update } = useParamsUpdate();
   return (
     <div>
+      {!hide.includes('farm') && <Chips name="farm" label="Farm" options={filters.farms.map((c) => ({ value: c.slug, label: c.name, count: c.count }))} />}
+      <CaratBands />
+      <Range label="Carat" minKey="carat_min" maxKey="carat_max" unit="" bounds={filters.carat} />
       {!hide.includes('category') && <Chips name="category" label="Category" options={filters.categories.map((c) => ({ value: c.slug, label: c.name, count: c.count }))} />}
       {!hide.includes('collection') && <Chips name="collection" label="Collection" options={filters.collections.map((c) => ({ value: c.slug, label: c.name, count: c.count }))} />}
-      {!hide.includes('farm') && <Chips name="farm" label="Farm" options={filters.farms.map((c) => ({ value: c.slug, label: c.name, count: c.count }))} />}
-      <Range label="Carat" minKey="carat_min" maxKey="carat_max" unit="" bounds={filters.carat} />
       <Chips name="shape" label="Shape" options={filters.shapes} />
       <Chips name="colour" label="Colour" options={filters.colours} />
       <Range label="Price" minKey="price_min" maxKey="price_max" unit="₹" bounds={{ min: filters.price.min / 100, max: filters.price.max / 100 }} />
@@ -112,11 +146,15 @@ function Panel({ filters, hide }: { filters: Filters; hide: string[] }) {
         <input type="checkbox" className="h-5 w-5 accent-[var(--color-accent)]" checked={sp.get('in_stock') === '1'} onChange={(e) => update({ in_stock: e.target.checked ? '1' : null })} />
         Available now
       </label>
+      <label className="flex min-h-12 items-center gap-3 pb-4 text-sm">
+        <input type="checkbox" className="h-5 w-5 accent-[var(--color-accent)]" checked={sp.get('exclusive') === '1'} onChange={(e) => update({ exclusive: e.target.checked ? '1' : null })} />
+        Exclusive &amp; designer pieces
+      </label>
     </div>
   );
 }
 
-const FILTER_KEYS = ['category', 'collection', 'farm', 'shape', 'colour', 'carat_min', 'carat_max', 'price_min', 'price_max', 'in_stock'];
+const FILTER_KEYS = ['category', 'collection', 'farm', 'shape', 'colour', 'carat_min', 'carat_max', 'price_min', 'price_max', 'in_stock', 'exclusive'];
 
 export function FilterPanel({ filters, hide }: { filters: Filters; hide: string[] }) {
   const [open, setOpen] = useState(false);

@@ -47,7 +47,12 @@ export function ProductCard({ p, priority }: { p: Card; priority?: boolean }) {
               Sold
             </span>
           )}
-          {!p.isSold && p.isUnique && (
+          {!p.isSold && p.isExclusive && (
+            <span className="absolute top-3 left-3 rounded-full bg-ink px-3 py-1 text-xs tracking-wide text-white">
+              Exclusive
+            </span>
+          )}
+          {!p.isSold && !p.isExclusive && p.isUnique && (
             <span className="absolute top-3 left-3 rounded-full bg-surface/95 px-3 py-1 text-xs text-ink">
               One of a kind
             </span>

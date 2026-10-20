@@ -51,11 +51,15 @@ export interface InvoicePdfInput {
   orderNumber: string;
   placeOfSupply: string;
   isInterState: boolean;
-  billTo: { name: string; phone: string; address: string; gstin?: string | null };
-  lines: Array<{ name: string; sku: string; hsn: string | null; qty: number; unitPaise: number; discountPaise: number; taxablePaise: number; gstRateBp: number; gstPaise: number; totalPaise: number }>;
+  billTo: { name: string; phone: string; address: string; gstin?: string | null; businessName?: string | null };
+  lines: Array<{ name: string; sku: string; farm?: string | null; carat?: string | null; hsn: string | null; qty: number; unitPaise: number; discountPaise: number; taxablePaise: number; gstRateBp: number; gstPaise: number; totalPaise: number }>;
   delivery: { taxablePaise: number; gstPaise: number; totalPaise: number; rateBp: number };
   totals: { taxablePaise: number; cgstPaise: number; sgstPaise: number; igstPaise: number; totalPaise: number };
+  /** Before tax split: price of the pieces, order discount (coupon), delivery */
+  summary?: { subtotalPaise: number; discountPaise: number; couponCode?: string | null; deliveryPaise: number };
   paymentMethod: string;
+  paymentStatus?: string;
+  paymentReference?: string | null;
   isSample: boolean;
 }
 
@@ -72,7 +76,9 @@ export async function invoicePdf(i: InvoicePdfInput): Promise<Buffer> {
   doc.text(`Order: ${i.orderNumber}`, { width: 195, align: 'right' });
 
   doc.font('Helvetica-Bold').text('Bill to / Ship to', 50, 145);
-  doc.font('Helvetica').text(i.billTo.name).text(i.billTo.phone).text(i.billTo.address, { width: 260 });
+  doc.font('Helvetica');
+  if (i.billTo.businessName) doc.font('Helvetica-Bold').text(i.billTo.businessName).font('Helvetica');
+  doc.text(i.billTo.name).text(i.billTo.phone).text(i.billTo.address, { width: 260 });
   if (i.billTo.gstin) doc.text(`GSTIN: ${i.billTo.gstin}`);
   doc.font('Helvetica-Bold').text('Place of supply', 350, 145, { width: 195, align: 'right' });
   doc.font('Helvetica').text(i.placeOfSupply, { width: 195, align: 'right' });
@@ -89,7 +95,8 @@ export async function invoicePdf(i: InvoicePdfInput): Promise<Buffer> {
     y += Math.max(14, doc.heightOfString(cells[0]!, { width: 165 }) + 4);
   };
   for (const l of i.lines) {
-    row([`${l.name}\n${l.sku}${l.discountPaise ? `  (discount ${rs(l.discountPaise)})` : ''}`, l.hsn ?? '', String(l.qty), rs(l.unitPaise), rs(l.taxablePaise), `${l.gstRateBp / 100}%\n${rs(l.gstPaise)}`, rs(l.totalPaise)]);
+    const origin = [l.farm ? `Farm: ${l.farm}` : null, l.carat ? `${Number(l.carat)} ct` : null].filter(Boolean).join(' · ');
+    row([`${l.name}\n${l.sku}${origin ? `\n${origin}` : ''}${l.discountPaise ? `  (discount ${rs(l.discountPaise)})` : ''}`, l.hsn ?? '', String(l.qty), rs(l.unitPaise), rs(l.taxablePaise), `${l.gstRateBp / 100}%\n${rs(l.gstPaise)}`, rs(l.totalPaise)]);
   }
   if (i.delivery.totalPaise > 0) row(['Delivery', '9965', '1', rs(i.delivery.totalPaise), rs(i.delivery.taxablePaise), `${i.delivery.rateBp / 100}%\n${rs(i.delivery.gstPaise)}`, rs(i.delivery.totalPaise)]);
   doc.moveTo(50, y).lineTo(545, y).strokeColor('#E4DDD2').stroke();
@@ -98,6 +105,14 @@ export async function invoicePdf(i: InvoicePdfInput): Promise<Buffer> {
     doc.font(bold ? 'Helvetica-Bold' : 'Helvetica').fontSize(bold ? 10 : 9).text(label, 330, y, { width: 120, align: 'right' }).text(rs(v), 455, y, { width: 90, align: 'right' });
     y += bold ? 18 : 14;
   };
+  if (i.summary) {
+    sum('Subtotal', i.summary.subtotalPaise);
+    if (i.summary.discountPaise > 0)
+      sum(`Discount${i.summary.couponCode ? ` (${i.summary.couponCode})` : ''}`, -i.summary.discountPaise);
+    sum('Shipping', i.summary.deliveryPaise);
+    doc.moveTo(330, y - 2).lineTo(545, y - 2).strokeColor('#E4DDD2').stroke();
+    y += 4;
+  }
   sum('Taxable value', i.totals.taxablePaise);
   if (i.isInterState) sum('IGST', i.totals.igstPaise);
   else {
@@ -105,7 +120,15 @@ export async function invoicePdf(i: InvoicePdfInput): Promise<Buffer> {
     sum('SGST', i.totals.sgstPaise);
   }
   sum('Total (incl. GST)', i.totals.totalPaise, true);
-  doc.font('Helvetica').fontSize(8.5).fillColor(MUTED).text(`Payment: ${i.paymentMethod}`, 50, y + 10);
+  doc
+    .font('Helvetica')
+    .fontSize(8.5)
+    .fillColor(MUTED)
+    .text(
+      `Payment: ${i.paymentMethod}${i.paymentStatus ? ` (${i.paymentStatus})` : ''}${i.paymentReference ? ` · Ref ${i.paymentReference}` : ''}`,
+      50,
+      y + 10,
+    );
   doc.text('This is a computer-generated invoice.', 50, y + 24);
   footer(doc);
   return collect(doc);

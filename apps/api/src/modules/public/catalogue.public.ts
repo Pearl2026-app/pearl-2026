@@ -24,6 +24,7 @@ export const productQuery = z.object({
   priceMax: z.coerce.number().int().min(0).optional(),
   q: z.string().trim().max(120).optional(),
   inStock: z.enum(['true']).optional(),
+  exclusive: z.enum(['true']).optional(),
   ids: csvList,
   sort: z.enum(['newest', 'price_asc', 'price_desc', 'carat_asc', 'carat_desc', 'featured']).default('newest'),
   page: z.coerce.number().int().min(1).default(1),
@@ -48,6 +49,7 @@ export const CARD_SELECT = {
   outOfStock: true,
   soldAt: true,
   publishedAt: true,
+  isExclusive: true,
   farm: { select: { name: true, slug: true } },
   collection: { select: { name: true, slug: true } },
   category: { select: { name: true, slug: true } },
@@ -73,6 +75,7 @@ export function toCard(p: CardRow) {
     colour: p.colour,
     metal: p.metal,
     isUnique: p.stockType === 'UNIQUE',
+    isExclusive: p.isExclusive,
     isSold: sold,
     available,
     farm: p.farm,
@@ -124,7 +127,10 @@ export class PublicCatalogueController {
     const and: Prisma.ProductWhereInput[] = [publicWhere(cityId)];
     if (q.category) and.push({ category: { slug: q.category } });
     if (q.collection) and.push({ collection: { slug: q.collection } });
-    if (q.farm) and.push({ farm: { slug: q.farm } });
+    if (q.farm) {
+      const farms = q.farm.split(',').map((f) => f.trim()).filter(Boolean);
+      and.push({ farm: { slug: farms.length > 1 ? { in: farms } : farms[0] } });
+    }
     if (q.shape.length) and.push({ shape: { in: q.shape, mode: 'insensitive' } });
     if (q.colour.length) and.push({ colour: { in: q.colour, mode: 'insensitive' } });
     if (q.caratMin != null || q.caratMax != null)
@@ -132,6 +138,7 @@ export class PublicCatalogueController {
     if (q.priceMin != null || q.priceMax != null)
       and.push({ priceOnRequest: false, pricePaise: { ...(q.priceMin != null ? { gte: q.priceMin } : {}), ...(q.priceMax != null ? { lte: q.priceMax } : {}) } });
     if (q.inStock) and.push({ soldAt: null, outOfStock: false, quantity: { gt: 0 } });
+    if (q.exclusive) and.push({ isExclusive: true });
     if (q.ids.length) and.push({ id: { in: q.ids } });
     let ranked: string[] | null = null;
     if (q.q) {

@@ -69,6 +69,11 @@ function Products() {
             <a className="inline-flex min-h-9 items-center rounded-sm border border-line bg-surface px-3 text-sm" href={`/api/v1/admin/products${qs({ ...params, format: 'csv', page: undefined, pageSize: undefined })}`}>
               Export CSV
             </a>
+            {!isVendor && can('PRODUCTS', 'edit') && (
+              <Link href="/products/offers" className="inline-flex min-h-9 items-center rounded-sm border border-line bg-surface px-3 text-sm">
+                Offers & discounts
+              </Link>
+            )}
             {can('PRODUCTS', 'create') && (
               <Link href="/products/import" className="inline-flex min-h-9 items-center rounded-sm border border-line bg-surface px-3 text-sm">
                 Import CSV

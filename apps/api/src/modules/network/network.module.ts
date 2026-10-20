@@ -53,6 +53,8 @@ const vendorBase = {
   email: email.optional().nullable(),
   address: optStr(300),
   gstin: z.string().trim().regex(/^[0-9A-Z]{15}$/, 'GSTIN is 15 letters and digits').optional().nullable(),
+  /** Where the vendor ships from: orders go to the active vendor nearest the customer's PIN code */
+  pincode: z.string().trim().regex(/^\d{6}$/, 'PIN code is 6 digits').optional().nullable(),
   isActive: z.boolean().optional(),
   cityIds,
 };
@@ -148,6 +150,9 @@ const dpBase = {
   name: z.string().trim().min(2).max(120),
   phone: phoneE164,
   vehicleInfo: optStr(120),
+  /** The vendor whose orders this rider delivers; the vendor picks from its own riders */
+  vendorId: z.string().optional().nullable(),
+  isAvailable: z.boolean().optional(),
   isActive: z.boolean().optional(),
   cityIds,
 };

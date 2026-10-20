@@ -11,8 +11,9 @@ import { useSite } from './site-context';
 
 const NAV = [
   { href: '/jewellery', label: 'Jewellery', mega: true },
+  { href: '/our-farm', label: 'Shop by Farm' },
+  { href: '/jewellery?exclusive=1', label: 'Exclusive' },
   { href: '/gifts', label: 'Gifts' },
-  { href: '/our-farm', label: 'Our Farm' },
   { href: '/customized-jewellery', label: 'Customized Jewellery' },
   { href: '/pearl-guide', label: 'Pearl Guide' },
 ];
@@ -94,18 +95,21 @@ function MegaMenu({ onClose }: { onClose: () => void }) {
       onMouseLeave={onClose}
     >
       <div className="mx-auto grid max-w-7xl grid-cols-5 gap-8 px-8 py-10">
+        {col('Shop by farm', [
+          ...site.farms.map((f) => ({ href: `/jewellery?farm=${encodeURIComponent(f.slug)}`, label: f.name })),
+          { href: '/our-farm', label: 'Meet the farms' },
+        ])}
+        {col('Shop by carat', [
+          { href: '/jewellery?carat_max=2', label: 'Under 2 ct' },
+          { href: '/jewellery?carat_min=2&carat_max=3', label: '2–3 ct' },
+          { href: '/jewellery?carat_min=3&carat_max=4', label: '3–4 ct' },
+          { href: '/jewellery?carat_min=4&carat_max=5', label: '4–5 ct' },
+          { href: '/jewellery?carat_min=5', label: '5 ct and above' },
+        ])}
         {col('Shop by category', [
           { href: '/jewellery', label: 'All jewellery' },
           ...site.categories.map((c) => ({ href: `/jewellery/${c.slug}`, label: c.name })),
         ])}
-        {col(
-          'Pearl colour',
-          site.shop.colours.map((c) => ({ href: `/jewellery?colour=${encodeURIComponent(c)}`, label: c })),
-        )}
-        {col(
-          'Pearl shape',
-          site.shop.shapes.map((s) => ({ href: `/jewellery?shape=${encodeURIComponent(s)}`, label: s })),
-        )}
         {col(
           'Collections',
           site.shop.collections.map((c) => ({ href: `/collections/${c.slug}`, label: c.name })),

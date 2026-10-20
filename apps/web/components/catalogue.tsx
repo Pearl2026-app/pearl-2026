@@ -26,6 +26,7 @@ export function apiQuery(sp: SearchParams, fixed: Record<string, string | undefi
   if (px && !isNaN(+px)) p.set('priceMax', String(Math.round(+px * 100)));
   set('q', one(sp.q));
   set('inStock', one(sp.in_stock) === '1' ? 'true' : undefined);
+  set('exclusive', one(sp.exclusive) === '1' ? 'true' : undefined);
   set('sort', one(sp.sort));
   set('page', one(sp.page));
   p.set('pageSize', '24');
