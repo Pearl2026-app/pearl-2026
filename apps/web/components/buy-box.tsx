@@ -36,7 +36,7 @@ export function AddToCart({ p, size, onNeedSize, className }: { p: ProductDetail
             setState('idle');
           }
         }}
-        className="inline-flex min-h-12 w-full items-center justify-center bg-accent px-5 text-[15px] font-medium text-white transition-colors hover:bg-accent-hover disabled:opacity-70"
+        className="lux-track inline-flex min-h-12 w-full items-center justify-center bg-accent px-5 text-white transition-colors hover:bg-accent-hover disabled:opacity-70"
       >
         {state === 'busy' ? 'Adding…' : state === 'added' ? 'Added' : 'Add to cart'}
       </button>
@@ -79,7 +79,7 @@ export function BuyNow({ p, size, onNeedSize, className }: { p: ProductDetail; s
             setBusy(false);
           }
         }}
-        className="inline-flex min-h-12 w-full items-center justify-center border border-ink px-5 text-[15px] font-medium text-ink transition-colors hover:bg-ink hover:text-white disabled:opacity-70"
+        className="lux-track inline-flex min-h-12 w-full items-center justify-center border border-ink px-5 text-ink transition-colors hover:bg-ink hover:text-white disabled:opacity-70"
       >
         {busy ? 'One moment…' : 'Buy now'}
       </button>

@@ -36,6 +36,9 @@ export default function DeliveryJobPage() {
   const [otp, setOtp] = useState('');
   const [cash, setCash] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [scanCode, setScanCode] = useState('');
+  const [scanned, setScanned] = useState<Record<string, number>>({});
+  const [scanMsg, setScanMsg] = useState<string | null>(null);
   const [queuedNote, setQueuedNote] = useState<string | null>(null);
 
   const step = useMutation({
@@ -91,7 +94,48 @@ export default function DeliveryJobPage() {
         <p className="mt-2">{j.codDuePaise > 0 ? <strong className="text-warning">Collect cash {inr(j.codDuePaise)}</strong> : 'Already paid; collect nothing.'}</p>
       </section>
 
-      {j.status === 'ASSIGNED' && <Button className="w-full" size="lg" loading={step.isPending} onClick={() => step.mutate({ action: 'picked-up', fields: {} })}>Picked up from the store</Button>}
+      {j.status === 'ASSIGNED' && (
+        <section className="mb-3 flex flex-col gap-3 rounded-sm border border-line bg-surface p-3">
+          <p className="text-sm font-medium">Scan each piece before pickup</p>
+          <form
+            className="flex gap-2"
+            onSubmit={(e) => {
+              e.preventDefault();
+              const sku = scanCode.trim().toUpperCase();
+              const item = j.items.find((i) => i.sku.toUpperCase() === sku);
+              if (!item) setScanMsg(`${sku || 'That code'} is not in this order.`);
+              else {
+                setScanned((m) => ({ ...m, [item.sku]: Math.min(item.quantity, (m[item.sku] ?? 0) + 1) }));
+                setScanMsg(null);
+              }
+              setScanCode('');
+            }}
+          >
+            <Input aria-label="Scan or type the SKU" placeholder="Scan or type the SKU" value={scanCode} onChange={(e) => setScanCode(e.target.value)} />
+            <Button type="submit" variant="secondary">OK</Button>
+          </form>
+          {scanMsg && <p className="text-sm text-danger">{scanMsg}</p>}
+          <ul className="text-sm">
+            {j.items.map((i) => {
+              const ok = (scanned[i.sku] ?? 0) >= i.quantity;
+              return (
+                <li key={i.sku} className={ok ? 'text-success' : 'text-muted'}>
+                  {ok ? '✓' : '○'} {i.name} · {i.sku} ({scanned[i.sku] ?? 0}/{i.quantity})
+                </li>
+              );
+            })}
+          </ul>
+          <Button
+            className="w-full"
+            size="lg"
+            disabled={!j.items.every((i) => (scanned[i.sku] ?? 0) >= i.quantity)}
+            loading={step.isPending}
+            onClick={() => step.mutate({ action: 'picked-up', fields: {} })}
+          >
+            Picked up from the store
+          </Button>
+        </section>
+      )}
       {j.status === 'PICKED_UP' && <Button className="w-full" size="lg" loading={step.isPending} onClick={() => step.mutate({ action: 'out-for-delivery', fields: {} })}>Start delivery</Button>}
 
       {j.status === 'OUT_FOR_DELIVERY' && (

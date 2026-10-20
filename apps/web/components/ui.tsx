@@ -32,12 +32,14 @@ export function PageTitle({ eyebrow, title, intro }: { eyebrow?: string; title: 
 
 export function SectionHeading({ eyebrow, title, action }: { eyebrow?: string; title: string; action?: ReactNode }) {
   return (
-    <div className="mb-8 flex items-end justify-between gap-4">
-      <div>
-        {eyebrow && <p className="eyebrow mb-2">{eyebrow}</p>}
-        <h2 className="font-serif text-3xl text-ink lg:text-4xl">{title}</h2>
+    <div className="mb-9 flex items-end justify-between gap-6">
+      <div className="ruled-heading min-w-0 flex-1">
+        <div className="shrink-0">
+          {eyebrow && <p className="eyebrow mb-2">{eyebrow}</p>}
+          <h2 className="font-serif text-[32px] leading-tight text-ink lg:text-[40px]">{title}</h2>
+        </div>
       </div>
-      {action}
+      {action && <div className="shrink-0 pb-1">{action}</div>}
     </div>
   );
 }
@@ -50,7 +52,7 @@ export function ButtonLink({ href, children, variant = 'solid', className = '' }
         ? 'border border-ink text-ink hover:bg-ink hover:text-white'
         : 'text-accent underline-offset-4 hover:underline';
   return (
-    <Link href={href} className={`inline-flex min-h-12 items-center justify-center px-6 text-[15px] transition-colors ${cls} ${className}`}>
+    <Link href={href} className={`lux-track inline-flex min-h-12 items-center justify-center px-7 transition-colors ${variant === 'text' ? 'px-0 no-underline hover:text-ink' : ''} ${cls} ${className}`}>
       {children}
     </Link>
   );

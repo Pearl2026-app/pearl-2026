@@ -221,7 +221,7 @@ export function Header() {
                   onMouseEnter={() => setMega(false)}
                   aria-current={active(n.href) ? 'page' : undefined}
                   className={cx(
-                    'text-[15px] transition-colors hover:text-accent',
+                    'lux-track transition-colors hover:text-accent',
                     active(n.href) ? 'text-accent' : 'text-ink',
                   )}
                 >

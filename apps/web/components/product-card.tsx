@@ -67,7 +67,7 @@ export function ProductCard({ p, priority }: { p: Card; priority?: boolean }) {
           </p>
           <Price
             p={p}
-            className={`mt-1 text-[15px] font-medium tracking-wide ${p.priceOnRequest ? 'font-normal text-muted italic' : 'text-ink'}`}
+            className={`price mt-1 text-[15px] ${p.priceOnRequest ? 'text-muted italic' : 'text-ink'}`}
           />
         </div>
       </Link>
