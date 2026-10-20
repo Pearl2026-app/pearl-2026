@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from 'next';
+import { headers } from 'next/headers';
 import localFont from 'next/font/local';
 import { Footer } from '@/components/footer';
 import { Header } from '@/components/header';
@@ -43,6 +44,23 @@ export const viewport: Viewport = { themeColor: '#F5F5F3', width: 'device-width'
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const site = (await get<Site>('/site', { revalidate: 300 }))!;
+  // The store can be limited to India (meeting of 19 Oct): visitors elsewhere see a short notice.
+  const country = (await headers()).get('x-vercel-ip-country');
+  if (site.storefront.indiaOnly && country && country !== 'IN') {
+    return (
+      <html lang="en" className={`${serif.variable} ${sans.variable}`}>
+        <body>
+          <main className="flex min-h-screen flex-col items-center justify-center gap-4 px-6 text-center">
+            <p className="font-serif text-4xl">Sahyadri Pearls</p>
+            <p className="max-w-md text-muted">
+              Our store is available in India only. If you are travelling, please visit us again when you are back, or
+              write to {site.store.email}.
+            </p>
+          </main>
+        </body>
+      </html>
+    );
+  }
   return (
     <html lang="en-IN" className={`${serif.variable} ${sans.variable}`}>
       <body>

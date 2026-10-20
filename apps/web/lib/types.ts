@@ -70,7 +70,7 @@ export interface Site {
   farms: Array<{ name: string; slug: string }>;
   legalPages: Array<{ slug: string; title: string }>;
   whatsapp: { default: string; byCity: Record<string, string>; wholesale: string | null };
-  storefront: { announcement: string; giftWrapEnabled: boolean; deliveryMinDays: number; deliveryMaxDays: number; consultationsEnabled: boolean };
+  storefront: { announcement: string; giftWrapEnabled: boolean; deliveryMinDays: number; deliveryMaxDays: number; consultationsEnabled: boolean; indiaOnly?: boolean };
   stores: Store[];
   shop: { colours: string[]; shapes: string[]; collections: Array<{ name: string; slug: string }> };
 }

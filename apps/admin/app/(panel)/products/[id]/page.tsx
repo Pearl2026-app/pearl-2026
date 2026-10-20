@@ -263,6 +263,23 @@ export default function ProductEditPage() {
               {p.status !== 'PUBLISHED' && !p.archivedAt && p.status !== 'PENDING_APPROVAL' && <Button size="sm" onClick={() => action.mutate({ path: '/publish' })}>Publish</Button>}
               {p.status === 'PUBLISHED' && <Button size="sm" variant="secondary" onClick={() => action.mutate({ path: '/unpublish' })}>Unpublish</Button>}
               {p.soldAt && <Button size="sm" variant="secondary" onClick={() => window.confirm('Put this piece back on sale?') && action.mutate({ path: '/restock' })}>Restock</Button>}
+              {me?.role !== 'VENDOR' && !isNew && (
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={async () => {
+                    try {
+                      const copy = await api<{ id: string; sku: string }>(`/admin/products/${id}/duplicate`, { method: 'POST', json: {} });
+                      toast(`Copied as ${copy.sku} (draft).`);
+                      router.push(`/products/${copy.id}`);
+                    } catch (e) {
+                      toast(errorText(e), 'danger');
+                    }
+                  }}
+                >
+                  Duplicate
+                </Button>
+              )}
               {p.archivedAt ? (
                 <Button size="sm" variant="secondary" onClick={() => action.mutate({ path: '/restore' })}>Restore</Button>
               ) : (

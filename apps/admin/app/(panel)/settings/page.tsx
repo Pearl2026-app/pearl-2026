@@ -73,6 +73,7 @@ const GROUPS: Array<{ key: string; title: string; fields: FieldDef[] }> = [
     title: 'Website extras',
     fields: [
       { name: 'announcement', label: 'Announcement bar', type: 'textarea', hint: 'One message per line; they rotate. Leave empty to use the delivery and returns settings.' },
+      { name: 'indiaOnly', label: 'Show the store only in India', type: 'switch', hint: 'Visitors outside India see a short notice instead of the store. The admin stays reachable everywhere.' },
       { name: 'giftWrapEnabled', label: 'Offer free gift packing at checkout', type: 'switch' },
       { name: 'deliveryMinDays', label: 'Delivery estimate: fastest (working days)', type: 'number' },
       { name: 'deliveryMaxDays', label: 'Delivery estimate: slowest (working days)', type: 'number' },

@@ -185,6 +185,65 @@ export class ProductsController {
     return { changed, matched: rows.length };
   }
 
+  /** A copy of a piece as a draft: same details and cities, no images or certificates, a fresh SKU. */
+  @Post(':id/duplicate')
+  @HttpCode(200)
+  @Requires('PRODUCTS', 'create')
+  async duplicate(@CurrentUser() user: AuthUser, @Param('id') id: string) {
+    if (user.role !== 'SUPER_ADMIN' && user.role !== 'STAFF') throw forbidden('Only head office can duplicate pieces.');
+    const p = await this.prisma.product.findFirst({ where: { id }, include: { cities: true, images: { orderBy: [{ kind: 'asc' }, { sortOrder: 'asc' }] } } });
+    if (!p) throw badRequest('NOT_FOUND', 'That piece no longer exists.');
+    const { id: _id, slug, sku, createdAt, updatedAt, publishedAt, soldAt, archivedAt, searchVector, pendingChanges, cities, images, ...rest } = p as typeof p & { searchVector?: unknown };
+    void _id; void createdAt; void updatedAt; void searchVector; void pendingChanges;
+    let n = 2;
+    while (await this.prisma.product.findUnique({ where: { sku: `${sku}-${n}` } })) n++;
+    const copy = await this.prisma.product.create({
+      data: {
+        ...(rest as Prisma.ProductUncheckedCreateInput),
+        sku: `${sku}-${n}`,
+        slug: `${slug}-${n}`,
+        name: p.name,
+        status: 'DRAFT',
+        publishedAt: null,
+        soldAt: null,
+        archivedAt: null,
+        isFeatured: false,
+        cities: { create: cities.map((c) => ({ cityId: c.cityId })) },
+        images: { create: images.map((i, k) => ({ url: i.url, variants: i.variants as Prisma.InputJsonValue, alt: i.alt, kind: i.kind, width: i.width, height: i.height, sortOrder: k })) },
+      },
+    });
+    await this.prisma.auditLog.create({ data: { actorId: user.id, entity: 'Product', entityId: copy.id, action: 'DUPLICATE', after: { from: id, sku: copy.sku } as Prisma.InputJsonValue } });
+    return copy;
+  }
+
+  /**
+   * Move pieces to another outlet in one go (meeting of 19 Oct): when a franchise or vendor stops working, its
+   * pieces move to the vendor who will sell them, and optionally to that vendor's cities.
+   */
+  @Post('transfer')
+  @HttpCode(200)
+  @Requires('PRODUCTS', 'edit')
+  async transfer(@CurrentUser() user: AuthUser, @Body() body: unknown) {
+    if (user.role !== 'SUPER_ADMIN' && user.role !== 'STAFF') throw forbidden('Only head office can move pieces.');
+    const dto = z
+      .object({ fromVendorId: z.string(), toVendorId: z.string().optional().nullable(), adoptCities: z.boolean().optional() })
+      .parse(body);
+    const to = dto.toVendorId ? await this.prisma.vendor.findFirst({ where: { id: dto.toVendorId, isActive: true }, include: { cities: true } }) : null;
+    if (dto.toVendorId && !to) throw badRequest('INVALID_VENDOR', 'Choose an active vendor to move the pieces to.');
+    const rows = await this.prisma.product.findMany({ where: { vendorId: dto.fromVendorId, archivedAt: null }, select: { id: true } });
+    await this.prisma.$transaction(async (tx) => {
+      await tx.product.updateMany({ where: { id: { in: rows.map((r) => r.id) } }, data: { vendorId: dto.toVendorId ?? null } });
+      if (dto.adoptCities && to) {
+        for (const r of rows) {
+          await tx.productCity.deleteMany({ where: { productId: r.id } });
+          await tx.productCity.createMany({ data: to.cities.map((c) => ({ productId: r.id, cityId: c.cityId })) });
+        }
+      }
+      await tx.auditLog.create({ data: { actorId: user.id, entity: 'Product', entityId: 'bulk', action: 'TRANSFER', after: { ...dto, moved: rows.length } as Prisma.InputJsonValue } });
+    });
+    return { moved: rows.length };
+  }
+
   @Get(':id')
   @Requires('PRODUCTS', 'view')
   async get(@CurrentUser() user: AuthUser, @Param('id') id: string) {

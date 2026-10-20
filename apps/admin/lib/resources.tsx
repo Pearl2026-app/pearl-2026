@@ -1,5 +1,9 @@
 'use client';
 import Link from 'next/link';
+import { useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { api, errorText } from './api';
+import { useRefOptions } from '@/components/fields';
 // Configuration for every simple admin resource. Business settings are data (rule 4): adding a city,
 // vendor, franchise, manufacturer or delivery partner is a form, not a deployment.
 import { Badge, StatusBadge } from '@sahyadri/ui';
@@ -67,6 +71,7 @@ export const RESOURCES: Record<string, ResourceDef> = {
       { name: 'pincode', label: 'PIN code of the shop', hint: 'Orders go automatically to the active vendor nearest the customer’s PIN code.' },
       { name: 'cityIds', label: 'Cities served', type: 'refMulti', ref: cityRef, read: cityIdsOf },
     ],
+    extraActions: (r) => <MovePieces vendorId={String(r.id)} vendorName={String(r.name)} />,
     remove: { label: 'Deactivate', kind: 'deactivate' },
   },
   franchises: {
@@ -412,6 +417,11 @@ export const RESOURCES: Record<string, ResourceDef> = {
     api: '/admin/coupons',
     module: 'COUPONS',
     description: 'Codes customers enter at checkout, including printed coupons from partner brands. Leave the city empty for a code that works anywhere; pick a city for an area offer.',
+    headerLinks: (
+      <Link href="/coupon-batches" className="inline-flex min-h-9 items-center rounded-sm border border-line bg-surface px-3 text-sm hover:border-ink">
+        Printed code batches
+      </Link>
+    ),
     columns: [
       { key: 'code', label: 'Code', sortable: true },
       { key: 'city', label: 'Where', render: (r) => r.city?.name ?? 'All India' },
@@ -582,3 +592,61 @@ export const RESOURCES: Record<string, ResourceDef> = {
     csv: false,
   },
 };
+
+/**
+ * When an outlet closes or stops selling (meeting of 19 Oct): one click moves every piece it holds to another
+ * vendor, optionally taking on that vendor's cities too.
+ */
+function MovePieces({ vendorId, vendorName }: { vendorId: string; vendorName: string }) {
+  const qc = useQueryClient();
+  const [open, setOpen] = useState(false);
+  const [to, setTo] = useState('');
+  const [adopt, setAdopt] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [note, setNote] = useState<string | null>(null);
+  const vendors = useRefOptions({ path: '/admin/vendors' });
+  if (!open)
+    return (
+      <button type="button" className="text-sm text-accent underline" onClick={(e) => { e.stopPropagation(); setOpen(true); }}>
+        Move pieces…
+      </button>
+    );
+  return (
+    <span className="flex flex-wrap items-center gap-2" onClick={(e) => e.stopPropagation()}>
+      <span className="text-xs text-muted">Move every piece of {vendorName} to</span>
+      <select aria-label="Move pieces to" className="min-h-9 rounded-sm border border-line bg-surface px-2 text-sm" value={to} onChange={(e) => setTo(e.target.value)}>
+        <option value="">Choose a vendor…</option>
+        <option value="__own__">Own stock (no vendor)</option>
+        {(vendors.data?.items ?? []).filter((v) => String(v.id) !== vendorId).map((v) => (
+          <option key={String(v.id)} value={String(v.id)}>{String(v.name)}</option>
+        ))}
+      </select>
+      <label className="flex items-center gap-1 text-xs">
+        <input type="checkbox" checked={adopt} onChange={(e) => setAdopt(e.target.checked)} /> also move to its cities
+      </label>
+      <button
+        type="button"
+        disabled={!to || busy}
+        className="min-h-9 rounded-sm bg-accent px-3 text-sm text-white disabled:opacity-50"
+        onClick={async () => {
+          setBusy(true);
+          setNote(null);
+          try {
+            const r = await api<{ moved: number }>('/admin/products/transfer', { method: 'POST', json: { fromVendorId: vendorId, toVendorId: to === '__own__' ? null : to, adoptCities: adopt && to !== '__own__' } });
+            setNote(`${r.moved} pieces moved.`);
+            setOpen(false);
+            void qc.invalidateQueries({ queryKey: ['/admin/products'] });
+          } catch (e) {
+            setNote(errorText(e));
+          } finally {
+            setBusy(false);
+          }
+        }}
+      >
+        {busy ? 'Moving…' : 'Move'}
+      </button>
+      <button type="button" className="text-xs text-muted underline" onClick={() => setOpen(false)}>cancel</button>
+      {note && <span className="text-xs">{note}</span>}
+    </span>
+  );
+}

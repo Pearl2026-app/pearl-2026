@@ -171,10 +171,58 @@ export const CouponsController = crudController({
   }),
 });
 
+const bulkInput = z.object({
+  prefix: z.string().trim().toUpperCase().regex(/^[A-Z0-9]{2,10}$/, '2–10 letters and digits'),
+  count: z.number().int().min(1).max(2000),
+  description: z.string().trim().max(300).optional().nullable(),
+  discountType: z.enum(['PERCENT', 'FLAT']),
+  discountValue: z.number().int().positive(),
+  minOrderPaise: paise.optional(),
+  maxDiscountPaise: paise.optional().nullable(),
+  endsAt: z.coerce.date().optional().nullable(),
+  cityId: z.string().optional().nullable(),
+});
+
 @ApiTags('coupons')
 @Controller('admin/coupons')
 export class CouponUsageController {
   constructor(private readonly prisma: PrismaService) {}
+
+  /**
+   * Printed partner-brand coupons (meeting of 19 Oct): thousands of unique one-use codes in one go, e.g.
+   * SILK-7G4K2M, handed out physically and typed in at checkout. Returns a CSV of the codes for the printer.
+   */
+  @Post('bulk-generate')
+  @HttpCode(200)
+  @Requires('COUPONS', 'create')
+  async bulkGenerate(@CurrentUser() user: AuthUser, @Body() body: unknown, @Res({ passthrough: true }) res: Response) {
+    if (user.role !== 'SUPER_ADMIN' && user.role !== 'STAFF') throw forbidden('Only head office can generate code batches.');
+    const dto = bulkInput.parse(body);
+    if (dto.discountType === 'PERCENT' && dto.discountValue > 10_000) throw badRequest('INVALID_PERCENT', 'A percentage cannot exceed 100%.');
+    const alphabet = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'; // no 0/O/1/I/L, so printed codes are unambiguous
+    const codes = new Set<string>();
+    while (codes.size < dto.count) {
+      let c = `${dto.prefix}-`;
+      for (let i = 0; i < 6; i++) c += alphabet[Math.floor(Math.random() * alphabet.length)];
+      codes.add(c);
+    }
+    const data = [...codes].map((code) => ({
+      code,
+      description: dto.description ?? null,
+      discountType: dto.discountType,
+      discountValue: dto.discountValue,
+      minOrderPaise: dto.minOrderPaise ?? 0,
+      maxDiscountPaise: dto.maxDiscountPaise ?? null,
+      endsAt: dto.endsAt ?? null,
+      cityId: dto.cityId ?? null,
+      usageLimit: 1,
+      perCustomerLimit: 1,
+      isActive: true,
+    }));
+    const r = await this.prisma.coupon.createMany({ data, skipDuplicates: true });
+    await this.prisma.auditLog.create({ data: { actorId: user.id, entity: 'Coupon', entityId: 'bulk', action: 'BULK_GENERATE', after: { prefix: dto.prefix, count: r.count } as Prisma.InputJsonValue } });
+    sendCsv(res, `coupons-${dto.prefix.toLowerCase()}.csv`, [...codes], [{ header: 'code', value: (c: string) => c }]);
+  }
 
   /** Usage per coupon: redemptions, discount given and sales it drove. */
   @Get(':id/usage')

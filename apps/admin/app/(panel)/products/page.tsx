@@ -34,6 +34,7 @@ function Products() {
   const { params, set } = useListParams();
   const { data, isLoading, isFetching, error } = useList<Row>('/admin/products', params);
   const { data: cats } = useRefOptions({ path: '/admin/categories' });
+  const { data: farms } = useRefOptions({ path: '/admin/farms' });
   const can = useCan();
   const { data: me } = useMe();
   const [q, setQ] = useState(params.q ?? '');
@@ -113,6 +114,14 @@ function Products() {
             </option>
           ))}
         </Select>
+        <Select aria-label="Farm" className="max-w-44" value={params.farmId ?? ''} onChange={(e) => set({ farmId: e.target.value || undefined })}>
+          <option value="">Any farm</option>
+          {farms?.items.map((f) => (
+            <option key={String(f.id)} value={String(f.id)}>
+              {String(f.name)}
+            </option>
+          ))}
+        </Select>
         <Select aria-label="Stock" className="max-w-40" value={params.outOfStock ?? ''} onChange={(e) => set({ outOfStock: e.target.value || undefined })}>
           <option value="">Any stock</option>
           <option value="true">Out of stock</option>
@@ -152,6 +161,7 @@ function Products() {
             ),
           },
           { key: 'category', label: 'Category', render: (r) => r.category.name },
+          { key: 'farm', label: 'Farm', render: (r) => r.farm?.name ?? '—' },
           { key: 'pricePaise', label: 'Price', sortable: true, render: (r) => (r.priceOnRequest ? <Badge>On request</Badge> : inr(r.pricePaise)) },
           {
             key: 'quantity',

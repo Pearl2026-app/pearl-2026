@@ -41,11 +41,21 @@ export class LowStockAlerts implements OnModuleInit {
     if (!(d.before > level && d.after <= level)) return;
     const vars = { productName: p.name, sku: p.sku, quantity: p.quantity, level, restockUrl: `${config().ADMIN_URL}/restock` };
     const store = await this.settings.get('store');
-    const [admins, makers] = await Promise.all([
+    const cities = await this.prisma.productCity.findMany({ where: { productId: p.id }, select: { cityId: true } });
+    const [admins, makers, franchises] = await Promise.all([
       this.prisma.user.findMany({ where: { role: 'SUPER_ADMIN', isActive: true, email: { not: null } }, select: { email: true } }),
       this.prisma.manufacturer.findMany({ where: { isActive: true }, select: { email: true, phone: true } }),
+      // Franchises selling in the piece's cities (every franchise when the piece is sold everywhere).
+      this.prisma.franchise.findMany({
+        where: { isActive: true, email: { not: null }, ...(cities.length ? { OR: [{ cityId: { in: cities.map((c) => c.cityId) } }, { cities: { some: { cityId: { in: cities.map((c) => c.cityId) } } } }] } : {}) },
+        select: { email: true },
+      }),
     ]);
-    const emails = new Set([store.email, cfg.alertEmail, p.vendor?.email, ...admins.map((a) => a.email), ...makers.map((m) => m.email)].filter((x): x is string => !!x));
+    const emails = new Set(
+      [store.email, cfg.alertEmail, p.vendor?.email, ...admins.map((a) => a.email), ...makers.map((m) => m.email), ...franchises.map((f) => f.email)].filter(
+        (x): x is string => !!x,
+      ),
+    );
     for (const email of emails) await this.notifications.send({ templateKey: 'LOW_STOCK', vars, to: { email }, context: { productId: p.id } });
     for (const m of makers) if (m.phone) await this.notifications.send({ templateKey: 'LOW_STOCK', vars, to: { whatsapp: m.phone }, context: { productId: p.id } });
     this.log.log(`${p.sku} is down to ${p.quantity} (alert level ${level}); ${emails.size} alerts sent.`);

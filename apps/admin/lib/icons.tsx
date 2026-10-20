@@ -69,6 +69,7 @@ export const PAGE_ICONS: Record<string, LucideIcon> = {
   '/customers': Users,
   '/business-buyers': Briefcase,
   '/coupons': Ticket,
+  '/coupon-batches': Ticket,
   '/notifications': Bell,
   '/messages': Mail,
   '/newsletter': Newspaper,

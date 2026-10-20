@@ -56,6 +56,8 @@ export const SETTING_SCHEMAS = {
     deliveryMinDays: z.number().int().min(0).max(30).default(3),
     deliveryMaxDays: z.number().int().min(0).max(60).default(5),
     consultationsEnabled: z.boolean().default(true),
+    /** Show the store only to visitors in India (the admin stays reachable everywhere). */
+    indiaOnly: z.boolean().default(false),
   }),
   enquiry: z.object({
     acknowledgeAutomatically: z.boolean().default(true),
