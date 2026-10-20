@@ -60,27 +60,32 @@ export class CartController {
     @CurrentUser() user: AuthUser | null,
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
-    @Body(new ZodValidationPipe(z.object({ productId: z.string().min(1).max(40), quantity: z.number().int().min(1).max(10_000).default(1) }))) dto: { productId: string; quantity: number },
+    @Body(new ZodValidationPipe(z.object({ productId: z.string().min(1).max(40), quantity: z.number().int().min(1).max(10_000).default(1), size: z.string().trim().max(12).optional() }))) dto: { productId: string; quantity: number; size?: string },
   ) {
     const cart = (await this.carts.resolve(user, cartToken(req), true))!;
-    await this.carts.add(cart, dto.productId, dto.quantity);
+    await this.carts.add(cart, dto.productId, dto.quantity, dto.size ?? '');
     setCartCookie(res, cart.guestToken);
     return { token: cart.guestToken, count: await this.carts.count(cart) };
   }
 
   @Public()
   @Patch('items/:productId')
-  async setQty(@CurrentUser() user: AuthUser | null, @Req() req: Request, @Param('productId') productId: string, @Body(new ZodValidationPipe(z.object({ quantity: z.number().int().min(0).max(10_000) }))) dto: { quantity: number }) {
+  async setQty(
+    @CurrentUser() user: AuthUser | null,
+    @Req() req: Request,
+    @Param('productId') productId: string,
+    @Body(new ZodValidationPipe(z.object({ quantity: z.number().int().min(0).max(10_000), size: z.string().trim().max(12).optional() }))) dto: { quantity: number; size?: string },
+  ) {
     const cart = await this.carts.resolve(user, cartToken(req), false);
-    if (cart) await this.carts.setQuantity(cart, productId, dto.quantity);
+    if (cart) await this.carts.setQuantity(cart, productId, dto.quantity, dto.size ?? '');
     return this.carts.view(cart, user);
   }
 
   @Public()
   @Delete('items/:productId')
-  async remove(@CurrentUser() user: AuthUser | null, @Req() req: Request, @Param('productId') productId: string) {
+  async remove(@CurrentUser() user: AuthUser | null, @Req() req: Request, @Param('productId') productId: string, @Query('size') size?: string) {
     const cart = await this.carts.resolve(user, cartToken(req), false);
-    if (cart) await this.carts.setQuantity(cart, productId, 0);
+    if (cart) await this.carts.setQuantity(cart, productId, 0, size ?? '');
     return this.carts.view(cart, user);
   }
 
@@ -199,7 +204,7 @@ export class CheckoutController {
       contact: dto.contact,
       address,
       cityId,
-      items: view.items.map((i) => ({ productId: i.productId, quantity: i.quantity })),
+      items: view.items.map((i) => ({ productId: i.productId, quantity: i.quantity, size: i.size })),
       paymentMethod: dto.paymentMethod,
       couponCode: cart.couponCode,
       channel: String(req.headers['x-sp-client'] ?? 'api'),
@@ -259,7 +264,7 @@ export class CheckoutController {
     const order = await this.prisma.order.findUnique({
       where: { number },
       include: {
-        items: { select: { name: true, sku: true, quantity: true, imageUrl: true, lineTotalPaise: true } },
+        items: { select: { name: true, sku: true, quantity: true, size: true, imageUrl: true, lineTotalPaise: true } },
         events: { where: { toStatus: { not: null } }, orderBy: { createdAt: 'asc' }, select: { toStatus: true, createdAt: true } },
         delivery: { select: { status: true, deliveredAt: true, deliveryPartner: { select: { name: true } } } },
         invoice: { select: { number: true } },

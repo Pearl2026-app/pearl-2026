@@ -8,7 +8,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 type Db = PrismaService | Prisma.TransactionClient;
 
 export interface PriceRequest {
-  items: Array<{ productId: string; quantity: number; unitPricePaise?: number }>;
+  items: Array<{ productId: string; quantity: number; unitPricePaise?: number; size?: string | null }>;
   couponCode?: string | null;
   customerId?: string | null;
   /** Used for first-order checks when the buyer is a guest */
@@ -36,6 +36,7 @@ export interface PricedLine {
   /** Printed on the invoice: the farm the pearls came from and their carat weight */
   farmName: string | null;
   caratWeight: string | null;
+  size: string | null;
 }
 
 export interface Priced {
@@ -86,6 +87,7 @@ export class PricingService {
         hasPriceOverride: i.unitPricePaise != null,
         farmName: p.farm?.name ?? null,
         caratWeight: p.caratWeight != null ? p.caratWeight.toString() : null,
+        size: i.size || null,
       });
     }
     const pricing: PricingLine[] = lines.map((l) => ({ productId: l.productId, categoryId: l.categoryId, unitPricePaise: l.unitPricePaise, quantity: l.quantity, gstRateBp: l.gstRateBp }));

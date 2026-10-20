@@ -738,6 +738,8 @@ model Product {
   // Stock
   stockType  StockType @default(UNIQUE)
   quantity   Int       @default(1)
+  /// Ring (and bangle) sizes with stock per size, e.g. [{"label":"6","quantity":8}]; quantity above is the sum
+  sizes      Json?
   outOfStock Boolean   @default(false) // manual switch
   isFeatured Boolean   @default(false) // shown in Featured Pieces on the home page
   /// Designer and limited pieces, shown with an "Exclusive" tag and on the Exclusive page
@@ -895,10 +897,12 @@ model CartItem {
   productId String
   product   Product  @relation(fields: [productId], references: [id])
   quantity  Int      @default(1)
+  /// Chosen ring size; empty for pieces without sizes
+  size      String   @default("")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@unique([cartId, productId])
+  @@unique([cartId, productId, size])
 }
 
 model WishlistItem {
@@ -923,6 +927,8 @@ model StockHold {
   orderId        String
   order          Order           @relation(fields: [orderId], references: [id])
   quantity       Int             @default(1)
+  /// The size this hold is for, so released stock goes back to the right size
+  size           String?
   /// true for a UNIQUE product; a partial unique index allows one ACTIVE/CONVERTED hold per unique piece
   isUnique       Boolean         @default(false)
   status         StockHoldStatus @default(ACTIVE)
@@ -1125,6 +1131,8 @@ model OrderItem {
   name           String
   imageUrl       String?
   hsnCode        String?
+  /// Chosen ring size, snapshotted
+  size           String?
   /// Printed on the invoice
   farmName       String?
   caratWeight    Decimal? @db.Decimal(8, 3)

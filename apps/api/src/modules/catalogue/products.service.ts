@@ -54,11 +54,16 @@ export class ProductsService {
   }
 
   private toData(input: Partial<ProductInput>): Prisma.ProductUncheckedUpdateInput {
-    const { cityIds: _c, relatedIds: _r, caratWeight, sizeMm, ...rest } = input;
+    const { cityIds: _c, relatedIds: _r, caratWeight, sizeMm, sizes: _sz, ...rest } = input;
     const data: Prisma.ProductUncheckedUpdateInput = { ...rest };
     if (caratWeight !== undefined) data.caratWeight = caratWeight === null ? null : new Prisma.Decimal(caratWeight);
     if (sizeMm !== undefined) data.sizeMm = sizeMm === null ? null : new Prisma.Decimal(sizeMm);
     if (input.stockType === 'UNIQUE' && input.quantity === undefined) data.quantity = 1;
+    if (input.sizes !== undefined) {
+      // Per-size stock: the plain quantity is always the sum, so holds, alerts and lists keep working.
+      data.sizes = input.sizes === null ? Prisma.DbNull : (input.sizes as unknown as Prisma.InputJsonValue);
+      if (input.sizes) data.quantity = input.sizes.reduce((a, b) => a + b.quantity, 0);
+    }
     return data;
   }
 

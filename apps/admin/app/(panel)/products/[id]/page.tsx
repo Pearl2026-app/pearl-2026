@@ -80,7 +80,14 @@ const SECTIONS: Array<{ title: string; fields: FieldDef[] }> = [
     title: 'Stock',
     fields: [
       { name: 'stockType', label: 'Stock type', type: 'select', options: [{ value: 'UNIQUE', label: 'Unique piece (sold once)' }, { value: 'QUANTITY', label: 'Quantity stock' }], required: true },
-      { name: 'quantity', label: 'Quantity', type: 'number', showIf: (v) => v.stockType === 'QUANTITY' },
+      { name: 'quantity', label: 'Quantity', type: 'number', showIf: (v) => v.stockType === 'QUANTITY' && !v.sizesText, hint: 'With sizes below, the total is worked out from them.' },
+      {
+        name: 'sizesText',
+        label: 'Sizes & stock per size (rings, bangles)',
+        showIf: (v) => v.stockType === 'QUANTITY',
+        hint: 'size:quantity, comma-separated — e.g. 5:10, 6:8, 7:5. Customers must pick a size; the manufacturer sees what to make per size. Leave empty for no sizes.',
+        read: (r: Product) => (Array.isArray(r.sizes) ? (r.sizes as Array<{ label: string; quantity: number }>).map((x) => `${x.label}:${x.quantity}`).join(', ') : ''),
+      },
       { name: 'lowStockAt', label: 'Low-stock alert at', type: 'number', showIf: (v) => v.stockType === 'QUANTITY', hint: 'Empty = the default in Settings.' },
       { name: 'outOfStock', label: 'Mark out of stock', type: 'switch' },
       { name: 'isFeatured', label: 'Feature on the home page', type: 'switch' },
@@ -165,9 +172,24 @@ export default function ProductEditPage() {
     mutationFn: () => {
       const body: Record<string, unknown> = {};
       for (const f of ALL_FIELDS) {
+        if (f.name === 'sizesText') continue;
         if (isVendor && VENDOR_HIDDEN.has(f.name)) continue;
         if (!showCosts && COST_FIELDS.has(f.name)) continue;
         if (values[f.name] !== undefined) body[f.name] = values[f.name] === '' ? null : values[f.name];
+      }
+      // "5:10, 6:8" → stock per size; the server keeps the total quantity as the sum.
+      if (typeof values.sizesText === 'string') {
+        const txt = values.sizesText.trim();
+        if (!txt) body.sizes = null;
+        else {
+          const parsed = txt.split(',').map((part) => {
+            const [label, qty] = part.split(':').map((x) => x.trim());
+            return { label: label ?? '', quantity: Number(qty) };
+          });
+          if (parsed.some((x) => !x.label || !Number.isInteger(x.quantity) || x.quantity < 0))
+            throw new ApiError(400, 'INVALID_SIZES', 'Sizes must look like 5:10, 6:8 (size:quantity).', { sizesText: 'Use size:quantity, comma-separated' });
+          body.sizes = parsed;
+        }
       }
       if (body.stockType === 'UNIQUE') body.quantity = 1;
       return isNew ? api<Product>('/admin/products', { method: 'POST', json: body }) : api<Product>(`/admin/products/${id}`, { method: 'PATCH', json: body });

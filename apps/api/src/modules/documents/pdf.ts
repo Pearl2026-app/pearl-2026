@@ -52,7 +52,7 @@ export interface InvoicePdfInput {
   placeOfSupply: string;
   isInterState: boolean;
   billTo: { name: string; phone: string; address: string; gstin?: string | null; businessName?: string | null };
-  lines: Array<{ name: string; sku: string; farm?: string | null; carat?: string | null; hsn: string | null; qty: number; unitPaise: number; discountPaise: number; taxablePaise: number; gstRateBp: number; gstPaise: number; totalPaise: number }>;
+  lines: Array<{ name: string; sku: string; size?: string | null; farm?: string | null; carat?: string | null; hsn: string | null; qty: number; unitPaise: number; discountPaise: number; taxablePaise: number; gstRateBp: number; gstPaise: number; totalPaise: number }>;
   delivery: { taxablePaise: number; gstPaise: number; totalPaise: number; rateBp: number };
   totals: { taxablePaise: number; cgstPaise: number; sgstPaise: number; igstPaise: number; totalPaise: number };
   /** Before tax split: price of the pieces, order discount (coupon), delivery */
@@ -95,7 +95,7 @@ export async function invoicePdf(i: InvoicePdfInput): Promise<Buffer> {
     y += Math.max(14, doc.heightOfString(cells[0]!, { width: 165 }) + 4);
   };
   for (const l of i.lines) {
-    const origin = [l.farm ? `Farm: ${l.farm}` : null, l.carat ? `${Number(l.carat)} ct` : null].filter(Boolean).join(' · ');
+    const origin = [l.size ? `Size ${l.size}` : null, l.farm ? `Farm: ${l.farm}` : null, l.carat ? `${Number(l.carat)} ct` : null].filter(Boolean).join(' · ');
     row([`${l.name}\n${l.sku}${origin ? `\n${origin}` : ''}${l.discountPaise ? `  (discount ${rs(l.discountPaise)})` : ''}`, l.hsn ?? '', String(l.qty), rs(l.unitPaise), rs(l.taxablePaise), `${l.gstRateBp / 100}%\n${rs(l.gstPaise)}`, rs(l.totalPaise)]);
   }
   if (i.delivery.totalPaise > 0) row(['Delivery', '9965', '1', rs(i.delivery.totalPaise), rs(i.delivery.taxablePaise), `${i.delivery.rateBp / 100}%\n${rs(i.delivery.gstPaise)}`, rs(i.delivery.totalPaise)]);

@@ -47,6 +47,7 @@ export const CARD_SELECT = {
   stockType: true,
   quantity: true,
   outOfStock: true,
+  sizes: true,
   soldAt: true,
   publishedAt: true,
   isExclusive: true,
@@ -75,6 +76,9 @@ export function toCard(p: CardRow) {
     colour: p.colour,
     metal: p.metal,
     isUnique: p.stockType === 'UNIQUE',
+    sizes: Array.isArray(p.sizes)
+      ? (p.sizes as Array<{ label: string; quantity: number }>).map((x) => ({ label: x.label, available: x.quantity > 0 }))
+      : null,
     isExclusive: p.isExclusive,
     isSold: sold,
     available,

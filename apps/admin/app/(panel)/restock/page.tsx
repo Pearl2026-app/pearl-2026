@@ -21,6 +21,7 @@ interface Row {
   category: { name: string };
   farm: { name: string } | null;
   vendor: { name: string } | null;
+  perSize: Array<{ label: string; quantity: number; sold30: number; suggest: number }> | null;
 }
 
 /**
@@ -99,6 +100,15 @@ export default function RestockPage() {
                     {r.farm ? ` · ${r.farm.name}` : ''}
                     {r.vendor ? ` · ${r.vendor.name}` : ''}
                   </span>
+                  {r.perSize && (
+                    <span className="mt-1 flex flex-wrap gap-1.5">
+                      {r.perSize.map((x) => (
+                        <span key={x.label} className={`rounded-sm border px-1.5 py-0.5 text-[11px] ${x.quantity === 0 ? 'border-[#F8E1DF] bg-[#F8E1DF] text-[#8C1D17]' : 'border-line bg-surface-muted'}`}>
+                          Size {x.label}: {x.quantity} left{x.suggest ? ` → make ${x.suggest}` : ''}
+                        </span>
+                      ))}
+                    </span>
+                  )}
                 </td>
                 <td className="px-3 py-2">{r.category.name}</td>
                 <td className="px-3 py-2 text-right">{r.sizeMm ? `${r.sizeMm} mm` : '—'}</td>

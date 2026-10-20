@@ -11,7 +11,7 @@ export interface Totals {
 
 export interface CartView {
   token: string | null;
-  items: Array<{ productId: string; quantity: number; product: ProductCard; problem: string | null }>;
+  items: Array<{ productId: string; quantity: number; size?: string | null; product: ProductCard; problem: string | null }>;
   count: number;
   couponCode: string | null;
   couponError: string | null;
@@ -32,7 +32,7 @@ export interface Tracking {
   discountPaise: number;
   gstPaise: number;
   deliveryPaise: number;
-  items: Array<{ name: string; sku: string; quantity: number; imageUrl: string | null; lineTotalPaise: number }>;
+  items: Array<{ name: string; sku: string; quantity: number; size?: string | null; imageUrl: string | null; lineTotalPaise: number }>;
   timeline: Array<{ status: string; at: string }>;
   delivery: { status: string; deliveredAt: string | null; partner: string | null } | null;
   shipTo: { name: string; cityName: string; pincode: string };

@@ -76,6 +76,12 @@ const productFields = {
   certification: optStr(200),
   stockType: z.enum(['UNIQUE', 'QUANTITY']).optional(),
   quantity: z.number().int().min(0).max(1_000_000).optional(),
+  /** Ring sizes with stock per size; the total quantity is kept as their sum */
+  sizes: z
+    .array(z.object({ label: z.string().trim().min(1).max(12), quantity: z.number().int().min(0).max(100_000) }))
+    .max(30)
+    .optional()
+    .nullable(),
   outOfStock: z.boolean().optional(),
   isFeatured: z.boolean().optional(),
   isExclusive: z.boolean().optional(),
@@ -94,7 +100,7 @@ export const productUpdate = z.object(productFields).partial();
 export type ProductInput = z.infer<typeof productCreate>;
 
 /** Fields a vendor may change directly without approval. */
-export const VENDOR_DIRECT_FIELDS = ['quantity', 'outOfStock'] as const;
+export const VENDOR_DIRECT_FIELDS = ['quantity', 'outOfStock', 'sizes'] as const;
 /** Fields only head office may set. */
 export const ADMIN_ONLY_FIELDS = ['vendorId', 'status', 'isFeatured', 'isExclusive', 'sortOrder'] as const;
 /** Cost fields hidden from franchise and city-manager responses. */

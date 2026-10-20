@@ -176,7 +176,7 @@ export class ProductImportService {
         results.push({ row: i + 1, sku, action: 'error', errors });
         continue;
       }
-      const { cityIds: _c, relatedIds: _r, caratWeight, sizeMm, ...rest } = parsed.data;
+      const { cityIds: _c, relatedIds: _r, caratWeight, sizeMm, sizes: _sz, ...rest } = parsed.data;
       const data: Prisma.ProductUncheckedCreateInput = {
         ...rest,
         slug: slugify(rest.name),

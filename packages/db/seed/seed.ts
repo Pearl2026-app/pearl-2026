@@ -1510,6 +1510,22 @@ async function partnerLogins(swastikFarmId: string) {
   for (const p of await prisma.product.findMany({ where: { category: { slug: 'loose-pearls' }, b2bPricePaise: null, priceOnRequest: false }, select: { id: true, pricePaise: true } }))
     await prisma.product.update({ where: { id: p.id }, data: { b2bPricePaise: Math.round((p.pricePaise * 0.8) / 100) * 100, b2bMinQty: 50 } });
 
+  // Rings sold in sizes 5–10: stock per size, so the picker and the per-size restock list show in the demo.
+  for (const ring of await prisma.product.findMany({
+    where: { category: { slug: 'rings' }, stockType: 'QUANTITY', archivedAt: null, sizes: { equals: Prisma.DbNull } },
+    select: { id: true, quantity: true },
+  })) {
+    const spread = [
+      { label: '5', quantity: 2 },
+      { label: '6', quantity: 5 },
+      { label: '7', quantity: 6 },
+      { label: '8', quantity: 4 },
+      { label: '9', quantity: 2 },
+      { label: '10', quantity: 1 },
+    ];
+    await prisma.product.update({ where: { id: ring.id }, data: { sizes: spread, quantity: spread.reduce((a, b) => a + b.quantity, 0) } });
+  }
+
   // One rider application waiting for approval (documents are not included in the sample).
   const pune = await prisma.city.findFirst({ where: { slug: 'pune' } });
   if (pune && !(await prisma.deliveryPartner.findUnique({ where: { phone: '+919800000035' } })))

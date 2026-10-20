@@ -31,6 +31,7 @@ export class InvoiceService {
       lines: o.items.map((i) => ({
         name: i.name,
         sku: i.sku,
+        size: i.size,
         farm: i.farmName,
         carat: i.caratWeight?.toString() ?? null,
         hsn: i.hsnCode,

@@ -52,9 +52,12 @@ export function OrderSummary({ t, invoiceHref }: { t: Tracking; invoiceHref?: st
     <div className="flex flex-col gap-4">
       <ul className="divide-y divide-line border-y border-line">
         {t.items.map((i) => (
-          <li key={i.sku} className="flex items-center gap-4 py-3">
+          <li key={`${i.sku}:${i.size ?? ''}`} className="flex items-center gap-4 py-3">
             {i.imageUrl && <img src={i.imageUrl} alt="" className="h-14 w-14 object-cover" />}
-            <span className="flex-1">{i.quantity} × {i.name}</span>
+            <span className="flex-1">
+              {i.quantity} × {i.name}
+              {i.size ? <span className="text-muted"> · Size {i.size}</span> : null}
+            </span>
             <span>{formatINR(i.lineTotalPaise, { compact: true })}</span>
           </li>
         ))}

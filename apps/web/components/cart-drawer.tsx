@@ -169,7 +169,7 @@ export function CartDrawer() {
           )}
           <ul className="divide-y divide-line">
             {items.map((i) => (
-              <li key={i.productId} className="fade-in flex gap-4 py-5">
+              <li key={`${i.productId}:${i.size ?? ''}`} className="fade-in flex gap-4 py-5">
                 <Link href={`/product/${i.product.slug}`} onClick={closeCart} className="nacre w-20 shrink-0">
                   <PearlImage
                     image={i.product.images[0]}
@@ -193,6 +193,7 @@ export function CartDrawer() {
                         : '—'}
                     </span>
                   </div>
+                  {i.size && <p className="mt-0.5 text-xs text-muted">Size {i.size}</p>}
                   {i.problem && <p className="mt-1 text-sm text-danger">{i.problem}</p>}
                   <div className="mt-auto flex items-center justify-between pt-3">
                     {i.product.isUnique ? (
@@ -211,7 +212,7 @@ export function CartDrawer() {
                             mutate(() =>
                               api(`/cart/items/${i.productId}`, {
                                 method: 'PATCH',
-                                json: { quantity: i.quantity - 1 },
+                                json: { quantity: i.quantity - 1, ...(i.size ? { size: i.size } : { size: '' }) },
                               }),
                             )
                           }
@@ -229,7 +230,7 @@ export function CartDrawer() {
                             mutate(() =>
                               api(`/cart/items/${i.productId}`, {
                                 method: 'PATCH',
-                                json: { quantity: i.quantity + 1 },
+                                json: { quantity: i.quantity + 1, ...(i.size ? { size: i.size } : { size: '' }) },
                               }),
                             )
                           }
@@ -241,7 +242,7 @@ export function CartDrawer() {
                     <button
                       className="text-xs text-muted underline underline-offset-2 hover:text-ink"
                       disabled={busy}
-                      onClick={() => mutate(() => api(`/cart/items/${i.productId}`, { method: 'DELETE' }))}
+                      onClick={() => mutate(() => api(`/cart/items/${i.productId}?size=${encodeURIComponent(i.size ?? '')}`, { method: 'DELETE' }))}
                     >
                       Remove
                     </button>

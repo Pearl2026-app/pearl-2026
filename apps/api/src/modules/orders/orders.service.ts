@@ -43,7 +43,7 @@ export interface CreateOrderInput {
   contact: { name: string; phone: string; email?: string | null };
   address: AddressInput;
   cityId: string;
-  items: Array<{ productId: string; quantity: number; unitPricePaise?: number }>;
+  items: Array<{ productId: string; quantity: number; unitPricePaise?: number; size?: string | null }>;
   paymentMethod: PaymentMethod;
   couponCode?: string | null;
   channel?: string | null;
@@ -293,6 +293,7 @@ export class OrdersService implements OnModuleInit {
                   ]
                 : lines.map((l) => ({
                     productId: l.productId,
+                    size: l.size,
                     sku: l.sku,
                     name: l.name,
                     imageUrl: l.imageUrl,
@@ -321,7 +322,7 @@ export class OrdersService implements OnModuleInit {
           await this.stock.hold(
             tx,
             o.id,
-            lines.map((l) => ({ productId: l.productId, quantity: l.quantity })),
+            lines.map((l) => ({ productId: l.productId, quantity: l.quantity, size: l.size })),
             { convert: input.convertStock, allowUnpublished: input.allowUnpublished },
           );
         if (priced.points && priced.points.redeemedPaise > 0) {

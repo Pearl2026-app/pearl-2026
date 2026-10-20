@@ -82,6 +82,7 @@ export class RestockController {
         name: true,
         sku: true,
         quantity: true,
+        sizes: true,
         lowStockAt: true,
         outOfStock: true,
         sizeMm: true,
@@ -94,11 +95,16 @@ export class RestockController {
     });
     const since = new Date(Date.now() - 30 * 24 * 3600_000);
     const sold = await this.prisma.orderItem.groupBy({
-      by: ['productId'],
+      by: ['productId', 'size'],
       where: { productId: { in: rows.map((r) => r.id) }, order: { placedAt: { gte: since }, status: { notIn: ['CANCELLED', 'FAILED', 'REFUNDED', 'RETURNED'] } } },
       _sum: { quantity: true },
     });
-    const soldBy = new Map(sold.map((s) => [s.productId, s._sum.quantity ?? 0]));
+    const soldBy = new Map<string, number>();
+    const soldBySize = new Map<string, number>();
+    for (const x of sold) {
+      soldBy.set(x.productId!, (soldBy.get(x.productId!) ?? 0) + (x._sum.quantity ?? 0));
+      if (x.size) soldBySize.set(`${x.productId}:${x.size}`, (soldBySize.get(`${x.productId}:${x.size}`) ?? 0) + (x._sum.quantity ?? 0));
+    }
     const items = rows
       .map((r) => {
         const level = r.lowStockAt ?? cfg.defaultThreshold;
@@ -106,7 +112,14 @@ export class RestockController {
         const low = r.outOfStock || r.quantity <= level;
         // Make enough to cover a month like the last one, and at least back above the alert level.
         const suggest = low ? Math.max(sold30, level + 1 - r.quantity, 1) : 0;
-        return { ...r, sizeMm: r.sizeMm ? Number(r.sizeMm) : null, level, sold30, low, suggest };
+        // Rings and bangles: what to make per size (meeting of 19 Oct).
+        const perSize = Array.isArray(r.sizes)
+          ? (r.sizes as Array<{ label: string; quantity: number }>).map((x) => {
+              const sSold = soldBySize.get(`${r.id}:${x.label}`) ?? 0;
+              return { label: x.label, quantity: x.quantity, sold30: sSold, suggest: low ? Math.max(sSold, x.quantity === 0 ? 1 : 0) : 0 };
+            })
+          : null;
+        return { ...r, sizes: undefined, sizeMm: r.sizeMm ? Number(r.sizeMm) : null, level, sold30, low, suggest, perSize };
       })
       .filter((r) => all === 'true' || r.low);
     return { items, defaultThreshold: cfg.defaultThreshold };

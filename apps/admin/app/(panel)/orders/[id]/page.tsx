@@ -179,8 +179,10 @@ export default function OrderPage() {
                   <tr key={i.id} className="border-t border-line">
                     <td className="py-2">
                       {i.name}
+                      {i.size ? <span className="ml-1 rounded-sm bg-surface-muted px-1.5 py-0.5 text-xs">Size {i.size}</span> : null}
                       <span className="block text-xs text-muted">
                         {i.sku} · HSN {i.hsnCode ?? '—'}
+                        {i.farmName ? ` · ${i.farmName}` : ''}
                       </span>
                     </td>
                     <td>{i.quantity}</td>

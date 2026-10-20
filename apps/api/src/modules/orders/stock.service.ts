@@ -12,6 +12,7 @@ type Tx = Prisma.TransactionClient;
 export interface HoldLine {
   productId: string;
   quantity: number;
+  size?: string | null;
 }
 
 /**
@@ -40,8 +41,8 @@ export class StockService implements OnModuleInit {
   private async lockProducts(tx: Tx, ids: string[]) {
     const sorted = [...new Set(ids)].sort();
     return tx.$queryRaw<
-      Array<{ id: string; name: string; sku: string; status: string; archivedAt: Date | null; stockType: 'UNIQUE' | 'QUANTITY'; quantity: number; outOfStock: boolean; soldAt: Date | null }>
-    >`SELECT id, name, sku, status, "archivedAt", "stockType", quantity, "outOfStock", "soldAt"
+      Array<{ id: string; name: string; sku: string; status: string; archivedAt: Date | null; stockType: 'UNIQUE' | 'QUANTITY'; quantity: number; outOfStock: boolean; soldAt: Date | null; sizes: unknown }>
+    >`SELECT id, name, sku, status, "archivedAt", "stockType", quantity, "outOfStock", "soldAt", sizes
       FROM "Product" WHERE id IN (${Prisma.join(sorted)}) ORDER BY id FOR UPDATE`;
   }
 
@@ -65,8 +66,18 @@ export class StockService implements OnModuleInit {
         const active = await tx.stockHold.findFirst({ where: { productId: p.id, isUnique: true, status: { in: ['ACTIVE', 'CONVERTED'] } } });
         if (active) throw unavailable('is reserved in another checkout. Please try again in a few minutes.');
       } else {
-        if (p.quantity < line.quantity) throw unavailable(p.quantity > 0 ? `has only ${p.quantity} left.` : 'is out of stock.');
-        await tx.product.update({ where: { id: p.id }, data: { quantity: { decrement: line.quantity } } });
+        const sizes = Array.isArray(p.sizes) ? (p.sizes as Array<{ label: string; quantity: number }>) : null;
+        if (sizes?.length) {
+          // Rings and bangles: stock is held per size (meeting of 19 Oct), so the manufacturer knows which sizes sold.
+          const entry = line.size ? sizes.find((x) => x.label === line.size) : null;
+          if (!entry) throw conflict('SIZE_REQUIRED', `${p.name}: please choose a size.`);
+          if (entry.quantity < line.quantity) throw unavailable(entry.quantity > 0 ? `has only ${entry.quantity} left in size ${line.size}.` : `is out of stock in size ${line.size}.`);
+          const next = sizes.map((x) => (x.label === line.size ? { ...x, quantity: x.quantity - line.quantity } : x));
+          await tx.product.update({ where: { id: p.id }, data: { quantity: { decrement: line.quantity }, sizes: next } });
+        } else {
+          if (p.quantity < line.quantity) throw unavailable(p.quantity > 0 ? `has only ${p.quantity} left.` : 'is out of stock.');
+          await tx.product.update({ where: { id: p.id }, data: { quantity: { decrement: line.quantity } } });
+        }
         // Stock just fell to the alert level or below: tell head office, the vendor and the manufacturers.
         await this.jobs.add('stock.low', { productId: p.id, before: p.quantity, after: p.quantity - line.quantity }, { delayMs: 5_000 });
       }
@@ -76,6 +87,7 @@ export class StockService implements OnModuleInit {
             productId: p.id,
             orderId,
             quantity: line.quantity,
+            size: line.size ?? null,
             isUnique: p.stockType === 'UNIQUE',
             status: opts.convert ? 'CONVERTED' : 'ACTIVE',
             expiresAt: new Date(now.getTime() + HOLD_MINUTES * 60_000),
@@ -114,13 +126,24 @@ export class StockService implements OnModuleInit {
   async release(tx: Tx, orderId: string, reason: string, opts: { includeConverted?: boolean } = {}) {
     const holds = await tx.stockHold.findMany({ where: { orderId, status: { in: opts.includeConverted ? ['ACTIVE', 'CONVERTED'] : ['ACTIVE'] } } });
     if (!holds.length) return 0;
-    await this.lockProducts(tx, holds.map((h) => h.productId));
+    const locked = await this.lockProducts(tx, holds.map((h) => h.productId));
     for (const h of holds) {
       await tx.stockHold.update({ where: { id: h.id }, data: { status: 'RELEASED', releasedReason: reason } });
       if (h.isUnique) {
         if (h.status === 'CONVERTED') await tx.product.update({ where: { id: h.productId }, data: { soldAt: null, quantity: 1 } });
       } else {
-        await tx.product.update({ where: { id: h.productId }, data: { quantity: { increment: h.quantity } } });
+        const p = locked.find((x) => x.id === h.productId);
+        const sizes = Array.isArray(p?.sizes) ? (p!.sizes as Array<{ label: string; quantity: number }>) : null;
+        if (h.size && sizes?.length) {
+          const next = sizes.some((x) => x.label === h.size)
+            ? sizes.map((x) => (x.label === h.size ? { ...x, quantity: x.quantity + h.quantity } : x))
+            : [...sizes, { label: h.size, quantity: h.quantity }];
+          await tx.product.update({ where: { id: h.productId }, data: { quantity: { increment: h.quantity }, sizes: next } });
+          // Keep the locked copy in step in case two holds touch the same piece.
+          (p as { sizes: unknown }).sizes = next;
+        } else {
+          await tx.product.update({ where: { id: h.productId }, data: { quantity: { increment: h.quantity } } });
+        }
       }
     }
     return holds.length;

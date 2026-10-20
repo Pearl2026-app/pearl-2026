@@ -47,9 +47,10 @@ export class CartService {
   private async merge(fromId: string, toId: string) {
     const items = await this.prisma.cartItem.findMany({ where: { cartId: fromId }, include: { product: true } });
     for (const i of items) {
-      const existing = await this.prisma.cartItem.findUnique({ where: { cartId_productId: { cartId: toId, productId: i.productId } } });
+      const key = { cartId: toId, productId: i.productId, size: i.size };
+      const existing = await this.prisma.cartItem.findUnique({ where: { cartId_productId_size: key } });
       const qty = i.product.stockType === 'UNIQUE' ? 1 : Math.min(MAX_QTY, (existing?.quantity ?? 0) + i.quantity);
-      await this.prisma.cartItem.upsert({ where: { cartId_productId: { cartId: toId, productId: i.productId } }, create: { cartId: toId, productId: i.productId, quantity: qty }, update: { quantity: qty } });
+      await this.prisma.cartItem.upsert({ where: { cartId_productId_size: key }, create: { ...key, quantity: qty }, update: { quantity: qty } });
     }
     await this.prisma.cartItem.deleteMany({ where: { cartId: fromId } });
     const from = await this.prisma.cart.findUnique({ where: { id: fromId } });
@@ -63,7 +64,12 @@ export class CartService {
     return c?.b2bStatus === 'APPROVED';
   }
 
-  async add(cart: Cart, productId: string, quantity: number) {
+  /** The sizes a piece is sold in, from its stock-per-size list; null when it has none. */
+  private sizesOf(p: { sizes: unknown }): Array<{ label: string; quantity: number }> | null {
+    return Array.isArray(p.sizes) ? (p.sizes as Array<{ label: string; quantity: number }>) : null;
+  }
+
+  async add(cart: Cart, productId: string, quantity: number, size = '') {
     const p = await this.prisma.product.findFirst({ where: { id: productId, status: 'PUBLISHED', archivedAt: null } });
     if (!p) throw badRequest('INVALID_PRODUCT', 'That piece is not available.');
     const business = await this.isBusiness(cart);
@@ -71,23 +77,35 @@ export class CartService {
     const maxQty = business ? 10_000 : MAX_QTY;
     if (p.priceOnRequest) throw badRequest('PRICE_ON_REQUEST', 'This piece is priced on request. Please enquire on WhatsApp.');
     if (p.soldAt || p.outOfStock || p.quantity <= 0) throw conflict('OUT_OF_STOCK', `${p.name} is no longer available.`);
+    // Sized pieces (rings, bangles): a size must be chosen and have stock.
+    const sizes = this.sizesOf(p);
+    if (sizes?.length) {
+      const entry = sizes.find((x) => x.label === size);
+      if (!entry) throw badRequest('SIZE_REQUIRED', 'Please choose a size.', { size: 'Choose a size' });
+      if (entry.quantity <= 0) throw conflict('OUT_OF_STOCK', `${p.name} in size ${size} is out of stock.`);
+    } else size = '';
     const count = await this.prisma.cartItem.count({ where: { cartId: cart.id } });
-    const existing = await this.prisma.cartItem.findUnique({ where: { cartId_productId: { cartId: cart.id, productId } } });
+    const key = { cartId: cart.id, productId, size };
+    const existing = await this.prisma.cartItem.findUnique({ where: { cartId_productId_size: key } });
     if (!existing && count >= MAX_LINES) throw badRequest('CART_FULL', 'Your cart is full.');
-    const qty = p.stockType === 'UNIQUE' ? 1 : Math.min(maxQty, p.quantity, (existing?.quantity ?? 0) + quantity);
-    await this.prisma.cartItem.upsert({ where: { cartId_productId: { cartId: cart.id, productId } }, create: { cartId: cart.id, productId, quantity: qty }, update: { quantity: qty } });
+    const sizeCap = sizes?.length ? (sizes.find((x) => x.label === size)?.quantity ?? 0) : p.quantity;
+    const qty = p.stockType === 'UNIQUE' ? 1 : Math.min(maxQty, sizeCap, (existing?.quantity ?? 0) + quantity);
+    await this.prisma.cartItem.upsert({ where: { cartId_productId_size: key }, create: { ...key, quantity: qty }, update: { quantity: qty } });
     await this.touch(cart.id);
   }
 
-  async setQuantity(cart: Cart, productId: string, quantity: number) {
+  async setQuantity(cart: Cart, productId: string, quantity: number, size?: string) {
+    const bySize = size === undefined ? {} : { size };
     if (quantity <= 0) {
-      await this.prisma.cartItem.deleteMany({ where: { cartId: cart.id, productId } });
+      await this.prisma.cartItem.deleteMany({ where: { cartId: cart.id, productId, ...bySize } });
     } else {
       const p = await this.prisma.product.findUnique({ where: { id: productId } });
       if (!p) throw badRequest('INVALID_PRODUCT', 'That piece is not available.');
       const maxQty = (await this.isBusiness(cart)) ? 10_000 : MAX_QTY;
-      const qty = p.stockType === 'UNIQUE' ? 1 : Math.min(maxQty, Math.max(1, quantity), Math.max(1, p.quantity));
-      await this.prisma.cartItem.updateMany({ where: { cartId: cart.id, productId }, data: { quantity: qty } });
+      const sizes = this.sizesOf(p);
+      const cap = sizes?.length && size ? Math.max(1, sizes.find((x) => x.label === size)?.quantity ?? 1) : Math.max(1, p.quantity);
+      const qty = p.stockType === 'UNIQUE' ? 1 : Math.min(maxQty, Math.max(1, quantity), cap);
+      await this.prisma.cartItem.updateMany({ where: { cartId: cart.id, productId, ...bySize }, data: { quantity: qty } });
     }
     await this.touch(cart.id);
   }
@@ -121,13 +139,16 @@ export class CartService {
       const card = toCard(i.product);
       const live = i.product.status === 'PUBLISHED' && !i.product.archivedAt;
       const inCity = !city || i.product.cities.length === 0 || i.product.cities.some((c) => c.cityId === city);
-      const problem = !live || !card.available ? 'No longer available' : card.priceOnRequest ? 'Price on request' : !inCity ? 'Not delivered to your city' : !card.isUnique && i.product.quantity < i.quantity ? `Only ${i.product.quantity} left` : null;
-      return { productId: i.productId, quantity: i.quantity, product: card, problem };
+      const sizes = this.sizesOf(i.product);
+      const sizeStock = sizes?.length && i.size ? (sizes.find((x) => x.label === i.size)?.quantity ?? 0) : null;
+      const stockLeft = sizeStock ?? i.product.quantity;
+      const problem = !live || !card.available ? 'No longer available' : card.priceOnRequest ? 'Price on request' : !inCity ? 'Not delivered to your city' : !card.isUnique && stockLeft < i.quantity ? (stockLeft > 0 ? `Only ${stockLeft} left${i.size ? ` in size ${i.size}` : ''}` : `Out of stock${i.size ? ` in size ${i.size}` : ''}`) : null;
+      return { productId: i.productId, quantity: i.quantity, size: i.size || null, product: card, problem };
     });
     const buyable = lines.filter((l) => !l.problem);
     const customerId = user?.role === 'CUSTOMER' ? user.customerId : null;
     const priced = buyable.length
-      ? await this.pricing.price({ items: buyable.map((l) => ({ productId: l.productId, quantity: l.quantity })), couponCode: cart.couponCode, customerId, phone: cart.contactPhone, cityId: city })
+      ? await this.pricing.price({ items: buyable.map((l) => ({ productId: l.productId, quantity: l.quantity, size: l.size })), couponCode: cart.couponCode, customerId, phone: cart.contactPhone, cityId: city })
       : null;
     const payments = await this.settings.get('payments');
     const total = priced?.totals.totalPaise ?? 0;
