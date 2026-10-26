@@ -75,14 +75,13 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
     ['Carat', p.caratWeight != null ? `${p.caratWeight} ct` : null],
     ['Shape', p.shape],
     ['Colour', p.colour],
-    ['Lustre', p.lustre],
-    ['Surface', p.surface],
-    ['Size', p.sizeMm != null ? `${p.sizeMm} mm` : null],
-    ['Grade', p.grade],
-    ['Metal / setting', p.metal],
-    ['Origin farm', p.farm?.name ?? null],
+    ['Pearl size', p.sizeMm != null ? `${p.sizeMm} mm` : null],
+    ['Metal', p.metal],
+    ['Net weight', p.netWeight != null ? `${p.netWeight} g` : null],
+    ['Gross weight', p.grossWeight != null ? `${p.grossWeight} g` : null],
+    ['Origin', p.farm ? `${p.farm.name}, ${p.farm.location}` : null],
     ['Certification', p.certification],
-    ['SKU', p.sku],
+    ['SR code', p.sku],
   ];
   return (
     <Container className="pb-28 lg:pb-0">

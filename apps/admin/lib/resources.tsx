@@ -52,6 +52,8 @@ export const RESOURCES: Record<string, ResourceDef> = {
     singular: 'Vendor',
     api: '/admin/vendors',
     module: 'VENDORS',
+    description:
+      'Outside partner shops that sell through this website alongside your own stock. A vendor lists pieces (you approve every change), and orders are routed to the nearest active vendor by PIN-code distance. Not using partners yet? Simply leave this section empty — your own stock does not need a vendor.',
     columns: [
       { key: 'name', label: 'Vendor', sortable: true },
       { key: 'contactName', label: 'Contact' },

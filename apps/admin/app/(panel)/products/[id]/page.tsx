@@ -43,7 +43,7 @@ const SECTIONS: Array<{ title: string; fields: FieldDef[] }> = [
     title: 'Basics',
     fields: [
       { name: 'name', label: 'Name', required: true },
-      { name: 'sku', label: 'SKU', required: true },
+      { name: 'sku', label: 'SR code', required: true, hint: 'The stock register code from the stock list, e.g. SPF-26S4369.' },
       { name: 'categoryId', label: 'Category', type: 'ref', ref: { path: '/admin/categories' }, required: true },
       { name: 'collectionId', label: 'Collection', type: 'ref', ref: { path: '/admin/collections' } },
       { name: 'farmId', label: 'Origin farm', type: 'ref', ref: { path: '/admin/farms' } },
@@ -58,7 +58,7 @@ const SECTIONS: Array<{ title: string; fields: FieldDef[] }> = [
       { name: 'compareAtPaise', label: 'Was price (optional)', type: 'money' },
       { name: 'priceOnRequest', label: 'Price on request (hide price and Add to Cart)', type: 'switch' },
       { name: 'metalCostPaise', label: 'Metal cost', type: 'money' },
-      { name: 'labourCostPaise', label: 'Labour cost', type: 'money' },
+      { name: 'labourCostPaise', label: 'Making cost', type: 'money' },
       { name: 'pearlCostPaise', label: 'Pearl cost', type: 'money', hint: 'Use the price calculator for a suggestion.' },
     ],
   },
@@ -68,11 +68,10 @@ const SECTIONS: Array<{ title: string; fields: FieldDef[] }> = [
       { name: 'caratWeight', label: 'Carat weight', type: 'number' },
       { name: 'shape', label: 'Shape', type: 'select', options: ['Round', 'Near-round', 'Button', 'Drop', 'Rice', 'Baroque', 'Oval', 'Coin'].map((v) => ({ value: v, label: v })) },
       { name: 'colour', label: 'Colour', type: 'select', options: ['White', 'Cream', 'Rose', 'Golden', 'Silver', 'Black', 'Lavender', 'Peach'].map((v) => ({ value: v, label: v })) },
-      { name: 'lustre', label: 'Lustre', type: 'select', options: ['Excellent', 'High', 'Good', 'Fair'].map((v) => ({ value: v, label: v })) },
-      { name: 'surface', label: 'Surface' },
-      { name: 'grade', label: 'Grade', type: 'select', options: ['AAA', 'AA+', 'AA', 'A'].map((v) => ({ value: v, label: v })) },
-      { name: 'sizeMm', label: 'Size (mm)', type: 'number' },
-      { name: 'metal', label: 'Metal / setting' },
+      { name: 'sizeMm', label: 'Pearl size (mm)', type: 'number' },
+      { name: 'metal', label: 'Metal', hint: 'e.g. 92.5 silver, rhodium plated.' },
+      { name: 'netWeight', label: 'Net weight (g)', type: 'number', hint: 'Metal weight without the pearl.' },
+      { name: 'grossWeight', label: 'Gross weight (g)', type: 'number' },
       { name: 'certification', label: 'Certification' },
     ],
   },
@@ -83,9 +82,9 @@ const SECTIONS: Array<{ title: string; fields: FieldDef[] }> = [
       { name: 'quantity', label: 'Quantity', type: 'number', showIf: (v) => v.stockType === 'QUANTITY' && !v.sizesText, hint: 'With sizes below, the total is worked out from them.' },
       {
         name: 'sizesText',
-        label: 'Sizes & stock per size (rings, bangles)',
+        label: 'Size options & stock per size',
         showIf: (v) => v.stockType === 'QUANTITY',
-        hint: 'size:quantity, comma-separated — e.g. 5:10, 6:8, 7:5. Customers must pick a size; the manufacturer sees what to make per size. Leave empty for no sizes.',
+        hint: 'size:quantity, comma-separated. Ring sizes: 5:10, 6:8, 7:5 · necklace lengths: 16":4, 18":6, 20":2. Customers must pick one; the manufacturer sees what to make per size. Leave empty for no sizes.',
         read: (r: Product) => (Array.isArray(r.sizes) ? (r.sizes as Array<{ label: string; quantity: number }>).map((x) => `${x.label}:${x.quantity}`).join(', ') : ''),
       },
       { name: 'lowStockAt', label: 'Low-stock alert at', type: 'number', showIf: (v) => v.stockType === 'QUANTITY', hint: 'Empty = the default in Settings.' },
@@ -104,7 +103,7 @@ const SECTIONS: Array<{ title: string; fields: FieldDef[] }> = [
     ],
   },
   {
-    title: 'Where it is sold',
+    title: 'Where to display',
     fields: [
       { name: 'cityIds', label: 'Cities', type: 'refMulti', ref: { path: '/admin/cities' }, hint: 'None selected = every city.', read: (r: Product) => r.cities.map((c) => c.city.id) },
       { name: 'relatedIds', label: 'Related pieces', type: 'refMulti', ref: { path: '/admin/products', label: 'name', query: { status: 'PUBLISHED' } }, read: (r: Product) => r.relatedFrom.map((x) => x.related.id) },
@@ -156,6 +155,9 @@ export default function ProductEditPage() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [images, setImages] = useState<Img[]>([]);
+  // Photos, CAD designs and a video picked while adding a new product; uploaded right after Create.
+  const [newFiles, setNewFiles] = useState<File[]>([]);
+  const [newVideo, setNewVideo] = useState<File | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLInputElement>(null);
 
@@ -197,6 +199,24 @@ export default function ProductEditPage() {
     onSuccess: async (saved) => {
       setErrors({});
       setFormError(null);
+      if (isNew && newFiles.length) {
+        const fd = new FormData();
+        newFiles.forEach((f) => fd.append('files', f));
+        try {
+          await api(`/admin/products/${saved.id}/images`, { method: 'POST', body: fd });
+        } catch (e) {
+          toast(`Product created, but the images failed: ${errorText(e)}`, 'danger');
+        }
+      }
+      if (isNew && newVideo) {
+        const fd = new FormData();
+        fd.append('file', newVideo);
+        try {
+          await api(`/admin/products/${saved.id}/video`, { method: 'POST', body: fd });
+        } catch (e) {
+          toast(`Product created, but the video failed: ${errorText(e)}`, 'danger');
+        }
+      }
       await refresh();
       toast(isVendor && !isNew && saved.pendingChanges ? 'Changes sent for approval' : 'Product saved');
       if (isNew) router.replace(`/products/${saved.id}`);
@@ -339,6 +359,35 @@ export default function ProductEditPage() {
             </div>
           </Card>
         ))}
+        {isNew && editable && (
+          <Card>
+            <h2 className="mb-1 font-semibold">Images, CAD designs & video</h2>
+            <p className="mb-3 text-xs text-muted">Pick them now — they upload the moment the product is created. Photos and CAD design renders go in Images.</p>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button type="button" size="sm" variant="secondary" onClick={() => fileRef.current?.click()}>
+                Add images / CAD designs
+              </Button>
+              <input ref={fileRef} type="file" accept="image/*" multiple hidden onChange={(e) => e.target.files?.length && setNewFiles((x) => [...x, ...Array.from(e.target.files!)])} />
+              <Button type="button" size="sm" variant="secondary" onClick={() => videoRef.current?.click()}>
+                {newVideo ? `Video: ${newVideo.name}` : 'Add video'}
+              </Button>
+              <input ref={videoRef} type="file" accept="video/mp4,video/webm,video/quicktime" hidden onChange={(e) => e.target.files?.[0] && setNewVideo(e.target.files[0])} />
+            </div>
+            {newFiles.length > 0 && (
+              <ul className="mt-3 grid grid-cols-3 gap-3 sm:grid-cols-6">
+                {newFiles.map((f, i) => (
+                  <li key={`${f.name}-${i}`} className="relative rounded-sm border border-line bg-surface p-1">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={URL.createObjectURL(f)} alt={f.name} className="aspect-square w-full rounded-sm object-cover" />
+                    <button type="button" className="mt-1 w-full text-xs text-danger underline" onClick={() => setNewFiles((x) => x.filter((_, j) => j !== i))}>
+                      Remove
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Card>
+        )}
         {editable && (
           <div className="sticky bottom-0 flex gap-2 border-t border-line bg-bg/95 py-3 backdrop-blur">
             <Button type="submit" loading={save.isPending}>

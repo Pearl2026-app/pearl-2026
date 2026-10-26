@@ -112,7 +112,7 @@ export default function CalculatorPage() {
             </label>
             <label className="text-sm">Rate per carat ₹ (overrides the table)<Input inputMode="decimal" {...f('rate')} /></label>
             <label className="text-sm">Metal cost ₹<Input inputMode="decimal" {...f('metal')} /></label>
-            <label className="text-sm">Labour cost ₹<Input inputMode="decimal" {...f('labour')} /></label>
+            <label className="text-sm">Making cost ₹<Input inputMode="decimal" {...f('labour')} /></label>
             <div className="md:col-span-2"><Button type="submit" loading={calc.isPending} disabled={!v.carat}>Calculate</Button></div>
           </form>
         </Card>
@@ -127,7 +127,7 @@ export default function CalculatorPage() {
               <dl className="grid grid-cols-2 gap-1 text-sm">
                 <dt className="text-muted">Pearl ({inr(r.ratePerCaratPaise)}/ct)</dt><dd className="text-right">{inr(r.pearlCostPaise)}</dd>
                 <dt className="text-muted">Metal</dt><dd className="text-right">{inr(r.metalCostPaise)}</dd>
-                <dt className="text-muted">Labour</dt><dd className="text-right">{inr(r.labourCostPaise)}</dd>
+                <dt className="text-muted">Making</dt><dd className="text-right">{inr(r.labourCostPaise)}</dd>
                 <dt className="text-muted">Cost</dt><dd className="text-right">{inr(r.costPaise)}</dd>
                 <dt className="text-muted">Margin</dt><dd className="text-right">{inr(r.marginPaise)}</dd>
                 <dt className="text-muted">Before GST</dt><dd className="text-right">{inr(r.exclusivePaise)}</dd>

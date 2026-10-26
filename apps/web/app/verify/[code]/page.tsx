@@ -23,7 +23,7 @@ export default async function VerifyPage({ params }: { params: Promise<{ code: s
       <div className="grid gap-8 md:grid-cols-[240px_1fr]">
         {c.product.imageUrl && <img src={c.product.imageUrl} alt="" className="aspect-square w-full object-cover" />}
         <dl className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-2 self-start text-sm">
-          <dt className="text-muted">SKU</dt><dd>{c.product.sku}</dd>
+          <dt className="text-muted">SR code</dt><dd>{c.product.sku}</dd>
           {c.farm && (<><dt className="text-muted">Farm of origin</dt><dd><Link href={`/our-farm/${c.farm.slug}`} className="text-accent underline">{c.farm.name}</Link>, {c.farm.location}</dd></>)}
           {Object.entries(c.details ?? {}).filter(([k, v]) => v != null && k !== 'farm').map(([k, v]) => (
             <div key={k} className="contents"><dt className="text-muted capitalize">{k.replace(/([A-Z])/g, ' $1')}</dt><dd>{String(v)}</dd></div>

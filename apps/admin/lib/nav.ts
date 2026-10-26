@@ -54,7 +54,7 @@ export const NAV: NavGroup[] = [
       { href: '/products', label: 'Products', module: 'PRODUCTS', primary: '#9A7546', roles: ['SUPER_ADMIN', 'STAFF', 'STATE_MANAGER', 'CITY_MANAGER', 'VENDOR', 'FRANCHISE', 'FARMER'] },
       {
         href: '/restock',
-        label: 'Restock list',
+        label: 'Purchase orders (low stock)',
         module: 'PRODUCTS',
         roles: ['SUPER_ADMIN', 'STAFF', 'STATE_MANAGER', 'CITY_MANAGER', 'VENDOR', 'MANUFACTURER'],
         primary: '#9A7546',

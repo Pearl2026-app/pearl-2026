@@ -35,6 +35,8 @@ export interface ProductDetail extends ProductCard {
   surface: string | null;
   grade: string | null;
   sizeMm: number | null;
+  netWeight: number | null;
+  grossWeight: number | null;
   certification: string | null;
   certificateCode: string | null;
   videoUrl: string | null;

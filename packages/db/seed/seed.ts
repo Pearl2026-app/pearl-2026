@@ -217,6 +217,24 @@ async function seedTemplates() {
       'Purchase order {{number}}',
     ],
     [
+      'PO_STAGE',
+      'EMAIL',
+      'Purchase order {{number}} ({{manufacturer}}): {{stage}}.\n\nOpen it: {{poUrl}}\n\nSahyadri Pearls',
+      'PO {{number}}: {{stage}}',
+    ],
+    [
+      'PO_AUTO',
+      'EMAIL',
+      'Stock of {{productName}} ({{sku}}) fell below the auto-PO level, so draft purchase order {{number}} for {{quantity}} pcs was raised with {{manufacturer}}.\n\nReview the cost and send it: {{poUrl}}\n\nSahyadri Pearls',
+      'Auto PO {{number}}: {{productName}}',
+    ],
+    [
+      'NEW_CUSTOMER',
+      'EMAIL',
+      'New {{kind}} registration: {{name}} ({{phone}}{{emailLine}}).\n\nOpen the customer: {{customerUrl}}\n\nSahyadri Pearls',
+      'New {{kind}}: {{name}}',
+    ],
+    [
       'REFERRAL_REWARD',
       'EMAIL',
       'Hi {{name}},\n\nYour referral reward is ready. Use code {{code}} for {{amount}} off your next order.\n\nSahyadri Pearls',

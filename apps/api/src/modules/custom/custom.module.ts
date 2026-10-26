@@ -11,6 +11,7 @@ import { AuditService } from '../../common/audit.service';
 import type { AuthUser } from '../../common/context';
 import { CurrentUser, Requires } from '../../common/decorators';
 import { badRequest, forbidden, notFound } from '../../common/errors';
+import { config } from '../../config/config';
 import { listQuery, orderBy, paginate } from '../../common/list';
 import { sendCsv } from '../../common/csv';
 import { customRequestScope, purchaseOrderScope } from '../../common/scope';
@@ -279,12 +280,18 @@ const poInput = z.object({
   manufacturerId: z.string().min(1),
   orderId: z.string().optional().nullable(),
   customRequestId: z.string().optional().nullable(),
-  specification: z.string().trim().min(5).max(5000),
+  /** Pick a catalogue piece instead of typing the specification; the spec is then written automatically. */
+  productId: z.string().optional().nullable(),
+  size: z.string().trim().max(12).optional().nullable(),
+  specification: z.string().trim().min(5).max(5000).optional(),
   quantity: z.number().int().min(1).max(10_000).default(1),
   agreedCostPaise: paise.min(1),
   dueDate: z.coerce.date(),
   notes: z.string().trim().max(2000).optional().nullable(),
 });
+
+/** The manufacturer's daily work stages (client document, 26 Oct). */
+export const PO_STAGES = ['Receiving PO', 'Casting', 'Filling and Finishing', 'Rhodium', 'Pearl Setting', 'Metal Hallmark', 'Ready for Pickup'] as const;
 
 @ApiTags('purchase orders')
 @Controller('admin/purchase-orders')
@@ -299,7 +306,10 @@ export class PurchaseOrdersController {
   ) {}
 
   private async load(user: AuthUser, id: string) {
-    const p = await this.prisma.purchaseOrder.findFirst({ where: { AND: [{ id }, purchaseOrderScope(user)] }, include: { manufacturer: true, order: { select: { id: true, number: true, customRequest: { select: { id: true, stage: true } } } } } });
+    const p = await this.prisma.purchaseOrder.findFirst({
+      where: { AND: [{ id }, purchaseOrderScope(user)] },
+      include: { manufacturer: true, product: { select: { id: true, name: true, sku: true, sizes: true } }, order: { select: { id: true, number: true, customRequest: { select: { id: true, stage: true } } } } },
+    });
     if (!p) throw notFound('Purchase order');
     return p;
   }
@@ -330,7 +340,7 @@ export class PurchaseOrdersController {
     const where: Prisma.PurchaseOrderWhereInput = {
       AND: [purchaseOrderScope(user), q.status ? { status: q.status } : {}, q.manufacturerId ? { manufacturerId: q.manufacturerId } : {}, q.q ? { OR: [{ number: { contains: q.q, mode: 'insensitive' } }, { specification: { contains: q.q, mode: 'insensitive' } }, { order: { number: { contains: q.q, mode: 'insensitive' } } }] } : {}],
     };
-    const include = { manufacturer: { select: { id: true, name: true } }, order: { select: { id: true, number: true } } };
+    const include = { manufacturer: { select: { id: true, name: true } }, product: { select: { id: true, name: true, sku: true } }, order: { select: { id: true, number: true } } };
     if (q.format === 'csv') {
       const rows = await this.prisma.purchaseOrder.findMany({ where, include, orderBy: { createdAt: 'desc' }, take: 50_000 });
       sendCsv(res, 'purchase-orders.csv', rows, [
@@ -371,10 +381,28 @@ export class PurchaseOrdersController {
       });
     }
     if (orderId && !(await this.prisma.order.findUnique({ where: { id: orderId } }))) throw notFound('Order');
+    // A catalogue piece can be picked instead of typing the specification.
+    let specification = dto.specification ?? '';
+    if (dto.productId) {
+      const prod = await this.prisma.product.findFirst({ where: { id: dto.productId, archivedAt: null }, select: { name: true, sku: true, metal: true, sizeMm: true, caratWeight: true } });
+      if (!prod) throw notFound('Product');
+      if (!specification)
+        specification = [
+          `${dto.quantity} × ${prod.name} (${prod.sku})`,
+          dto.size ? `Size ${dto.size}` : null,
+          prod.metal ? `Metal: ${prod.metal}` : null,
+          prod.sizeMm ? `Pearl: ${Number(prod.sizeMm)} mm` : null,
+          prod.caratWeight ? `Carat: ${Number(prod.caratWeight)} ct` : null,
+          'As per the catalogue specification.',
+        ]
+          .filter(Boolean)
+          .join('\n');
+    }
+    if (!specification || specification.length < 5) throw badRequest('SPEC_REQUIRED', 'Pick a piece from the catalogue or write the specification.', { specification: 'Required' });
     const year = new Date().getFullYear();
     const po = await this.prisma.$transaction(async (tx) => {
       const n = await this.sequences.next(`po:${year}`, tx);
-      const created = await tx.purchaseOrder.create({ data: { number: formatPoNumber(year, n), manufacturerId: m.id, orderId, specification: dto.specification, quantity: dto.quantity, agreedCostPaise: dto.agreedCostPaise, dueDate: dto.dueDate, notes: dto.notes, createdById: user.id } });
+      const created = await tx.purchaseOrder.create({ data: { number: formatPoNumber(year, n), manufacturerId: m.id, orderId, productId: dto.productId ?? null, size: dto.size ?? null, specification, quantity: dto.quantity, agreedCostPaise: dto.agreedCostPaise, dueDate: dto.dueDate, notes: dto.notes, createdById: user.id } });
       if (orderId) {
         await tx.order.update({ where: { id: orderId }, data: { manufacturerId: m.id } });
         await tx.orderEvent.create({ data: { orderId, actorId: user.id, type: 'ASSIGNED', message: `Purchase order ${created.number} raised with ${m.name}` } });
@@ -404,11 +432,24 @@ export class PurchaseOrdersController {
   @Post(':id/status')
   @HttpCode(200)
   @Requires('PURCHASE_ORDERS', 'edit')
-  async status(@CurrentUser() user: AuthUser, @Param('id') id: string, @Body(new ZodValidationPipe(z.object({ status: z.enum(PO_STATUSES), note: z.string().trim().max(500).optional() }))) dto: { status: (typeof PO_STATUSES)[number]; note?: string }) {
+  async status(
+    @CurrentUser() user: AuthUser,
+    @Param('id') id: string,
+    @Body(new ZodValidationPipe(z.object({ status: z.enum(PO_STATUSES), note: z.string().trim().max(500).optional(), dueDate: z.coerce.date().optional() })))
+    dto: { status: (typeof PO_STATUSES)[number]; note?: string; dueDate?: Date },
+  ) {
     const p = await this.load(user, id);
     if (!PO_NEXT[p.status]!.includes(dto.status)) throw badRequest('INVALID_STEP', `A ${p.status.toLowerCase().replace('_', ' ')} PO cannot move to ${dto.status.toLowerCase().replace('_', ' ')}.`);
-    await this.prisma.purchaseOrder.update({ where: { id }, data: { status: dto.status } });
+    // Accepting confirms (or renegotiates) the deadline — the manufacturer accepts with a date (client doc, 26 Oct).
+    const stamp = dto.status === 'ACCEPTED' ? { stage: 'Receiving PO', stageHistory: [...(Array.isArray(p.stageHistory) ? (p.stageHistory as Prisma.JsonArray) : []), { stage: 'Receiving PO', at: new Date().toISOString(), by: user.name }] } : {};
+    await this.prisma.purchaseOrder.update({ where: { id }, data: { status: dto.status, ...(dto.dueDate && dto.status === 'ACCEPTED' ? { dueDate: dto.dueDate } : {}), ...stamp } });
     await this.audit.record('PurchaseOrder', id, 'STATUS', { status: p.status }, dto);
+    // Head office hears when the manufacturer accepts or finishes.
+    if (user.role === 'MANUFACTURER' && ['ACCEPTED', 'IN_PRODUCTION', 'RECEIVED'].includes(dto.status)) {
+      const admins = await this.prisma.user.findMany({ where: { role: 'SUPER_ADMIN', isActive: true, email: { not: null } }, select: { email: true } });
+      const vars = { number: p.number, manufacturer: p.manufacturer.name, stage: dto.status === 'ACCEPTED' ? `accepted — due ${(dto.dueDate ?? p.dueDate).toLocaleDateString('en-IN')}` : dto.status.toLowerCase().replace('_', ' '), poUrl: `${config().ADMIN_URL}/purchase-orders/${id}` };
+      for (const a of admins) await this.notifications.send({ templateKey: 'PO_STAGE', vars, to: { email: a.email! }, context: { purchaseOrderId: id } });
+    }
     // The customized order's production stage follows its PO.
     const c = p.order?.customRequest;
     const follow: Record<string, [string, string]> = { IN_PRODUCTION: ['PO_RAISED', 'IN_MANUFACTURING'], RECEIVED: ['IN_MANUFACTURING', 'QUALITY_CHECK'] };
@@ -422,6 +463,37 @@ export class PurchaseOrdersController {
       const link = await this.media.resolve((await this.prisma.purchaseOrder.findUniqueOrThrow({ where: { id } })).pdfUrl, 7 * 86400);
       await this.notifications.send({ templateKey: 'PO_SENT', vars: { manufacturer: p.manufacturer.name, number: p.number, dueDate: p.dueDate.toLocaleDateString('en-IN'), pdfUrl: link ?? '' }, to: { email: p.manufacturer.email }, context: { purchaseOrderId: id } });
     }
+    return this.load(user, id);
+  }
+
+  /**
+   * The manufacturer's daily work status (client doc, 26 Oct): Receiving PO → Casting → Filling and Finishing →
+   * Rhodium → Pearl Setting → Metal Hallmark → Ready for Pickup. Head office is emailed on every update.
+   */
+  @Post(':id/stage')
+  @HttpCode(200)
+  @Requires('PURCHASE_ORDERS', 'edit')
+  async stage(
+    @CurrentUser() user: AuthUser,
+    @Param('id') id: string,
+    @Body(new ZodValidationPipe(z.object({ stage: z.enum(PO_STAGES), note: z.string().trim().max(500).optional() }))) dto: { stage: (typeof PO_STAGES)[number]; note?: string },
+  ) {
+    const p = await this.load(user, id);
+    if (!['ACCEPTED', 'IN_PRODUCTION'].includes(p.status)) throw badRequest('NOT_IN_WORK', 'Work stages can be updated once the PO is accepted and until it is received.');
+    const history = Array.isArray(p.stageHistory) ? (p.stageHistory as Prisma.JsonArray) : [];
+    await this.prisma.purchaseOrder.update({
+      where: { id },
+      data: {
+        stage: dto.stage,
+        stageHistory: [...history, { stage: dto.stage, ...(dto.note ? { note: dto.note } : {}), at: new Date().toISOString(), by: user.name }],
+        // The first stage after acceptance moves the PO into production automatically.
+        ...(p.status === 'ACCEPTED' && dto.stage !== 'Receiving PO' ? { status: 'IN_PRODUCTION' } : {}),
+      },
+    });
+    await this.audit.record('PurchaseOrder', id, 'STAGE', { stage: p.stage }, dto);
+    const admins = await this.prisma.user.findMany({ where: { role: 'SUPER_ADMIN', isActive: true, email: { not: null } }, select: { email: true } });
+    const vars = { number: p.number, manufacturer: p.manufacturer.name, stage: dto.stage + (dto.note ? ` — ${dto.note}` : ''), poUrl: `${config().ADMIN_URL}/purchase-orders/${id}` };
+    for (const a of admins) await this.notifications.send({ templateKey: 'PO_STAGE', vars, to: { email: a.email! }, context: { purchaseOrderId: id } });
     return this.load(user, id);
   }
 

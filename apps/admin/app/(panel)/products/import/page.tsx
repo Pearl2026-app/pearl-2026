@@ -73,7 +73,7 @@ export default function ImportPage() {
                 <thead className="bg-surface-muted text-left text-xs uppercase">
                   <tr>
                     <th className="px-3 py-2">Row</th>
-                    <th className="px-3 py-2">SKU</th>
+                    <th className="px-3 py-2">SR code</th>
                     <th className="px-3 py-2">Result</th>
                   </tr>
                 </thead>

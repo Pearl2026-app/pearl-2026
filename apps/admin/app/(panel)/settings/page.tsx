@@ -66,11 +66,12 @@ const GROUPS: Array<{ key: string; title: string; fields: FieldDef[] }> = [
   },
   {
     key: 'stock_alert',
-    title: 'Low-stock alerts',
+    title: 'Low-stock alerts & auto purchase orders',
     fields: [
       { name: 'enabled', label: 'Send low-stock alerts', type: 'switch' },
       { name: 'defaultThreshold', label: 'Alert when stock falls to', type: 'number', hint: 'For pieces sold by quantity; a piece can have its own level.' },
       { name: 'alertEmail', label: 'Also email', hint: 'E.g. the purchase team. Head office, the vendor and the manufacturers always get it.' },
+      { name: 'autoPoBelow', label: 'Raise a draft purchase order below', type: 'number', hint: 'When stock falls below this many, a draft PO is raised automatically with the first manufacturer and head office is emailed. 0 switches it off.' },
     ],
   },
   { key: 'cart_reminder', title: 'Abandoned cart reminder', fields: [{ name: 'enabled', label: 'Send reminders', type: 'switch' }, { name: 'delayMinutes', label: 'Send after (minutes)', type: 'number' }] },
@@ -91,6 +92,16 @@ const GROUPS: Array<{ key: string; title: string; fields: FieldDef[] }> = [
   },
   { key: 'app_links', title: 'App store links (website footer)', fields: [{ name: 'android', label: 'Google Play link' }, { name: 'ios', label: 'App Store link' }] },
   { key: 'seo', title: 'Search engines', fields: [{ name: 'titleSuffix', label: 'Title suffix' }, { name: 'defaultDescription', label: 'Default description', type: 'textarea' }] },
+];
+
+/** The settings pages, each with its own groups — delivery gets a section of its own (client doc, 26 Oct). */
+const SECTIONS: Array<{ id: string; label: string; keys: string[] }> = [
+  { id: 'business', label: 'Business & payments', keys: ['store', 'payments'] },
+  { id: 'delivery', label: 'Delivery', keys: ['delivery', 'delivery_proof'] },
+  { id: 'stock', label: 'Stock & purchase orders', keys: ['stock_alert'] },
+  { id: 'marketing', label: 'Rewards & reminders', keys: ['loyalty', 'referral', 'cart_reminder', 'review_request'] },
+  { id: 'service', label: 'Enquiries & returns', keys: ['enquiry', 'returns'] },
+  { id: 'website', label: 'Website', keys: ['storefront', 'app_links', 'seo'] },
 ];
 
 function Group({ g, initial }: { g: (typeof GROUPS)[number]; initial: Record<string, unknown> }) {
@@ -136,8 +147,23 @@ export default function SettingsPage() {
   return (
     <div className="max-w-4xl">
       <PageHeader title="Settings" description="Business settings take effect immediately. Every change is recorded in the audit log." />
+      <nav aria-label="Settings sections" className="sticky top-0 z-10 mb-4 flex flex-wrap gap-1.5 border-b border-line bg-bg/95 py-2 backdrop-blur">
+        {SECTIONS.map((s) => (
+          <a key={s.id} href={`#${s.id}`} className="rounded-sm border border-line bg-surface px-2.5 py-1 text-xs font-medium hover:border-ink">
+            {s.label}
+          </a>
+        ))}
+      </nav>
       <div className="flex flex-col gap-4">
-        {GROUPS.map((g) => <Group key={g.key} g={g} initial={data?.[g.key]?.value ?? {}} />)}
+        {SECTIONS.map((s) => (
+          <section key={s.id} id={s.id} className="flex scroll-mt-16 flex-col gap-4">
+            <h2 className="mt-2 text-xs font-semibold tracking-wide text-muted uppercase">{s.label}</h2>
+            {s.keys.map((k) => {
+              const g = GROUPS.find((x) => x.key === k)!;
+              return <Group key={g.key} g={g} initial={data?.[g.key]?.value ?? {}} />;
+            })}
+          </section>
+        ))}
         <Card>
           <h2 className="mb-1 font-semibold">Features switched on later</h2>
           <p className="mb-3 text-sm text-muted">These are built into the system and stay off until you are ready. Only a Super Admin can change them.</p>

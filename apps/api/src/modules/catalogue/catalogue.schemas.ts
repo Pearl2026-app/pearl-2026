@@ -74,6 +74,8 @@ const productFields = {
   sizeMm: z.number().min(0).max(1000).optional().nullable(),
   metal: optStr(80),
   certification: optStr(200),
+  netWeight: z.number().min(0).max(100000).optional().nullable(),
+  grossWeight: z.number().min(0).max(100000).optional().nullable(),
   stockType: z.enum(['UNIQUE', 'QUANTITY']).optional(),
   quantity: z.number().int().min(0).max(1_000_000).optional(),
   /** Ring sizes with stock per size; the total quantity is kept as their sum */

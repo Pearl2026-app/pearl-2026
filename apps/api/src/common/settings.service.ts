@@ -50,6 +50,8 @@ export const SETTING_SCHEMAS = {
     defaultThreshold: z.number().int().min(0).max(10_000).default(3),
     /** Extra address that gets every alert, e.g. the purchase team */
     alertEmail: z.string().default(''),
+    /** Raise a draft purchase order automatically when stock falls below this many (0 = off) */
+    autoPoBelow: z.number().int().min(0).max(10_000).default(5),
   }),
   cart_reminder: z.object({ enabled: z.boolean().default(true), delayMinutes: z.number().int().min(5).default(120) }),
   review_request: z.object({ enabled: z.boolean().default(true), delayDays: z.number().int().min(0).default(3) }),

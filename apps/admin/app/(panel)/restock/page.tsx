@@ -49,8 +49,8 @@ export default function RestockPage() {
   return (
     <div>
       <PageHeader
-        title="Restock list"
-        description={`Pieces running low. Alerts go to head office, the vendor and the manufacturers when a piece falls to its alert level (default ${q.data?.defaultThreshold ?? 3}; set per piece on the product page).`}
+        title="Purchase orders — low stock"
+        description={`Pieces running low, ready to turn into purchase orders. Alerts go to head office, the vendor and the manufacturers when a piece falls to its alert level (default ${q.data?.defaultThreshold ?? 3}; set per piece on the product page). Below the auto-PO level in Settings, a draft PO is raised by itself.`}
         actions={
           <>
             <button type="button" onClick={csv} className="inline-flex min-h-9 items-center rounded-sm border border-line bg-surface px-3 text-sm">
@@ -82,6 +82,7 @@ export default function RestockPage() {
               <th className="px-3 py-2 text-right font-normal">Alert at</th>
               <th className="px-3 py-2 text-right font-normal">Sold (30 days)</th>
               <th className="px-3 py-2 text-right font-normal">Make</th>
+              <th className="px-3 py-2" aria-label="Raise a purchase order" />
             </tr>
           </thead>
           <tbody className="divide-y divide-line">
@@ -118,11 +119,21 @@ export default function RestockPage() {
                 <td className="px-3 py-2 text-right">{r.level}</td>
                 <td className="px-3 py-2 text-right">{r.sold30}</td>
                 <td className="px-3 py-2 text-right font-semibold">{r.suggest || '—'}</td>
+                <td className="px-3 py-2 text-right">
+                  {me && me.permissions.PURCHASE_ORDERS?.includes('create') && (
+                    <Link
+                      href={`/purchase-orders/new?productId=${r.id}${r.suggest ? `&qty=${r.suggest}` : ''}`}
+                      className="inline-flex min-h-7 items-center rounded-sm border border-line bg-surface px-2.5 text-xs font-medium whitespace-nowrap hover:border-ink"
+                    >
+                      Raise PO
+                    </Link>
+                  )}
+                </td>
               </tr>
             ))}
             {q.data && !q.data.items.length && (
               <tr>
-                <td colSpan={7} className="px-3 py-6 text-center text-muted">
+                <td colSpan={8} className="px-3 py-6 text-center text-muted">
                   Nothing is running low.
                 </td>
               </tr>

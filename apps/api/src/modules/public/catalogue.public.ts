@@ -276,6 +276,8 @@ export class PublicCatalogueController {
       grade: p.grade,
       sizeMm: p.sizeMm ? Number(p.sizeMm) : null,
       certification: p.certification,
+      netWeight: p.netWeight ? Number(p.netWeight) : null,
+      grossWeight: p.grossWeight ? Number(p.grossWeight) : null,
       certificateCode: p.certificates[0]?.code ?? null,
       videoUrl: p.videoUrl,
       images: p.images.map((i) => ({ url: i.url, variants: i.variants, alt: i.alt ?? p.name, kind: i.kind, width: i.width, height: i.height })),

@@ -82,7 +82,7 @@ function Products() {
             )}
             {can('PRODUCTS', 'edit') && (
               <>
-                <Button variant="secondary" size="sm" loading={bulkBusy} onClick={() => bulk.current?.click()} title="Name each file by SKU, e.g. SP-NE-0001.jpg or SP-NE-0001_2.jpg">
+                <Button variant="secondary" size="sm" loading={bulkBusy} onClick={() => bulk.current?.click()} title="Name each file by SR code, e.g. SP-NE-0001.jpg or SP-NE-0001_2.jpg">
                   Bulk upload images
                 </Button>
                 <input ref={bulk} type="file" accept="image/*" multiple hidden onChange={(e) => e.target.files?.length && uploadBulk(e.target.files)} />
@@ -97,7 +97,7 @@ function Products() {
         }
       />
       <form className="mb-3 flex flex-wrap gap-2" onSubmit={(e) => (e.preventDefault(), set({ q }))}>
-        <Input aria-label="Search by name or SKU" placeholder="Name or SKU" value={q} onChange={(e) => setQ(e.target.value)} className="max-w-xs" />
+        <Input aria-label="Search by name or SR code" placeholder="Name or SR code" value={q} onChange={(e) => setQ(e.target.value)} className="max-w-xs" />
         <Select aria-label="Status" className="max-w-44" value={params.status ?? ''} onChange={(e) => set({ status: e.target.value || undefined })}>
           <option value="">Any status</option>
           {['DRAFT', 'PENDING_APPROVAL', 'PUBLISHED', 'UNPUBLISHED', 'ARCHIVED'].map((s) => (

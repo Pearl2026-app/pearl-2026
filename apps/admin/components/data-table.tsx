@@ -48,6 +48,7 @@ export function DataTable<T extends { id: string }>({
                 )}
               </th>
             ))}
+            {rowHref && <th scope="col" className="px-3 py-2" aria-label="Manage" />}
           </tr>
         </thead>
         <tbody>
@@ -67,6 +68,13 @@ export function DataTable<T extends { id: string }>({
                   </td>
                 );
               })}
+              {rowHref && (
+                <td className="px-3 py-2 text-right align-top">
+                  <Link href={rowHref(r)} className="inline-flex min-h-7 items-center rounded-sm border border-line bg-surface px-2.5 text-xs font-medium whitespace-nowrap hover:border-ink">
+                    Manage
+                  </Link>
+                </td>
+              )}
             </tr>
           ))}
         </tbody>
