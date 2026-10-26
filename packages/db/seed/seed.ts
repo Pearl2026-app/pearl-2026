@@ -1601,6 +1601,17 @@ interface RealPiece {
  * SOLD in the sheet and the few without a price are not imported.
  */
 async function importRealStock() {
+  try {
+    await doImportRealStock();
+  } catch (e) {
+    // The import must never stop the rest of the seed; the error is printed for the server log.
+    console.error('Real stock import failed:', e);
+  }
+}
+
+const num = (v: unknown): number | null => (typeof v === 'number' && Number.isFinite(v) ? v : null);
+
+async function doImportRealStock() {
   const already = await prisma.product.count({ where: { sku: { startsWith: 'SPF-' } } });
   if (already > 0) return;
   copyRealPhotos(STORAGE);
@@ -1623,10 +1634,10 @@ async function importRealStock() {
       b2bPricePaise: p.b2bPricePaise,
       stockType: 'UNIQUE' as const,
       quantity: 1,
-      caratWeight: p.cts != null ? new Prisma.Decimal(p.cts) : null,
-      sizeMm: p.pearlMm != null ? new Prisma.Decimal(p.pearlMm) : null,
-      netWeight: p.netwt != null ? new Prisma.Decimal(p.netwt) : null,
-      grossWeight: p.grwt != null ? new Prisma.Decimal(p.grwt) : null,
+      caratWeight: num(p.cts) != null ? new Prisma.Decimal(num(p.cts)!) : null,
+      sizeMm: num(p.pearlMm) != null ? new Prisma.Decimal(num(p.pearlMm)!) : null,
+      netWeight: num(p.netwt) != null ? new Prisma.Decimal(num(p.netwt)!) : null,
+      grossWeight: num(p.grwt) != null ? new Prisma.Decimal(num(p.grwt)!) : null,
       metal: `${p.purity ?? 92.5} sterling silver`,
       colour: 'White',
     })),
