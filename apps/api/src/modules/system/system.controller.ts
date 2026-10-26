@@ -1,14 +1,17 @@
-import { Controller, Get, Inject, Param, Query, Res } from '@nestjs/common';
+import { Controller, Get, HttpCode, Inject, Param, Post, Query, Res } from '@nestjs/common';
 import { ApiExcludeEndpoint, ApiTags } from '@nestjs/swagger';
 import type { Response } from 'express';
 import { timingSafeEqual } from 'node:crypto';
 import { lookup } from './mime';
 import { config } from '../../config/config';
-import { Public } from '../../common/decorators';
-import { notFound } from '../../common/errors';
+import { runSeedNow } from '../../demo';
+import { Public, Roles } from '../../common/decorators';
+import { badRequest, notFound } from '../../common/errors';
 import { PrismaService } from '../../prisma/prisma.service';
 import { signLocal } from '../../providers/storage';
 import { STORAGE, type StorageProvider } from '../../providers/types';
+
+const STARTED_AT = new Date().toISOString();
 
 @ApiTags('system')
 @Controller()
@@ -21,7 +24,16 @@ export class SystemController {
   @Public()
   @Get('health')
   health() {
-    return { ok: true };
+    return { ok: true, startedAt: STARTED_AT, commit: process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7) ?? null };
+  }
+
+  /** Demo site only: run the sample-data seed now and return everything it printed (Super Admin). */
+  @Post('admin/system/demo-seed')
+  @HttpCode(200)
+  @Roles('SUPER_ADMIN')
+  demoSeed() {
+    if (!config().demoMode) throw badRequest('NOT_DEMO', 'The sample-data seed runs only on the demo site.');
+    return runSeedNow();
   }
 
   @Public()

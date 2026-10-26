@@ -45,6 +45,23 @@ export function drawDemoSamples(): void {
 }
 
 /**
+ * Demo site: run the seed once, synchronously, and hand back everything it printed. For the admin's
+ * "reload sample data" button — the boot seed runs detached, so this is how a person sees what went wrong.
+ */
+export function runSeedNow(): { ok: boolean; output: string } {
+  const c = config();
+  const tsx = join(dbDir, 'node_modules/.bin/tsx');
+  if (!existsSync(tsx)) return { ok: false, output: `${tsx} is missing` };
+  const r = spawnSync(tsx, ['seed/seed.ts'], {
+    cwd: dbDir,
+    env: { ...process.env, SEED_MODE: 'demo', DEMO_MODE: 'true', STORAGE_LOCAL_DIR: c.storageDir },
+    encoding: 'utf8',
+    timeout: 300_000,
+  });
+  return { ok: r.status === 0, output: `${r.stdout ?? ''}\n${r.stderr ?? ''}`.trim().slice(-6000) };
+}
+
+/**
  * Demo site (D66): load the sample data and redraw the sample photos. The seed never overwrites rows,
  * so this runs on every start: the first start fills the empty database, later starts only redraw the
  * photos (the container's disk is wiped on each deploy). A database lock stops two instances seeding at once.
