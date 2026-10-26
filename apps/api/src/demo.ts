@@ -87,6 +87,12 @@ export async function prepareDemo(): Promise<void> {
     );
   } catch (e) {
     log.error(`Sample data could not be loaded: ${(e as Error).message}`);
+    // Leave the error where an admin can see it (Audit log → DemoSeed), since the server log is not always at hand.
+    try {
+      await db.auditLog.create({ data: { entity: 'DemoSeed', action: 'ERROR', after: { message: (e as Error).message.slice(0, 8000) } } });
+    } catch {
+      /* the log row is best-effort */
+    }
   } finally {
     await db.$disconnect();
   }
