@@ -13,6 +13,7 @@ import {
 import { Card, Input, Spinner, StatusBadge } from '@sahyadri/ui';
 import {
   BarChart3,
+  Gem,
   ImagePlus,
   IndianRupee,
   MessageSquare,
@@ -20,6 +21,7 @@ import {
   Plus,
   Reply,
   ShoppingBag,
+  X,
   type LucideIcon,
 } from 'lucide-react';
 import { PageHeader } from './shell';
@@ -57,6 +59,7 @@ const CARDS: Array<{ key: string; label: string; money?: boolean; href: string; 
   { key: 'pendingOrders', label: 'Orders to process', href: '/orders?status=PLACED', tint: '#E3EDF7', ink: '#1F4A73', icon: ShoppingBag },
   { key: 'pendingEnquiries', label: 'Open enquiries', href: '/enquiries', tint: '#FBF0DC', ink: '#7A4C0B', icon: MessageSquare },
   { key: 'outOfStock', label: 'Out of stock or sold', href: '/restock', tint: '#F8E1DF', ink: '#8C1D17', icon: PackageX },
+  { key: 'stockValuePaise', label: 'Stock value (remaining)', money: true, href: '/products', tint: '#EDE9F5', ink: '#4A3B78', icon: Gem },
 ];
 
 /** Shortcuts to the jobs done most often, shown only to people who may do them. */
@@ -96,6 +99,40 @@ function Bars({
         </li>
       ))}
     </ol>
+  );
+}
+
+/** A dismissible alert when pieces are at or below their alert level; dismissed per browser session. */
+function LowStockPopup({ count }: { count: number }) {
+  const [hidden, setHidden] = useState(() => {
+    try {
+      return sessionStorage.getItem('lowStockSeen') === '1';
+    } catch {
+      return false;
+    }
+  });
+  if (!count || hidden) return null;
+  const dismiss = () => {
+    try {
+      sessionStorage.setItem('lowStockSeen', '1');
+    } catch {
+      /* private window */
+    }
+    setHidden(true);
+  };
+  return (
+    <div role="alert" className="mb-4 flex items-center gap-3 rounded-md border border-[#E8C9C5] bg-[#F8E1DF] px-4 py-3 text-sm text-[#8C1D17]">
+      <PackageX size={18} aria-hidden />
+      <span className="flex-1">
+        <strong>{count} {count === 1 ? 'piece is' : 'pieces are'} running low.</strong> Open the purchase orders page to see what to make.
+      </span>
+      <Link href="/restock" className="rounded-sm bg-white/70 px-2.5 py-1 font-medium hover:bg-white">
+        See the list
+      </Link>
+      <button onClick={dismiss} aria-label="Dismiss" className="rounded-sm p-1 hover:bg-white/60">
+        <X size={16} />
+      </button>
+    </div>
   );
 }
 
@@ -148,7 +185,9 @@ export function Dashboard() {
         <Spinner />
       ) : (
         <>
-          <ul className="mb-5 grid grid-cols-2 gap-3 xl:grid-cols-4">
+          {/* Low-stock pop-up (client doc, 26 Oct): shows once per sign-in until dismissed. */}
+          <LowStockPopup count={data.cards.lowStock ?? 0} />
+          <ul className="mb-5 grid grid-cols-2 gap-3 xl:grid-cols-5">
             {CARDS.filter((c) => data.cards[c.key] != null).map((c) => (
               <li key={c.key}>
                 <Link

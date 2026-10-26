@@ -215,6 +215,7 @@ function CustomOrder({ id }: { id: string }) {
           )}
           <Card>
             <h2 className="mb-2 font-semibold">Images and design files</h2>
+            <p className="mb-2 text-xs text-muted">Product photos, the customer’s reference images, AI-generated design previews and CAD files all live here.</p>
             <div className="flex flex-wrap gap-2">
               {c.referenceImages.map((u: string, j: number) => <a key={u} href={u} target="_blank" rel="noreferrer"><img src={u} alt={`Customer reference ${j + 1}`} className="h-24 w-24 rounded-sm border border-line object-cover" /></a>)}
               {c.designFiles.map((u: string, j: number) => <a key={u} href={u} target="_blank" rel="noreferrer" className="flex h-24 w-24 items-center justify-center rounded-sm border border-line text-xs text-accent underline">Design file {j + 1}</a>)}

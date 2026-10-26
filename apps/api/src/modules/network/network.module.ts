@@ -91,6 +91,8 @@ const franchiseBase = {
   phone: phoneE164,
   email: email.optional().nullable(),
   isActive: z.boolean().optional(),
+  /** Uploaded on create via /admin/uploads (client doc, 26 Oct) */
+  logoUrl: z.string().trim().max(500).optional().nullable().or(z.literal('').transform(() => null)),
   showInStoreList: z.boolean().optional(),
   openingHours: optStr(200),
   mapUrl: z.string().trim().url().max(500).optional().nullable().or(z.literal('').transform(() => null)),

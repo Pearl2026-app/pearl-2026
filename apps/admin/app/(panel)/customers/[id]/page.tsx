@@ -26,7 +26,7 @@ export default function CustomerPage() {
       <PageHeader
         title={c.user.name}
         description={<Link href="/customers" className="text-accent hover:underline">← Customers</Link>}
-        actions={can('USERS', 'edit') && <Button size="sm" variant={c.isBlocked ? 'secondary' : 'danger'} onClick={() => window.confirm(c.isBlocked ? 'Unblock this customer?' : 'Block this customer? They will be signed out.') && block.mutate(c.isBlocked ? 'unblock' : 'block')}>{c.isBlocked ? 'Unblock' : 'Block'}</Button>}
+        actions={can('USERS', 'edit') && <Button size="sm" variant={c.isBlocked ? 'secondary' : 'danger'} onClick={() => window.confirm(c.isBlocked ? 'Activate this customer again?' : 'Deactivate this customer? They are signed out and cannot order until activated again.') && block.mutate(c.isBlocked ? 'unblock' : 'block')}>{c.isBlocked ? 'Activate' : 'Deactivate'}</Button>}
       />
       <div className="grid gap-4 md:grid-cols-3">
         <Card>
@@ -35,13 +35,14 @@ export default function CustomerPage() {
             <dt className="text-muted">Email</dt><dd>{c.user.email ?? '—'}</dd>
             <dt className="text-muted">City</dt><dd>{c.city?.name ?? '—'}</dd>
             <dt className="text-muted">Joined</dt><dd>{date(c.createdAt)}</dd>
-            <dt className="text-muted">Status</dt><dd><Badge tone={c.isBlocked ? 'danger' : 'success'}>{c.isBlocked ? 'Blocked' : 'Active'}</Badge></dd>
+            <dt className="text-muted">Status</dt><dd><Badge tone={c.isBlocked ? 'danger' : 'success'}>{c.isBlocked ? 'Deactivated' : 'Active'}</Badge></dd>
           </dl>
         </Card>
         <Card>
           <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
             <dt className="text-muted">Orders</dt><dd>{c.orderCount}</dd>
             <dt className="text-muted">Total spend</dt><dd>{inr(c.totalSpendPaise)}</dd>
+            <dt className="text-muted">Credit points</dt><dd className="font-semibold">{Math.round((c.pointsPaise ?? 0) / 100)} (worth {inr(c.pointsPaise ?? 0)})</dd>
             <dt className="text-muted">Referral code</dt><dd className="font-mono">{c.referralCode}</dd>
             <dt className="text-muted">Referred by</dt><dd>{c.referredBy ? `${c.referredBy.user.name} (${c.referredBy.referralCode})` : '—'}</dd>
             <dt className="text-muted">Referrals</dt><dd>{c._count.referrals}</dd>
@@ -63,6 +64,20 @@ export default function CustomerPage() {
                   <span>{date(o.placedAt)}</span>
                   <StatusBadge status={o.status} />
                   <span>{inr(o.totalPaise)}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Card>
+        <Card>
+          <h2 className="mb-2 font-semibold">Credit points</h2>
+          {!c.pointsLedger?.length ? <p className="text-sm text-muted">No points yet. Points are earned when an order is delivered.</p> : (
+            <ul className="divide-y divide-line text-sm">
+              {c.pointsLedger.map((l: any) => (
+                <li key={l.id} className="flex items-center justify-between gap-2 py-2">
+                  <span>{l.reason}</span>
+                  <span className="text-xs text-muted">{date(l.createdAt)}</span>
+                  <span className={`font-mono ${l.points < 0 ? 'text-danger' : 'text-success'}`}>{l.points > 0 ? '+' : ''}{l.points}</span>
                 </li>
               ))}
             </ul>

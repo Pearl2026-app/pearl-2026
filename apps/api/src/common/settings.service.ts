@@ -53,6 +53,14 @@ export const SETTING_SCHEMAS = {
     /** Raise a draft purchase order automatically when stock falls below this many (0 = off) */
     autoPoBelow: z.number().int().min(0).max(10_000).default(5),
   }),
+  /** Business buyers: every new product gets a business price automatically (client doc, 26 Oct). */
+  b2b: z.object({
+    autoPrice: z.boolean().default(true),
+    /** % off the public price for approved business buyers */
+    discountPercent: z.number().min(0).max(90).default(10),
+    /** Default minimum order quantity for the business price */
+    minQty: z.number().int().min(1).max(1_000_000).default(10),
+  }),
   cart_reminder: z.object({ enabled: z.boolean().default(true), delayMinutes: z.number().int().min(5).default(120) }),
   review_request: z.object({ enabled: z.boolean().default(true), delayDays: z.number().int().min(0).default(3) }),
   delivery_proof: z.object({ otpAbovePaise: z.number().int().nonnegative().default(5_000_000) }),

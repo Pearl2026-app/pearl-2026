@@ -4,6 +4,7 @@ import { verifyPassword } from '@sahyadri/db';
 import { PASSWORD_ROLES, permissionSet, type Role } from '@sahyadri/shared';
 import { pointsBalancePaise } from '../modules/orders/loyalty';
 import { PrismaService } from '../prisma/prisma.service';
+import { JobsService } from '../queue/jobs.service';
 import { AuditService } from '../common/audit.service';
 import { badRequest, forbidden } from '../common/errors';
 import { requestContext } from '../common/context';
@@ -28,6 +29,7 @@ export class AuthService {
     private readonly otp: OtpService,
     private readonly tokens: TokensService,
     private readonly audit: AuditService,
+    private readonly jobs: JobsService,
   ) {}
 
   private meta() {
@@ -72,6 +74,8 @@ export class AuthService {
         }
         return created;
       });
+      // Head office is emailed about every new registration (client doc, 26 Oct).
+      if (user.customer) await this.jobs.add('customer.registered', { customerId: user.customer.id, kind: 'B2C' });
     } else if (!user.customer) {
       // A guest checkout created the user without a customer record, or data was imported.
       await this.prisma.customer.create({ data: { userId: user.id, referralCode: await this.uniqueReferralCode(user.name) } });

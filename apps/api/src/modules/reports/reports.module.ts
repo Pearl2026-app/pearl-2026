@@ -9,6 +9,7 @@ import { CurrentUser, Requires } from '../../common/decorators';
 import { sendCsv, type CsvColumn } from '../../common/csv';
 import { badRequest, notFound } from '../../common/errors';
 import { customerScope, enquiryScope, orderScope, productScope } from '../../common/scope';
+import { SettingsService } from '../../common/settings.service';
 import { PrismaService } from '../../prisma/prisma.service';
 
 const OPEN: Prisma.EnumOrderStatusFilter['in'] = ['PLACED', 'CONFIRMED', 'PACKED', 'ASSIGNED', 'PICKED_UP', 'OUT_FOR_DELIVERY'];
@@ -48,7 +49,10 @@ const enquiriesFor = (u: AuthUser): Prisma.EnquiryWhereInput => (u.role === 'VEN
 @ApiTags('reports')
 @Controller('admin')
 export class ReportsController {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly settings: SettingsService,
+  ) {}
 
   /** One page of numbers, limited to what the signed-in role may see (a City Manager sees their city). */
   @Get('dashboard')
@@ -77,6 +81,20 @@ export class ReportsController {
       this.prisma.order.findMany({ where: o, orderBy: { placedAt: 'desc' }, take: 8, select: { id: true, number: true, placedAt: true, contactName: true, totalPaise: true, status: true, paymentStatus: true, city: { select: { name: true } } } }),
       this.prisma.enquiry.findMany({ where: { AND: [e, { archivedAt: null }] }, orderBy: { createdAt: 'desc' }, take: 8, select: { id: true, reference: true, type: true, stage: true, createdAt: true, contactName: true, source: true, product: { select: { name: true } }, city: { select: { name: true } } } }),
     ]);
+    // Total remaining stock value and the low-stock pop-up (client doc, 26 Oct).
+    const stockRows = await this.prisma.product.findMany({
+      where: { AND: [productScope(user), { archivedAt: null }] },
+      select: { pricePaise: true, quantity: true, stockType: true, soldAt: true, outOfStock: true, lowStockAt: true },
+      take: 20_000,
+    });
+    const threshold = (await this.settings.get('stock_alert')).defaultThreshold;
+    let stockValuePaise = 0;
+    let lowStock = 0;
+    for (const r of stockRows) {
+      const units = r.stockType === 'QUANTITY' ? r.quantity : r.soldAt ? 0 : 1;
+      stockValuePaise += r.pricePaise * units;
+      if (r.stockType === 'QUANTITY' && (r.outOfStock || r.quantity <= (r.lowStockAt ?? threshold))) lowStock++;
+    }
     const months = new Map<string, { month: string; orders: number; salesPaise: number }>();
     // Every month in the range appears, even with no orders.
     let [y, m] = monthKey(from).split('-').map(Number) as [number, number];
@@ -100,6 +118,8 @@ export class ReportsController {
         franchises,
         products,
         outOfStock,
+        stockValuePaise,
+        lowStock,
         pendingOrders: pending,
         completedOrders: completed,
         cancelledOrders: cancelled,

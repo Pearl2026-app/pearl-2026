@@ -1,8 +1,10 @@
-import { Controller, Get, Query } from '@nestjs/common';
+import { Controller, Get, Query, Res } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
+import type { Response } from 'express';
 import { z } from 'zod';
 import type { Prisma } from '@sahyadri/db';
 import type { AuthUser } from '../../common/context';
+import { sendCsv } from '../../common/csv';
 import { CurrentUser, Requires } from '../../common/decorators';
 import { forbidden } from '../../common/errors';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -20,8 +22,8 @@ export class FarmSalesController {
 
   @Get()
   @Requires('REPORTS', 'view')
-  async report(@CurrentUser() user: AuthUser, @Query() raw: Record<string, string>) {
-    const q = z.object({ from: z.coerce.date().optional(), to: z.coerce.date().optional(), farmId: z.string().optional() }).parse(raw);
+  async report(@CurrentUser() user: AuthUser, @Query() raw: Record<string, string>, @Res({ passthrough: true }) res: Response) {
+    const q = z.object({ from: z.coerce.date().optional(), to: z.coerce.date().optional(), farmId: z.string().optional(), format: z.enum(['json', 'csv']).optional() }).parse(raw);
     if (!['SUPER_ADMIN', 'STAFF', 'FARMER'].includes(user.role)) throw forbidden('Farm sales are for head office and farm partners.');
     const farmId = user.role === 'FARMER' ? (user.farmId ?? '__none__') : q.farmId;
     const to = q.to ?? new Date();
@@ -54,6 +56,19 @@ export class FarmSalesController {
       pr.pieces += i.quantity;
       pr.salesPaise += i.lineTotalPaise;
       products.set(i.product.id, pr);
+    }
+    // One farm (or all) downloads as a spreadsheet, piece by piece (client doc, 26 Oct).
+    if (q.format === 'csv') {
+      const rows = [...products.values()].sort((a, b) => b.salesPaise - a.salesPaise);
+      sendCsv(res, `farm-sales-${from.toISOString().slice(0, 10)}-to-${to.toISOString().slice(0, 10)}.csv`, rows, [
+        { header: 'Farm', value: (r) => r.farm },
+        { header: 'Piece', value: (r) => r.name },
+        { header: 'SR code', value: (r) => r.sku },
+        { header: 'Carat', value: (r) => r.carat ?? '' },
+        { header: 'Pieces sold', value: (r) => r.pieces },
+        { header: 'Sales (₹)', value: (r) => r.salesPaise / 100 },
+      ]);
+      return;
     }
     // Farms with no sales in the period still appear, so the list is complete.
     const all = await this.prisma.farm.findMany({ where: { archivedAt: null, ...(farmId ? { id: farmId } : {}) }, select: { id: true, name: true, _count: { select: { products: { where: { archivedAt: null } } } } } });

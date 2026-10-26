@@ -24,6 +24,7 @@ export function Footer({ site }: { site: Site }) {
     { href: '/visit-us', label: 'Visit us' },
     { href: '/verify', label: 'Verify a certificate' },
     { href: '/bulk-buying', label: 'Bulk & corporate gifting' },
+    { href: '/business', label: 'Business buyers (B2B)' },
   ];
   return (
     <footer className="mt-24 border-t border-line bg-surface-muted">

@@ -6,6 +6,7 @@ import type { AuthUser } from '../../common/context';
 import { CurrentUser, Requires, Roles } from '../../common/decorators';
 import { badRequest, forbidden, notFound } from '../../common/errors';
 import { PrismaService } from '../../prisma/prisma.service';
+import { JobsService } from '../../queue/jobs.service';
 import { CARD_SELECT, toCard } from '../public/catalogue.public';
 
 const gstin = z
@@ -25,6 +26,7 @@ export class BusinessAccountController {
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
+    private readonly jobs: JobsService,
   ) {}
 
   private cid(user: AuthUser) {
@@ -54,6 +56,8 @@ export class BusinessAccountController {
       data: { b2bStatus: 'PENDING', businessName: d.businessName, businessGstin: d.gstin, b2bNote: d.note ?? null, b2bAppliedAt: new Date() },
     });
     await this.audit.record('Customer', this.cid(user), 'B2B_APPLY', undefined, { businessName: d.businessName });
+    // Head office is emailed about every business application (client doc, 26 Oct).
+    await this.jobs.add('customer.registered', { customerId: this.cid(user), kind: 'B2B' });
     return { ok: true };
   }
 

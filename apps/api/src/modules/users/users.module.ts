@@ -1,4 +1,4 @@
-import { Body, Controller, Get, HttpCode, Module, Param, Patch, Post, Put, Query, Res } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, Injectable, Module, OnModuleInit, Param, Patch, Post, Put, Query, Res } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import type { Response } from 'express';
 import { ZodValidationPipe } from 'nestjs-zod';
@@ -12,6 +12,10 @@ import { sendCsv } from '../../common/csv';
 import { badRequest, notFound } from '../../common/errors';
 import { listQuery, orderBy, paginate } from '../../common/list';
 import { customerScope } from '../../common/scope';
+import { pointsBalancePaise } from '../orders/loyalty';
+import { config } from '../../config/config';
+import { JobsService } from '../../queue/jobs.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { TokensService } from '../../auth/tokens.service';
 import { AuthModule } from '../../auth/auth.module';
@@ -306,7 +310,12 @@ class CustomersController {
     });
     if (!c) throw notFound('Customer');
     const s = await this.spend([c.id]);
-    return { ...c, orderCount: s.get(c.id)?.orders ?? 0, totalSpendPaise: s.get(c.id)?.spend ?? 0 };
+    // Credit points: the live balance and the last entries, shown on the customer page (client doc, 26 Oct).
+    const [points, ledger] = await Promise.all([
+      pointsBalancePaise(this.prisma, c.id),
+      this.prisma.loyaltyLedger.findMany({ where: { customerId: c.id }, orderBy: { createdAt: 'desc' }, take: 20, select: { id: true, points: true, reason: true, orderId: true, createdAt: true } }),
+    ]);
+    return { ...c, orderCount: s.get(c.id)?.orders ?? 0, totalSpendPaise: s.get(c.id)?.spend ?? 0, pointsPaise: points, pointsLedger: ledger };
   }
 
   @Post(':id/:action')
@@ -323,5 +332,33 @@ class CustomersController {
   }
 }
 
-@Module({ imports: [AuthModule], controllers: [UsersController, CustomersController] })
+/** Head office is emailed about every new registration — customer or business buyer (client doc, 26 Oct). */
+@Injectable()
+class RegistrationAlerts implements OnModuleInit {
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly jobs: JobsService,
+    private readonly notifications: NotificationsService,
+  ) {}
+
+  onModuleInit(): void {
+    this.jobs.register('customer.registered', (d: { customerId: string; kind: 'B2C' | 'B2B' }) => this.alert(d));
+  }
+
+  private async alert(d: { customerId: string; kind: 'B2C' | 'B2B' }) {
+    const c = await this.prisma.customer.findUnique({ where: { id: d.customerId }, select: { id: true, businessName: true, user: { select: { name: true, phone: true, email: true } } } });
+    if (!c) return;
+    const admins = await this.prisma.user.findMany({ where: { role: 'SUPER_ADMIN', isActive: true, email: { not: null } }, select: { email: true } });
+    const vars = {
+      kind: d.kind === 'B2B' ? `business buyer (B2B)${c.businessName ? ` — ${c.businessName}` : ''}` : 'customer',
+      name: c.user.name,
+      phone: c.user.phone,
+      emailLine: c.user.email ? `, ${c.user.email}` : '',
+      customerUrl: `${config().ADMIN_URL}/${d.kind === 'B2B' ? 'business-buyers' : `customers/${c.id}`}`,
+    };
+    for (const a of admins) await this.notifications.send({ templateKey: 'NEW_CUSTOMER', vars, to: { email: a.email! }, context: { customerId: c.id } });
+  }
+}
+
+@Module({ imports: [AuthModule], controllers: [UsersController, CustomersController], providers: [RegistrationAlerts] })
 export class UsersModule {}

@@ -169,12 +169,16 @@ export function Shell({ children }: { children: ReactNode }) {
       )}
       <div className="flex min-h-screen">
         <aside className="sticky top-0 hidden h-screen w-60 shrink-0 overflow-y-auto border-r border-line bg-surface lg:block">
-          <div className="border-b border-line px-4 py-4">
-            <p className="font-serif text-xl font-semibold text-accent">Sahyadri Pearls</p>
-            <p className="text-xs text-muted">
-              {ROLE_LABEL[me.role]}
-              {scope ? ` · ${scope}` : ''}
-            </p>
+          <div className="flex items-center gap-3 border-b border-line px-4 py-4">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/admin/logo.svg" alt="" width={36} height={36} className="rounded-md" />
+            <div>
+              <p className="font-serif text-xl font-semibold text-accent">Sahyadri Pearls</p>
+              <p className="text-xs text-muted">
+                {ROLE_LABEL[me.role]}
+                {scope ? ` · ${scope}` : ''}
+              </p>
+            </div>
           </div>
           {nav}
         </aside>
@@ -197,7 +201,11 @@ export function Shell({ children }: { children: ReactNode }) {
             >
               <Menu size={20} />
             </button>
-            <span className="font-serif text-lg text-accent lg:hidden">Sahyadri Pearls</span>
+            <span className="flex items-center gap-2 font-serif text-lg text-accent lg:hidden">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/admin/logo.svg" alt="" width={24} height={24} className="rounded-sm" />
+              Sahyadri Pearls
+            </span>
             <div className="ml-auto flex items-center gap-3 text-sm">
               <span className="hidden text-muted sm:inline">{me.name}</span>
               <Button variant="secondary" size="sm" onClick={logout}>

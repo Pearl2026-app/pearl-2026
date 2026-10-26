@@ -1,7 +1,8 @@
 'use client';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Alert, Card, Input } from '@sahyadri/ui';
+import { Alert, Card, Input, Select } from '@sahyadri/ui';
+import { useRefOptions } from '@/components/fields';
 import { PageHeader } from '@/components/shell';
 import { api, errorText } from '@/lib/api';
 import { inr } from '@/lib/format';
@@ -21,9 +22,12 @@ export default function FarmSalesPage() {
   const { data: me } = useMe();
   const [from, setFrom] = useState(day(new Date(Date.now() - 30 * 864e5)));
   const [to, setTo] = useState(day(new Date()));
+  const [farmId, setFarmId] = useState('');
+  const farms = useRefOptions(me && me.role !== 'FARMER' ? { path: '/admin/farms' } : undefined);
+  const qsBase = `from=${from}&to=${to}T23:59:59${farmId ? `&farmId=${farmId}` : ''}`;
   const q = useQuery({
-    queryKey: ['/admin/farm-sales', from, to],
-    queryFn: () => api<Report>(`/admin/farm-sales?from=${from}&to=${to}T23:59:59`),
+    queryKey: ['/admin/farm-sales', from, to, farmId],
+    queryFn: () => api<Report>(`/admin/farm-sales?${qsBase}`),
   });
   const total = q.data?.farms.reduce((s, f) => s + f.salesPaise, 0) ?? 0;
   const max = Math.max(1, ...(q.data?.farms.map((f) => f.salesPaise) ?? [1]));
@@ -31,7 +35,12 @@ export default function FarmSalesPage() {
     <div className="max-w-5xl">
       <PageHeader
         title={me?.role === 'FARMER' ? 'Your farm’s sales' : 'Farm sales'}
-        description={me?.role === 'FARMER' ? 'Pieces made with your pearls and how they sold.' : 'How much of each farm’s pearls sold. Each farm partner can sign in and see its own figures.'}
+        description={me?.role === 'FARMER' ? 'Pieces made with your pearls and how they sold.' : 'How much of each farm’s pearls sold. Each farm partner can sign in and see its own figures. Pick one farm for its individual report.'}
+        actions={
+          <a className="inline-flex min-h-9 items-center rounded-sm border border-line bg-surface px-3 text-sm hover:border-ink" href={`/api/v1/admin/farm-sales?${qsBase}&format=csv`}>
+            Download for Excel
+          </a>
+        }
       />
       <div className="mb-4 flex flex-wrap items-center gap-2 text-sm">
         <label className="flex items-center gap-2">
@@ -40,6 +49,16 @@ export default function FarmSalesPage() {
         <label className="flex items-center gap-2">
           to <Input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="w-auto" />
         </label>
+        {me && me.role !== 'FARMER' && (
+          <Select aria-label="Farm" className="max-w-56" value={farmId} onChange={(e) => setFarmId(e.target.value)}>
+            <option value="">All farms</option>
+            {farms.data?.items.map((f) => (
+              <option key={String(f.id)} value={String(f.id)}>
+                {String(f.name)}
+              </option>
+            ))}
+          </Select>
+        )}
       </div>
       {q.isError && <Alert tone="danger">{errorText(q.error)}</Alert>}
       {q.data && (

@@ -5,6 +5,7 @@ import { AuditService } from '../../common/audit.service';
 import type { AuthUser } from '../../common/context';
 import { badRequest, forbidden, notFound } from '../../common/errors';
 import { productScope } from '../../common/scope';
+import { SettingsService } from '../../common/settings.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { MediaService, type IncomingFile } from '../media/media.service';
 import { ADMIN_ONLY_FIELDS, COST_FIELDS, VENDOR_DIRECT_FIELDS, type ProductInput } from './catalogue.schemas';
@@ -35,6 +36,7 @@ export class ProductsService {
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
     private readonly media: MediaService,
+    private readonly settings: SettingsService,
   ) {}
 
   async find(user: AuthUser, id: string) {
@@ -84,6 +86,14 @@ export class ProductsService {
     if (isVendor) for (const f of ADMIN_ONLY_FIELDS) delete (input as Record<string, unknown>)[f];
     const data = this.toData(input) as Prisma.ProductUncheckedCreateInput;
     data.slug = await this.uniqueSlug(input.slug ?? input.name);
+    // Every new piece gets a business (B2B) price automatically, unless one was typed (client doc, 26 Oct).
+    if (input.b2bPricePaise == null && typeof data.pricePaise === 'number' && data.pricePaise > 0) {
+      const b2b = await this.settings.get('b2b');
+      if (b2b.autoPrice && b2b.discountPercent > 0) {
+        data.b2bPricePaise = Math.max(1, Math.round((data.pricePaise * (100 - b2b.discountPercent)) / 100 / 100) * 100);
+        if (input.b2bMinQty == null) data.b2bMinQty = b2b.minQty;
+      }
+    }
     if (isVendor) {
       data.vendorId = user.vendorId;
       data.status = 'PENDING_APPROVAL';

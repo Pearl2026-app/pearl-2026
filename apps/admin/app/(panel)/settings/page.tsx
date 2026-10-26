@@ -74,6 +74,15 @@ const GROUPS: Array<{ key: string; title: string; fields: FieldDef[] }> = [
       { name: 'autoPoBelow', label: 'Raise a draft purchase order below', type: 'number', hint: 'When stock falls below this many, a draft PO is raised automatically with the first manufacturer and head office is emailed. 0 switches it off.' },
     ],
   },
+  {
+    key: 'b2b',
+    title: 'Business buyers (B2B)',
+    fields: [
+      { name: 'autoPrice', label: 'Give every new product a business price automatically', type: 'switch' },
+      { name: 'discountPercent', label: 'Business discount (% off the public price)', type: 'number', hint: 'Used when a product is created without its own business price; it can be changed per piece.' },
+      { name: 'minQty', label: 'Default minimum order quantity', type: 'number' },
+    ],
+  },
   { key: 'cart_reminder', title: 'Abandoned cart reminder', fields: [{ name: 'enabled', label: 'Send reminders', type: 'switch' }, { name: 'delayMinutes', label: 'Send after (minutes)', type: 'number' }] },
   { key: 'review_request', title: 'Review requests', fields: [{ name: 'enabled', label: 'Ask for reviews after delivery', type: 'switch' }, { name: 'delayDays', label: 'Days after delivery', type: 'number' }] },
   { key: 'delivery_proof', title: 'Proof of delivery', fields: [{ name: 'otpAbovePaise', label: 'Require customer OTP for orders at or above', type: 'money' }] },
@@ -99,6 +108,7 @@ const SECTIONS: Array<{ id: string; label: string; keys: string[] }> = [
   { id: 'business', label: 'Business & payments', keys: ['store', 'payments'] },
   { id: 'delivery', label: 'Delivery', keys: ['delivery', 'delivery_proof'] },
   { id: 'stock', label: 'Stock & purchase orders', keys: ['stock_alert'] },
+  { id: 'b2b', label: 'Business buyers', keys: ['b2b'] },
   { id: 'marketing', label: 'Rewards & reminders', keys: ['loyalty', 'referral', 'cart_reminder', 'review_request'] },
   { id: 'service', label: 'Enquiries & returns', keys: ['enquiry', 'returns'] },
   { id: 'website', label: 'Website', keys: ['storefront', 'app_links', 'seo'] },

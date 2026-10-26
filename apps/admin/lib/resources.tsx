@@ -100,6 +100,7 @@ export const RESOURCES: Record<string, ResourceDef> = {
       { name: 'contactName', label: 'Contact person' },
       { name: 'phone', label: 'Phone', required: true },
       { name: 'email', label: 'Email' },
+      { name: 'logoUrl', label: 'Franchise logo', type: 'image', hint: 'Shown on the franchise’s panel. Square works best.' },
       { name: 'cityIds', label: 'Other cities served', type: 'refMulti', ref: cityRef, read: cityIdsOf },
       { name: 'showInStoreList', label: 'Show on the website’s “Visit us” page', type: 'switch', hint: 'Publishes the name, area, address, phone and hours. Customers can also book store visits here.' },
       { name: 'openingHours', label: 'Opening hours', hint: 'e.g. Mon–Sat, 11 am – 8 pm' },
