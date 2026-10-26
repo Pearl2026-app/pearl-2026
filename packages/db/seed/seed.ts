@@ -11,7 +11,8 @@ import { PrismaClient, Prisma } from '@prisma/client';
 import { pickNearestVendor } from '@sahyadri/shared';
 import { hashPassword } from '../src/password';
 import { productSvg, sceneSvg } from './art';
-import { photo, SAMPLE_BANNER_ART, SAMPLE_PHOTOS, SAMPLE_PRODUCTS, sampleSlug } from './samples';
+import { copyRealPhotos, photo, SAMPLE_BANNER_ART, SAMPLE_PHOTOS, SAMPLE_PRODUCTS, sampleSlug } from './samples';
+import realStock from './real-stock.json';
 
 const prisma = new PrismaClient();
 const PASSWORD = process.env.SEED_PASSWORD ?? 'Sahyadri@2026';
@@ -1553,6 +1554,8 @@ async function partnerLogins(swastikFarmId: string) {
     await prisma.product.update({ where: { id: ring.id }, data: { sizes: spread, quantity: spread.reduce((a, b) => a + b.quantity, 0) } });
   }
 
+  await importRealStock();
+
   // One rider application waiting for approval (documents are not included in the sample).
   const pune = await prisma.city.findFirst({ where: { slug: 'pune' } });
   if (pune && !(await prisma.deliveryPartner.findUnique({ where: { phone: '+919800000035' } })))
@@ -1571,6 +1574,72 @@ async function partnerLogins(swastikFarmId: string) {
         cities: { create: [{ cityId: pune.id }] },
       },
     });
+}
+
+interface RealPiece {
+  sku: string;
+  name: string;
+  slug: string;
+  category: string;
+  design: string | null;
+  pearlMm: number | null;
+  cts: number | null;
+  grwt: number | null;
+  netwt: number | null;
+  purity: number | null;
+  pcs: number | null;
+  costPaise: number;
+  pricePaise: number;
+  b2bPricePaise: number;
+  image: string | null;
+}
+
+/**
+ * The real stock list (Pyramid Jewellery LLP spreadsheet, 26 Oct): 646 available pieces imported once, each a unique
+ * physical piece with its SR code as the SKU and its design photo from the spreadsheet. Prices are the manufacturer
+ * cost (incl. 3% GST) plus a 35% margin, rounded up to ₹10 — change any piece's price in the admin. Pieces marked
+ * SOLD in the sheet and the few without a price are not imported.
+ */
+async function importRealStock() {
+  const already = await prisma.product.count({ where: { sku: { startsWith: 'SPF-' } } });
+  if (already > 0) return;
+  copyRealPhotos(STORAGE);
+  const cats = new Map(
+    (await prisma.category.findMany({ where: { slug: { in: ['rings', 'earrings', 'necklaces', 'pendants'] } }, select: { id: true, slug: true } })).map((c) => [c.slug, c.id]),
+  );
+  const pieces = (realStock as RealPiece[]).filter((p) => cats.has(p.category));
+  const now = new Date();
+  await prisma.product.createMany({
+    skipDuplicates: true,
+    data: pieces.map((p) => ({
+      sku: p.sku,
+      name: p.name,
+      slug: p.slug,
+      description: `From our ready stock register (${p.sku.replace('SPF-', '')}${p.design ? `, design ${p.design}` : ''}). 92.5 sterling silver with a cultured pearl${p.pearlMm ? ` of ${p.pearlMm} mm` : ''}.`,
+      status: 'PUBLISHED' as const,
+      publishedAt: now,
+      categoryId: cats.get(p.category)!,
+      pricePaise: p.pricePaise,
+      b2bPricePaise: p.b2bPricePaise,
+      stockType: 'UNIQUE' as const,
+      quantity: 1,
+      caratWeight: p.cts != null ? new Prisma.Decimal(p.cts) : null,
+      sizeMm: p.pearlMm != null ? new Prisma.Decimal(p.pearlMm) : null,
+      netWeight: p.netwt != null ? new Prisma.Decimal(p.netwt) : null,
+      grossWeight: p.grwt != null ? new Prisma.Decimal(p.grwt) : null,
+      metal: `${p.purity ?? 92.5} sterling silver`,
+      colour: 'White',
+    })),
+  });
+  const created = await prisma.product.findMany({ where: { sku: { startsWith: 'SPF-' } }, select: { id: true, sku: true } });
+  const bySku = new Map(created.map((c) => [c.sku, c.id]));
+  await prisma.productImage.createMany({
+    skipDuplicates: true,
+    data: pieces
+      .filter((p) => p.image && bySku.has(p.sku))
+      .map((p) => ({ productId: bySku.get(p.sku)!, url: `/media/real/${p.image}`, kind: 'MAIN' as const, alt: p.name, sortOrder: 0 })),
+  });
+  console.log(`Imported ${created.length} pieces from the real stock list (photos in /media/real).`);
 }
 
 async function findOrCreate<T>(find: () => Promise<T | null>, create: () => Promise<T>): Promise<T> {

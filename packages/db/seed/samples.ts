@@ -1,7 +1,27 @@
 // The sample catalogue, shared by the seed (database rows) and draw-samples (the artwork files).
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { copyFileSync, mkdirSync, readdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { productSvg, sceneSvg } from './art';
+
+/**
+ * The real stock list's design photos (extracted from the client's spreadsheet, 26 Oct) ship with the repo in
+ * seed/media and are copied to the instance's disk on every start, like the drawn samples, so they survive deploys.
+ */
+export function copyRealPhotos(storageDir: string): number {
+  const src = join(__dirname, 'media');
+  const dest = join(storageDir, 'public', 'real');
+  let n = 0;
+  try {
+    mkdirSync(dest, { recursive: true });
+    for (const f of readdirSync(src)) {
+      copyFileSync(join(src, f), join(dest, f));
+      n++;
+    }
+  } catch {
+    /* no bundled photos in this checkout */
+  }
+  return n;
+}
 
 export type SampleProduct = [
   name: string,
