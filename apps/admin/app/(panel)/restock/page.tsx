@@ -50,7 +50,7 @@ export default function RestockPage() {
     <div>
       <PageHeader
         title="Purchase orders — low stock"
-        description={`Pieces running low, ready to turn into purchase orders. Alerts go to head office, the vendor and the manufacturers when a piece falls to its alert level (default ${q.data?.defaultThreshold ?? 3}; set per piece on the product page). Below the auto-PO level in Settings, a draft PO is raised by itself.`}
+        description={`Pieces running low — one tap turns them into purchase orders. Alert level ${q.data?.defaultThreshold ?? 3} by default; below the auto-PO level a draft PO raises itself.`}
         actions={
           <>
             <button type="button" onClick={csv} className="inline-flex min-h-9 items-center rounded-sm border border-line bg-surface px-3 text-sm">

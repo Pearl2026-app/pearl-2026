@@ -18,8 +18,8 @@
   --color-danger: #b3261e;
   --color-info: #2b5c8a;
 
-  --font-serif: 'Bodoni Moda', Didot, 'Bodoni 72', Georgia, serif;
-  --font-sans: Jost, Futura, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-serif: var(--font-poppins, Poppins), system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-sans: var(--font-poppins, Poppins), system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
 
   --radius-sm: 2px;
   --radius-md: 4px;

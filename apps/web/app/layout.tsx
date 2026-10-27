@@ -13,18 +13,21 @@ import type { Site } from '@/lib/types';
 import './globals.css';
 
 // Fonts ship with the site (open licence, from Fontsource): no request to Google at build or run time.
-// Bodoni Moda (display): a high-contrast Didone with an optical-size axis, so small names stay crisp.
-// Jost (text): a clean geometric sans in the Futura line.
-const serif = localFont({
+// Poppins everywhere (client request, 27 Oct): geometric, friendly and consistent across web and admin.
+const poppins = localFont({
   src: [
-    { path: '../node_modules/@fontsource-variable/bodoni-moda/files/bodoni-moda-latin-standard-normal.woff2', style: 'normal' },
-    { path: '../node_modules/@fontsource-variable/bodoni-moda/files/bodoni-moda-latin-standard-italic.woff2', style: 'italic' },
+    { path: '../node_modules/@fontsource/poppins/files/poppins-latin-300-normal.woff2', weight: '300', style: 'normal' },
+    { path: '../node_modules/@fontsource/poppins/files/poppins-latin-400-normal.woff2', weight: '400', style: 'normal' },
+    { path: '../node_modules/@fontsource/poppins/files/poppins-latin-400-italic.woff2', weight: '400', style: 'italic' },
+    { path: '../node_modules/@fontsource/poppins/files/poppins-latin-500-normal.woff2', weight: '500', style: 'normal' },
+    { path: '../node_modules/@fontsource/poppins/files/poppins-latin-600-normal.woff2', weight: '600', style: 'normal' },
+    { path: '../node_modules/@fontsource/poppins/files/poppins-latin-700-normal.woff2', weight: '700', style: 'normal' },
   ],
-  weight: '400 900',
-  variable: '--font-display',
+  variable: '--font-poppins',
   display: 'swap',
 });
-const sans = localFont({ src: '../node_modules/@fontsource-variable/jost/files/jost-latin-wght-normal.woff2', weight: '100 900', variable: '--font-text', display: 'swap' });
+const serif = poppins;
+const sans = poppins;
 
 export const dynamic = 'force-dynamic';
 

@@ -16,8 +16,11 @@
   --color-accent-soft: #e6e8e9;
   --color-gold: #8c877f;
   --color-orient: #e2e3e1;
-  --font-serif: var(--font-display), Didot, 'Bodoni 72', Georgia, serif;
-  --font-sans: var(--font-text), Futura, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-serif: var(--font-poppins), Poppins, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-sans: var(--font-poppins), Poppins, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  /* Slightly rounded controls: friendlier without losing the quiet, premium line. */
+  --radius-sm: 0.375rem;
+  --radius-md: 0.625rem;
 }
 
 html {
@@ -37,16 +40,16 @@ body {
     font-size: 17px;
   }
 }
-/* Bodoni at display sizes: regular weight, slightly tightened, optical sizing on. */
+/* Headings in Poppins: medium weight, slightly tightened, so they read clean rather than heavy. */
 .font-serif {
-  font-weight: 400;
-  font-optical-sizing: auto;
-  letter-spacing: -0.01em;
+  font-weight: 500;
+  letter-spacing: -0.015em;
 }
 h1.font-serif,
 h2.font-serif {
+  font-weight: 600;
   letter-spacing: -0.02em;
-  line-height: 1.08;
+  line-height: 1.15;
 }
 /* Wayfinding voice (nav, buttons, footer headings): small, spaced capitals — the jewellery-house convention. */
 .lux-track {
@@ -74,12 +77,12 @@ h2.font-serif {
   transform: translateY(-0.45em);
 }
 
-/* A quiet line above a heading: sentence case, set in the display italic. */
+/* A quiet line above a heading: small spaced capitals in the wayfinding voice. */
 .eyebrow {
-  font-family: var(--font-serif);
-  font-style: italic;
-  font-size: 1rem;
-  letter-spacing: 0;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
   color: var(--color-gold);
 }
 /* The lustre wash behind pearl imagery: soft silver orient fading into mist. */

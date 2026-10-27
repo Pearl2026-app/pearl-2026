@@ -2,11 +2,24 @@
 @import '@sahyadri/ui/theme.css';
 @source '../../../packages/ui/src';
 
+@theme {
+  --font-sans: var(--font-poppins), Poppins, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-serif: var(--font-poppins), Poppins, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  /* Softer corners across buttons, inputs, cards and tables. */
+  --radius-sm: 0.5rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 1rem;
+}
+
 html {
   background: var(--color-bg);
   color: var(--color-ink);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
+}
+/* Headings carry the weight; body text stays regular so pages feel lighter. */
+h1, h2, h3 {
+  letter-spacing: -0.015em;
 }
 body {
   min-height: 100vh;

@@ -36,7 +36,7 @@ function Reports() {
     <div>
       <PageHeader
         title="Reports"
-        description="Each tab is one ready-made report built live from orders, enquiries and invoices — nothing to set up. They cover the last 30 days unless you choose dates, respect your role (a city manager sees only their city), and every one downloads as a spreadsheet (CSV) for Excel. Farm-wise sales have their own page under Reports → Farm sales."
+        description="Ready-made, always live. Last 30 days unless you pick dates; every report downloads for Excel."
         actions={<a className="inline-flex min-h-9 items-center rounded-sm border border-line bg-surface px-3 text-sm" href={`/api/v1/admin/reports/${kind.key}${qs({ ...range, format: 'csv' })}`}>Download CSV</a>}
       />
       <div className="mb-3 flex flex-wrap gap-1 text-sm" role="tablist">

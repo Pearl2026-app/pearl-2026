@@ -240,7 +240,7 @@ export function PageHeader({
         <IconTile href={pathname} size="lg" />
         <div>
           <h1 className="text-2xl font-semibold text-ink">{title}</h1>
-          {description && <p className="mt-1 max-w-3xl text-sm text-muted">{description}</p>}
+          {description && <p className="mt-1 line-clamp-2 max-w-2xl text-xs leading-5 text-muted">{description}</p>}
         </div>
       </div>
       {actions && <div className="flex flex-wrap gap-2">{actions}</div>}
