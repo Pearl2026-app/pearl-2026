@@ -29,4 +29,36 @@ export_app() { # name, package folder, fallback page
 
 export_app customer mobile-customer /
 export_app delivery mobile-delivery /admin/delivery
+
+# The rider app goes live as an installable app (PWA): riders open /apps/delivery on their phone and
+# "Add to Home Screen" — full screen, own icon, camera and GPS included. (Client request, 27 Oct.)
+make_installable() { # name, app title, short name, theme colour
+  local name=$1 title=$2 short=$3 colour=$4
+  [ -f "$OUT/$name/index.html" ] || return 0
+  grep -q 'rel="manifest"' "$OUT/$name/index.html" && return 0
+  cp "apps/mobile-$name/assets/icon.png" "$OUT/$name/app-icon.png" 2>/dev/null || return 0
+  cat > "$OUT/$name/manifest.json" <<EOF
+{
+  "name": "$title",
+  "short_name": "$short",
+  "start_url": "/apps/$name/",
+  "scope": "/apps/$name/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "$colour",
+  "theme_color": "$colour",
+  "icons": [{ "src": "/apps/$name/app-icon.png", "sizes": "1024x1024", "type": "image/png", "purpose": "any" }]
+}
+EOF
+  cat > "$OUT/$name/sw.js" <<'EOF'
+// Minimal service worker: makes the app installable; the network stays the source of truth.
+self.addEventListener('install', () => self.skipWaiting());
+self.addEventListener('activate', (e) => e.waitUntil(self.clients.claim()));
+self.addEventListener('fetch', (e) => e.respondWith(fetch(e.request)));
+EOF
+  sed -i "s#</head>#<link rel=\"manifest\" href=\"/apps/$name/manifest.json\"/><meta name=\"theme-color\" content=\"$colour\"/><link rel=\"apple-touch-icon\" href=\"/apps/$name/app-icon.png\"/><meta name=\"apple-mobile-web-app-capable\" content=\"yes\"/><script>if('serviceWorker' in navigator)navigator.serviceWorker.register('/apps/$name/sw.js',{scope:'/apps/$name/'});</script></head>#" "$OUT/$name/index.html"
+  echo "Made the $name app installable (PWA)."
+}
+make_installable delivery 'Sahyadri Pearls Delivery' 'SP Delivery' '#1F4E52'
+make_installable customer 'Sahyadri Pearls' 'Sahyadri' '#111111'
 exit 0
