@@ -89,7 +89,11 @@ export function toCard(p: CardRow) {
   };
 }
 
-/** Products the public may see in a city: published, not archived, and sold in that city (no city rows = everywhere). */
+/**
+ * Products the public may see in a city: published, not archived, and available to that address (client, 27 Oct) —
+ * shown in that city by hand, own stock sold everywhere, or a piece whose vendor serves that city. A vendor's
+ * pieces never appear outside the vendor's cities (unless "Where to display" says otherwise by hand).
+ */
 export function publicWhere(cityId?: string | null): Prisma.ProductWhereInput {
   return {
     status: 'PUBLISHED',
@@ -97,7 +101,15 @@ export function publicWhere(cityId?: string | null): Prisma.ProductWhereInput {
     // Business-only pieces are shown to approved business buyers in their account, not in the public store.
     b2bOnly: false,
     category: { isActive: true, archivedAt: null },
-    ...(cityId ? { OR: [{ cities: { none: {} } }, { cities: { some: { cityId } } }] } : {}),
+    ...(cityId
+      ? {
+          OR: [
+            { cities: { some: { cityId } } },
+            { cities: { none: {} }, vendorId: null },
+            { cities: { none: {} }, vendor: { isActive: true, OR: [{ cities: { none: {} } }, { cities: { some: { cityId } } }] } },
+          ],
+        }
+      : {}),
   };
 }
 
@@ -237,6 +249,7 @@ export class PublicCatalogueController {
       include: {
         images: { orderBy: [{ kind: 'asc' }, { sortOrder: 'asc' }] },
         farm: { select: { name: true, slug: true, location: true, summary: true, story: true, heroImageUrl: true } },
+        vendor: { select: { isActive: true, cities: { select: { cityId: true } } } },
         collection: { select: { name: true, slug: true } },
         category: { select: { name: true, slug: true } },
         certificates: { where: { revokedAt: null }, select: { code: true }, take: 1 },
@@ -284,7 +297,12 @@ export class PublicCatalogueController {
       farm: p.farm,
       /** A unique piece in someone else's checkout right now. */
       reserved,
-      availableInCity: !cityId || p.cities.length === 0 || p.cities.some((c) => c.cityId === cityId),
+      availableInCity:
+        !cityId ||
+        (p.cities.length > 0
+          ? p.cities.some((c) => c.cityId === cityId)
+          : // No "Where to display" rows: own stock goes everywhere; a vendor's piece follows the vendor's cities.
+            !p.vendor || (p.vendor.isActive && (p.vendor.cities.length === 0 || p.vendor.cities.some((c) => c.cityId === cityId)))),
       seoTitle: p.seoTitle,
       seoDescription: p.seoDescription,
       rating: { average: agg._avg.rating ? Math.round(agg._avg.rating * 10) / 10 : null, count: agg._count._all },

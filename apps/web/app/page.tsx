@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { HeroCarousel } from '@/components/hero-carousel';
+import { LocationGate } from '@/components/location-gate';
 import { IconFor } from '@/components/icons';
 import { ProductCard as Card, ProductGrid } from '@/components/product-card';
 import { ButtonLink, Container, SectionHeading } from '@/components/ui';
@@ -63,6 +64,8 @@ export default async function HomePage() {
 
   return (
     <>
+      {/* The first thing a new visitor meets: where should we deliver? */}
+      <LocationGate />
       {heroes.length > 0 && <HeroCarousel slides={heroes} />}
 
       {/* Shop by category: the quickest way in. */}
