@@ -58,17 +58,12 @@ export function ProductCard({ p, priority }: { p: Card; priority?: boolean }) {
             </span>
           )}
         </div>
-        <div className="flex flex-col gap-1 px-0.5">
-          <h3 className="font-serif text-[19px] leading-snug text-ink underline-offset-4 group-hover:underline">
+        {/* The international-house card: just the name and the price, centred, with air around them. */}
+        <div className="flex flex-col items-center gap-1 px-2 text-center">
+          <h3 className="text-[14px] leading-snug font-medium text-ink underline-offset-4 group-hover:underline">
             {p.name}
           </h3>
-          <p className="text-[13px] text-muted">
-            {[p.farm?.name, p.caratWeight ? `${p.caratWeight} ct` : null, p.shape].filter(Boolean).join(', ')}
-          </p>
-          <Price
-            p={p}
-            className={`price mt-1 text-[15px] ${p.priceOnRequest ? 'text-muted italic' : 'text-ink'}`}
-          />
+          <Price p={p} className={`price text-[13px] ${p.priceOnRequest ? 'text-muted italic' : 'text-muted'}`} />
         </div>
       </Link>
       {/* Over the image's corner, outside the link (a button cannot sit inside a link). */}
