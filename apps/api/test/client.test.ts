@@ -94,8 +94,15 @@ describe('mobile API client', () => {
     const c = client({ store, client: 'app-customer/1.0' });
     const home = await c.shop.home<{ featured: unknown[] }>();
     expect(home).toHaveProperty('featured');
-    const list = await c.shop.products<{ items: Array<{ id: string; slug: string; available: boolean; priceOnRequest: boolean; isUnique: boolean }> }>({ inStock: 'true', pageSize: 60 });
-    const pick = list.items.find((p) => p.available && !p.priceOnRequest && !p.isUnique)!;
+    // The real stock list fills the first pages with one-of-a-kind rings: look through the pages for a quantity piece.
+    type Item = { id: string; slug: string; available: boolean; priceOnRequest: boolean; isUnique: boolean };
+    let pick: Item | undefined;
+    for (let page = 1; !pick && page <= 40; page++) {
+      const list = await c.shop.products<{ items: Item[]; total: number }>({ inStock: 'true', pageSize: 60, page });
+      pick = list.items.find((p) => p.available && !p.priceOnRequest && !p.isUnique);
+      if (page * 60 >= list.total) break;
+    }
+    if (!pick) throw new Error('No quantity piece in the seeded catalogue');
     const detail = await c.shop.product<{ id: string; specification?: unknown; name: string }>(pick.slug);
     expect(detail.id).toBe(pick.id);
 

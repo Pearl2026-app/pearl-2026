@@ -212,8 +212,8 @@ describe('Super Admin and the audit log', () => {
   });
   it('can add a city, vendor, franchise, manufacturer and delivery partner with no code change', async () => {
     const h = await as('superAdmin');
-    const city = await http().post(api('/admin/cities')).set(h).send({ name: 'Nashik', state: 'Maharashtra' }).expect(201);
-    expect(city.body.slug).toBe('nashik');
+    const city = await http().post(api('/admin/cities')).set(h).send({ name: 'Satara', state: 'Maharashtra' }).expect(201);
+    expect(city.body.slug).toBe('satara');
     await http().post(api('/admin/vendors')).set(h).send({ name: 'Nashik Pearls', phone: '+919811000001', cityIds: [city.body.id] }).expect(201);
     await http()
       .post(api('/admin/franchises'))
@@ -222,7 +222,7 @@ describe('Super Admin and the audit log', () => {
       .expect(201);
     await http().post(api('/admin/manufacturers')).set(h).send({ name: 'Nashik Gold Works', cityId: city.body.id }).expect(201);
     const dp = await http().post(api('/admin/delivery-partners')).set(h).send({ name: 'Ravi', phone: '+919811000003', cityIds: [city.body.id] }).expect(201);
-    expect(dp.body.cities[0].city.name).toBe('Nashik');
+    expect(dp.body.cities[0].city.name).toBe('Satara');
     // and give the new partner a login
     const u = await http().post(api('/admin/users')).set(h).send({ role: 'DELIVERY_PARTNER', name: 'Ravi', deliveryPartnerId: dp.body.id }).expect(201);
     expect(u.body.phone).toBe('+919811000003');
