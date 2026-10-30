@@ -184,7 +184,7 @@ export function Header() {
           </button>
           <Link
             href="/"
-            className="font-serif text-2xl tracking-wide text-accent lg:text-[28px]"
+            className="font-serif text-2xl tracking-wide whitespace-nowrap text-accent lg:text-[26px]"
             aria-label="Sahyadri Pearls home"
           >
             Sahyadri Pearls
@@ -265,7 +265,7 @@ export function Header() {
               className="ml-1 flex h-11 items-center gap-2 px-2 text-sm hover:text-accent"
             >
               <UserIcon />
-              <span className="hidden sm:inline">{me ? 'Account' : 'Sign in'}</span>
+              <span className="hidden whitespace-nowrap sm:inline">{me ? 'Account' : 'Sign in'}</span>
             </Link>
           </div>
         </div>
