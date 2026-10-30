@@ -55,6 +55,10 @@ test('an enquiry becomes an order that is delivered with proof', async ({ page, 
   await partnerLogin(rider, '+919800000005');
   await rider.goto(`${ADMIN}/delivery`);
   await rider.getByRole('link', { name: new RegExp(orderNumber) }).click();
+  // Pickup is only allowed once every piece in the order has been scanned.
+  await rider.getByLabel('Scan or type the SKU').fill(piece.sku);
+  await rider.getByRole('button', { name: 'OK', exact: true }).click();
+  await expect(rider.getByText(`✓ ${piece.name}`)).toBeVisible();
   await rider.getByRole('button', { name: 'Picked up from the store' }).click();
   await rider.getByRole('button', { name: 'Start delivery' }).click();
   await rider.getByLabel('Photo of the handover (required)').setInputFiles({
