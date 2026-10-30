@@ -8,12 +8,17 @@ interface Piece { id: string; slug: string; name: string; sku: string; isUnique:
 
 /** A piece that is in stock and sold at a listed price, skipping any already used by an earlier test in this run. */
 export async function pickPiece(request: APIRequestContext, opts: { unique?: boolean; skip?: string[] } = {}): Promise<Piece> {
-  const r = await request.get('http://localhost:4000/api/v1/catalogue/products?pageSize=48');
-  expect(r.ok()).toBeTruthy();
-  const items = (await r.json()).items as Piece[];
-  const p = items.find((x) => x.available && !x.priceOnRequest && (opts.unique === undefined || x.isUnique === opts.unique) && !opts.skip?.includes(x.slug));
-  if (!p) throw new Error('No suitable piece in the seeded catalogue');
-  return p;
+  // The real stock list fills the first pages with one-of-a-kind rings, so look through every page.
+  for (let page = 1; page <= 40; page++) {
+    const r = await request.get(`http://localhost:4000/api/v1/catalogue/products?pageSize=60&page=${page}`);
+    expect(r.ok()).toBeTruthy();
+    const body = await r.json();
+    const items = body.items as Piece[];
+    const p = items.find((x) => x.available && !x.priceOnRequest && (opts.unique === undefined || x.isUnique === opts.unique) && !opts.skip?.includes(x.slug));
+    if (p) return p;
+    if (page * 60 >= body.total) break;
+  }
+  throw new Error('No suitable piece in the seeded catalogue');
 }
 
 /** Head office sign-in: email and password, then the one-time code. */

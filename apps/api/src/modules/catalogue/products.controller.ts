@@ -193,7 +193,7 @@ export class ProductsController {
     if (user.role !== 'SUPER_ADMIN' && user.role !== 'STAFF') throw forbidden('Only head office can duplicate pieces.');
     const p = await this.prisma.product.findFirst({ where: { id }, include: { cities: true, images: { orderBy: [{ kind: 'asc' }, { sortOrder: 'asc' }] } } });
     if (!p) throw badRequest('NOT_FOUND', 'That piece no longer exists.');
-    const { id: _id, slug, sku, createdAt, updatedAt, publishedAt, soldAt, archivedAt, searchVector, pendingChanges, cities, images, ...rest } = p as typeof p & { searchVector?: unknown };
+    const { id: _id, slug, sku, createdAt, updatedAt, publishedAt: _publishedAt, soldAt: _soldAt, archivedAt: _archivedAt, searchVector, pendingChanges, cities, images, ...rest } = p as typeof p & { searchVector?: unknown };
     void _id; void createdAt; void updatedAt; void searchVector; void pendingChanges;
     let n = 2;
     while (await this.prisma.product.findUnique({ where: { sku: `${sku}-${n}` } })) n++;
