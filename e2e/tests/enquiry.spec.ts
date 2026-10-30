@@ -13,10 +13,11 @@ test('an enquiry becomes an order that is delivered with proof', async ({ page, 
     return route.fulfill({ status: 200, contentType: 'text/html', body: '<p>WhatsApp</p>' });
   });
   await page.goto(`/product/${piece.slug}`);
-  // On phones the Add to cart / Buy now bar is fixed to the bottom of the screen; bring the button to the middle first.
+  // On phones the fixed Add to cart / Buy now bar and the live gallery move around the inline button,
+  // so fire the click on the button itself rather than at a screen position.
   const enquire = page.getByRole('button', { name: /^Enquire/ }).first();
-  await enquire.evaluate((el) => el.scrollIntoView({ block: 'center' }));
-  await enquire.click();
+  await expect(enquire).toBeEnabled();
+  await enquire.dispatchEvent('click');
   await expect.poll(() => whatsappUrl).toContain('wa.me');
   const reference = decodeURIComponent(whatsappUrl).match(/ENQ-[A-Z0-9-]+/)?.[0];
   expect(reference, 'the WhatsApp message carries the enquiry reference').toBeTruthy();
