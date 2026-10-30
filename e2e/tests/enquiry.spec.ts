@@ -13,7 +13,10 @@ test('an enquiry becomes an order that is delivered with proof', async ({ page, 
     return route.fulfill({ status: 200, contentType: 'text/html', body: '<p>WhatsApp</p>' });
   });
   await page.goto(`/product/${piece.slug}`);
-  await page.getByRole('button', { name: /^Enquire/ }).first().click();
+  // On phones the Add to cart / Buy now bar is fixed to the bottom of the screen; bring the button to the middle first.
+  const enquire = page.getByRole('button', { name: /^Enquire/ }).first();
+  await enquire.evaluate((el) => el.scrollIntoView({ block: 'center' }));
+  await enquire.click();
   await expect.poll(() => whatsappUrl).toContain('wa.me');
   const reference = decodeURIComponent(whatsappUrl).match(/ENQ-[A-Z0-9-]+/)?.[0];
   expect(reference, 'the WhatsApp message carries the enquiry reference').toBeTruthy();
