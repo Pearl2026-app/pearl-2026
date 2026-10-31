@@ -840,6 +840,27 @@ async function main() {
       });
   }
 
+  // An approved business (B2B) buyer, so the business catalogue can be shown in demos.
+  if (!(await prisma.user.findUnique({ where: { phone: '+919800000027' } })))
+    await prisma.user.create({
+      data: {
+        role: 'CUSTOMER',
+        name: 'Nikhil Shah',
+        phone: '+919800000027',
+        email: 'b2b@example.com',
+        customer: {
+          create: {
+            referralCode: 'SHAHB2B7',
+            cityId: mumbai.id,
+            b2bStatus: 'APPROVED',
+            businessName: 'Shah Jewellers',
+            businessGstin: '27AAAPS1234C1Z5',
+            b2bAppliedAt: new Date(),
+          },
+        },
+      },
+    });
+
   // ── Farms ────────────────────────────────────────────────────
   const farms = {
     mulshi: await prisma.farm.upsert({

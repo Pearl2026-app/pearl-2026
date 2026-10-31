@@ -240,6 +240,23 @@ export default async function HomePage() {
         </Container>
       )}
 
+      {/* Business buyers (B2B): their own entrance, with fixed bulk prices from a minimum order quantity. */}
+      <Container className="pt-20 lg:pt-28">
+        <Link
+          href="/business"
+          className="group flex flex-col items-start justify-between gap-6 border border-ink px-6 py-10 sm:flex-row sm:items-center lg:px-12"
+        >
+          <div>
+            <p className="eyebrow">For jewellers, resellers & corporate buyers</p>
+            <h2 className="mt-2 font-serif text-3xl lg:text-4xl">Buying in bulk? Business prices.</h2>
+            <p className="mt-2 max-w-lg text-muted">Fixed business prices from a minimum order quantity, with GST invoices in your business name.</p>
+          </div>
+          <span className="lux-track inline-flex min-h-12 shrink-0 items-center bg-ink px-8 text-white transition-colors group-hover:bg-accent-hover">
+            B2B portal →
+          </span>
+        </Link>
+      </Container>
+
       {cta && (
         <Container className="pt-20 lg:pt-28">
           <Link
