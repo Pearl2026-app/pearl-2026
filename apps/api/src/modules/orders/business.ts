@@ -126,6 +126,32 @@ export class BusinessBuyersAdminController {
     return { items: rows };
   }
 
+  /** What business buyers see: every piece with a business price or kept for the trade, with its minimum quantity. */
+  @Get('price-list')
+  @Requires('PRODUCTS', 'view')
+  async priceList(@CurrentUser() user: AuthUser, @Query('q') q?: string, @Query('page') page = '1') {
+    if (!['SUPER_ADMIN', 'STAFF'].includes(user.role)) throw forbidden('Head office only.');
+    const pageSize = 50;
+    const p = Math.max(1, Number(page) || 1);
+    const where = {
+      status: 'PUBLISHED' as const,
+      archivedAt: null,
+      OR: [{ b2bPricePaise: { not: null } }, { b2bOnly: true }],
+      ...(q ? { AND: [{ OR: [{ name: { contains: q, mode: 'insensitive' as const } }, { sku: { contains: q, mode: 'insensitive' as const } }] }] } : {}),
+    };
+    const [total, rows] = await Promise.all([
+      this.prisma.product.count({ where }),
+      this.prisma.product.findMany({
+        where,
+        select: { id: true, name: true, sku: true, pricePaise: true, b2bPricePaise: true, b2bMinQty: true, b2bOnly: true, quantity: true, category: { select: { name: true } } },
+        orderBy: [{ b2bOnly: 'desc' }, { publishedAt: 'desc' }],
+        skip: (p - 1) * pageSize,
+        take: pageSize,
+      }),
+    ]);
+    return { items: rows.map((r) => ({ ...r, b2bMinQty: r.b2bMinQty ?? 1 })), total, page: p, pageSize };
+  }
+
   @Post(':customerId/:decision')
   @HttpCode(200)
   @Requires('USERS', 'edit')

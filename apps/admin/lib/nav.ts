@@ -73,7 +73,7 @@ export const NAV: NavGroup[] = [
     label: 'Customers',
     items: [
       { href: '/customers', info: 'Retail shoppers: contact details, order history and points. Activate or deactivate an account.', label: 'Customers', module: 'USERS', primary: '#6B4C9A' },
-      { href: '/business-buyers', info: 'Wholesale (B2B) buyers. Approve them; they see business prices (10% less) on the /business portal.', label: 'Business buyers (B2B)', module: 'USERS', action: 'edit', roles: ['SUPER_ADMIN', 'STAFF'] },
+      { href: '/business-buyers', info: "Wholesale (B2B) buyers: approve applications, and see the B2B price list with each piece's business price and minimum order quantity (MOQ).", label: 'Business buyers (B2B)', module: 'USERS', action: 'edit', roles: ['SUPER_ADMIN', 'STAFF'], primary: '#6B4C9A' },
     ],
   },
   {
