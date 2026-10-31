@@ -1,4 +1,5 @@
 'use client';
+import { InfoTip } from '@/components/info-tip';
 import Link from 'next/link';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
@@ -17,7 +18,7 @@ export default function DeliveriesPage() {
   });
   return (
     <div className="mx-auto max-w-xl">
-      <h1 className="mb-3 font-serif text-2xl">My deliveries</h1>
+      <h1 className="mb-3 flex items-center gap-2 font-serif text-2xl">My deliveries <InfoTip text="Your deliveries for today. Open one to scan the pieces at pickup, start the trip and record proof of delivery." /></h1>
       <OfflineBanner />
       {data && data.cashInHand.amountPaise > 0 && (
         <p className="mb-3 rounded-sm bg-surface-muted p-3 text-sm">Cash to hand over at the office: <strong>{inr(data.cashInHand.amountPaise)}</strong> ({data.cashInHand.count} order{data.cashInHand.count === 1 ? '' : 's'})</p>

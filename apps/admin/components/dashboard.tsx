@@ -24,6 +24,7 @@ import {
   X,
   type LucideIcon,
 } from 'lucide-react';
+import { InfoTip } from './info-tip';
 import { PageHeader } from './shell';
 import { api, errorText, qs } from '@/lib/api';
 import { ago, inr } from '@/lib/format';
@@ -54,12 +55,12 @@ interface Dash {
 }
 
 /** The four figures that need attention, each in its own colour. The rest live in Reports. */
-const CARDS: Array<{ key: string; label: string; money?: boolean; href: string; tint: string; ink: string; icon: LucideIcon }> = [
-  { key: 'salesPaise', label: 'Sales', money: true, href: '/reports', tint: '#E2F1E8', ink: '#1F5E3A', icon: IndianRupee },
-  { key: 'pendingOrders', label: 'Orders to process', href: '/orders?status=PLACED', tint: '#E3EDF7', ink: '#1F4A73', icon: ShoppingBag },
-  { key: 'pendingEnquiries', label: 'Open enquiries', href: '/enquiries', tint: '#FBF0DC', ink: '#7A4C0B', icon: MessageSquare },
-  { key: 'outOfStock', label: 'Out of stock or sold', href: '/restock', tint: '#F8E1DF', ink: '#8C1D17', icon: PackageX },
-  { key: 'stockValuePaise', label: 'Stock value (remaining)', money: true, href: '/products', tint: '#EDE9F5', ink: '#4A3B78', icon: Gem },
+const CARDS: Array<{ key: string; label: string; info: string; money?: boolean; href: string; tint: string; ink: string; icon: LucideIcon }> = [
+  { key: 'salesPaise', label: 'Sales', info: 'Value of paid orders in the dates chosen above. Tap to open Reports.', money: true, href: '/reports', tint: '#E2F1E8', ink: '#1F5E3A', icon: IndianRupee },
+  { key: 'pendingOrders', label: 'Orders to process', info: 'New orders not yet confirmed or packed. These need action today.', href: '/orders?status=PLACED', tint: '#E3EDF7', ink: '#1F4A73', icon: ShoppingBag },
+  { key: 'pendingEnquiries', label: 'Open enquiries', info: 'Shopper questions not yet answered or converted into an order.', href: '/enquiries', tint: '#FBF0DC', ink: '#7A4C0B', icon: MessageSquare },
+  { key: 'outOfStock', label: 'Out of stock or sold', info: 'Pieces with no stock left. Tap to reorder from the purchase-order list.', href: '/restock', tint: '#F8E1DF', ink: '#8C1D17', icon: PackageX },
+  { key: 'stockValuePaise', label: 'Stock value (remaining)', info: 'What the unsold stock is worth at selling price.', money: true, href: '/products', tint: '#EDE9F5', ink: '#4A3B78', icon: Gem },
 ];
 
 /** Shortcuts to the jobs done most often, shown only to people who may do them. */
@@ -189,7 +190,10 @@ export function Dashboard() {
           <LowStockPopup count={data.cards.lowStock ?? 0} />
           <ul className="mb-5 grid grid-cols-2 gap-3 xl:grid-cols-5">
             {CARDS.filter((c) => data.cards[c.key] != null).map((c) => (
-              <li key={c.key}>
+              <li key={c.key} className="relative">
+                <span className="absolute right-14 top-4 z-10" style={{ color: c.ink }}>
+                  <InfoTip text={c.info} label={`What is ${c.label}?`} className="text-current" />
+                </span>
                 <Link
                   href={c.href}
                   className="block rounded-lg p-4 transition-transform hover:-translate-y-0.5"
@@ -230,6 +234,7 @@ export function Dashboard() {
           <Card className="mb-5">
             <h2 className="mb-2 flex items-center gap-2 font-semibold">
               <BarChart3 size={18} className="text-[#B4532A]" aria-hidden /> Sales by month
+              <InfoTip text="Sales for each month, to see the trend at a glance." />
             </h2>
             <Bars data={data.monthly} value={(m) => m.salesPaise} format={(n) => inr(n)} />
           </Card>
@@ -237,6 +242,7 @@ export function Dashboard() {
             <Card>
               <h2 className="mb-2 flex items-center gap-2 font-semibold">
                 <ShoppingBag size={18} className="text-[#2B5C8A]" aria-hidden /> Recent orders
+              <InfoTip text="The latest orders and their status. Tap a number to open it." />
               </h2>
               <ul className="text-sm">
                 {data.recentOrders.map((o) => (
@@ -267,6 +273,7 @@ export function Dashboard() {
               <Card>
                 <h2 className="mb-2 flex items-center gap-2 font-semibold">
                   <MessageSquare size={18} className="text-[#1F7A4D]" aria-hidden /> Recent enquiries
+              <InfoTip text="The latest shopper enquiries, so none is missed." />
                 </h2>
                 <ul className="text-sm">
                   {data.recentEnquiries.map((e) => (

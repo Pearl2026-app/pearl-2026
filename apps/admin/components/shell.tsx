@@ -8,7 +8,8 @@ import { Button, cx, Spinner } from '@sahyadri/ui';
 import { adminPath } from '@/lib/base-path';
 import { api } from '@/lib/api';
 import { iconFor } from '@/lib/icons';
-import { NAV } from '@/lib/nav';
+import { infoFor, NAV } from '@/lib/nav';
+import { InfoTip } from './info-tip';
 
 /** A colour per menu section, so related pages share a colour and a page is recognised at a glance. */
 export const GROUP_COLOUR: Record<string, string> = {
@@ -130,7 +131,10 @@ export function Shell({ children }: { children: ReactNode }) {
     <nav aria-label="Main" className="flex flex-col gap-4 p-3">
       <ul className="flex flex-col gap-0.5">
         {main.map((i) => (
-          <li key={i.href}>{link(i, true)}</li>
+          <li key={i.href} className="group/nav flex items-center gap-1">
+            <div className="min-w-0 flex-1">{link(i, true)}</div>
+            {i.info && <InfoTip text={i.info} label={`What is ${i.label} for?`} className="mr-1 opacity-60 group-hover/nav:opacity-100" />}
+          </li>
         ))}
       </ul>
       {more.length > 0 && (
@@ -149,7 +153,10 @@ export function Shell({ children }: { children: ReactNode }) {
                 </p>
                 <ul>
                   {g.items.map((i) => (
-                    <li key={i.href}>{link(i)}</li>
+                    <li key={i.href} className="group/nav flex items-center gap-1">
+                      <div className="min-w-0 flex-1">{link(i)}</div>
+                      {i.info && <InfoTip text={i.info} label={`What is ${i.label} for?`} className="mr-1 opacity-60 group-hover/nav:opacity-100" />}
+                    </li>
                   ))}
                 </ul>
               </div>
@@ -234,12 +241,16 @@ export function PageHeader({
   actions?: ReactNode;
 }) {
   const pathname = usePathname();
+  const info = infoFor(pathname);
   return (
     <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
       <div className="flex items-start gap-3">
         <IconTile href={pathname} size="lg" />
         <div>
-          <h1 className="text-2xl font-semibold text-ink">{title}</h1>
+          <h1 className="flex items-center gap-2 text-2xl font-semibold text-ink">
+            {title}
+            {info && <InfoTip text={info} label={`What is ${title} for?`} />}
+          </h1>
           {description && <p className="mt-1 line-clamp-2 max-w-2xl text-xs leading-5 text-muted">{description}</p>}
         </div>
       </div>
