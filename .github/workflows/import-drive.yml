@@ -1,0 +1,31 @@
+# One-off, run by hand: pulls the client's shared Google Drive folder (logo + product photos and videos)
+# into the repo on the "client-assets" branch. The dev sandbox cannot reach Google Drive; GitHub can.
+name: Import client Drive folder
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install sharp
+        run: npm install --no-save --no-package-lock sharp@0.33.5
+      - name: Download and convert
+        run: node scripts/import-drive-collection.mjs
+      - name: Commit to the client-assets branch
+        run: |
+          git config user.name "Sahyadri Pearls"
+          git config user.email "metaaccess4hastagcreator@gmail.com"
+          git checkout -b client-assets
+          git add packages/db/seed/collection apps/web/public/brand apps/admin/public/brand
+          du -sh packages/db/seed/collection
+          git commit -m "Client collection photos, videos and logo from the shared Drive folder"
+          git push -f origin client-assets
