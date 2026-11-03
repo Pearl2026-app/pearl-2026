@@ -50,9 +50,28 @@ const GROUPS: Array<{ key: string; title: string; fields: FieldDef[] }> = [
     title: 'Referral rewards',
     fields: [
       { name: 'enabled', label: 'Referral programme on', type: 'switch' },
-      { name: 'referrerRewardPaise', label: 'Reward for the referrer', type: 'money' },
+      { name: 'referrerRewardPaise', label: 'Coupon for the referrer', type: 'money', hint: 'Used only while the referral wallet below is off; with it on, the referrer is rewarded in their wallet instead.' },
       { name: 'refereeRewardPaise', label: 'Reward for the new buyer', type: 'money' },
       { name: 'rewardValidDays', label: 'Reward coupon valid for (days)', type: 'number' },
+    ],
+  },
+  {
+    key: 'wallet',
+    title: 'Referral wallet & cash-out',
+    fields: [
+      { name: 'enabled', label: 'Referral wallet on', type: 'switch' },
+      { name: 'referralRewardPaise', label: 'Reward to the person who shared the code', type: 'money', hint: 'Added to their wallet when an order placed with their code is confirmed. Taken back if that order is cancelled or returned.' },
+      {
+        name: 'rewardOn',
+        label: 'Reward on',
+        type: 'select',
+        options: [
+          { value: 'EVERY_ORDER', label: 'Every order of the referred customer' },
+          { value: 'FIRST_ORDER', label: 'Their first order only' },
+        ],
+      },
+      { name: 'minCashoutPaise', label: 'Minimum cash-out', type: 'money', hint: 'Customers can spend any balance at checkout, and withdraw it as cash from this amount.' },
+      { name: 'payoutNote', label: 'Payout note shown to customers', type: 'textarea', hint: 'E.g. how and when withdrawals are paid.' },
     ],
   },
   {
@@ -109,7 +128,7 @@ const SECTIONS: Array<{ id: string; label: string; keys: string[] }> = [
   { id: 'delivery', label: 'Delivery', keys: ['delivery', 'delivery_proof'] },
   { id: 'stock', label: 'Stock & purchase orders', keys: ['stock_alert'] },
   { id: 'b2b', label: 'Business buyers', keys: ['b2b'] },
-  { id: 'marketing', label: 'Rewards & reminders', keys: ['loyalty', 'referral', 'cart_reminder', 'review_request'] },
+  { id: 'marketing', label: 'Rewards & reminders', keys: ['wallet', 'loyalty', 'referral', 'cart_reminder', 'review_request'] },
   { id: 'service', label: 'Enquiries & returns', keys: ['enquiry', 'returns'] },
   { id: 'website', label: 'Website', keys: ['storefront', 'app_links', 'seo'] },
 ];

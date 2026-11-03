@@ -15,6 +15,10 @@ interface Buyer {
   businessGstin: string | null;
   b2bNote: string | null;
   b2bAppliedAt: string | null;
+  shopName: string | null;
+  shopAddress: string | null;
+  b2bContactPhone: string | null;
+  b2bContactEmail: string | null;
   user: { name: string; phone: string | null; email: string | null };
   _count: { orders: number };
 }
@@ -113,7 +117,7 @@ export default function BusinessBuyersPage() {
     <div className={tab === 'PRICES' ? 'max-w-6xl' : 'max-w-4xl'}>
       <PageHeader
         title="Business buyers (B2B)"
-        description="Shops and resellers apply with their GSTIN. Approved buyers see business prices from the minimum order quantity (MOQ). The B2B price list shows exactly what they see."
+        description="Shops and resellers apply with their GSTIN, shop address and contact. Approving emails them a link to the business catalogue. Approved buyers see business prices from the minimum order quantity (MOQ). The B2B price list shows exactly what they see."
       />
       <div className="mb-3 flex gap-2">
         {TABS.map(([k, label]) => (
@@ -134,10 +138,20 @@ export default function BusinessBuyersPage() {
           <Card key={b.id}>
             <div className="flex flex-wrap items-start justify-between gap-2">
               <div>
-                <p className="font-semibold">{b.businessName}</p>
+                <p className="font-semibold">{b.shopName || b.businessName}</p>
+                {b.shopName && b.businessName && b.shopName !== b.businessName && <p className="text-sm">Registered as {b.businessName}</p>}
                 <p className="text-sm">GSTIN {b.businessGstin}</p>
+                {b.shopAddress && <p className="text-sm">{b.shopAddress}</p>}
+                {(b.b2bContactPhone || b.b2bContactEmail) && (
+                  <p className="text-sm">
+                    Contact:{' '}
+                    {b.b2bContactPhone && <a href={`tel:${b.b2bContactPhone}`} className="text-accent underline">{b.b2bContactPhone}</a>}
+                    {b.b2bContactPhone && b.b2bContactEmail && ' · '}
+                    {b.b2bContactEmail && <a href={`mailto:${b.b2bContactEmail}`} className="text-accent underline">{b.b2bContactEmail}</a>}
+                  </p>
+                )}
                 <p className="text-sm text-muted">
-                  {b.user.name} · {b.user.phone ?? b.user.email} · {b._count.orders} orders
+                  Account: {b.user.name} · {b.user.phone ?? b.user.email} · {b._count.orders} orders
                   {b.b2bAppliedAt ? ` · applied ${new Date(b.b2bAppliedAt).toLocaleDateString('en-IN')}` : ''}
                 </p>
                 {b.b2bNote && <p className="mt-2 rounded-sm bg-surface-muted p-2 text-sm">{b.b2bNote}</p>}

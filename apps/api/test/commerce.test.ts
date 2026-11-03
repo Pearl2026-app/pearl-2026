@@ -352,11 +352,13 @@ describe('returns, refunds and referral rewards', () => {
     for (const s of ['PICKED_UP', 'OUT_FOR_DELIVERY', 'DELIVERED']) await http().post(api(`/admin/orders/${id}/status`)).set(admin).send({ status: s, ...(s === 'DELIVERED' ? { reason: 'Collected at the store' } : {}) }).expect(200);
     await http().post(api(`/admin/orders/${id}/payments`)).set(admin).send({ method: 'COD', amountPaise: 1_200_000 }).expect(200);
     await drain();
-    // referral rewarded on first delivery: two personal coupons
+    // referral rewarded on first delivery: a welcome coupon for the new buyer; the referrer is rewarded in their
+    // wallet instead (credited when the order was confirmed)
     const ref = await db.referral.findFirstOrThrow({ where: { referee: { user: { phone: `+91${newbie}` } } } });
     expect(ref.rewardedAt).not.toBeNull();
     const coupons = await db.coupon.findMany({ where: { customerId: { in: [ref.referrerId, ref.refereeId] } } });
-    expect(coupons).toHaveLength(2);
+    expect(coupons.map((c) => c.customerId)).toEqual([ref.refereeId]);
+    expect((await db.walletEntry.findUniqueOrThrow({ where: { idemKey: `referral:${id}` } })).customerId).toBe(ref.referrerId);
     // personal coupon is not usable by someone else
     const other = agent();
     await other.post(api('/cart/items')).send({ productId: (await product('classic-studs-7mm')).id }).expect(200);
@@ -375,6 +377,8 @@ describe('returns, refunds and referral rewards', () => {
     expect(done.refunds[0]!.amountPaise).toBe(1_200_000);
     expect(done.paymentStatus).toBe('REFUNDED');
     expect(done.status).toBe('REFUNDED');
+    // the returned order no longer earns the referrer their wallet reward
+    expect((await db.walletEntry.findUniqueOrThrow({ where: { idemKey: `referral-back:${id}` } })).amountPaise).toBe(-20_000);
   });
 
   it('allows reviews only for delivered pieces, held for moderation', async () => {

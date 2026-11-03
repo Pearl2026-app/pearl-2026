@@ -12,6 +12,7 @@ import { PAYMENT, type PaymentProvider, type PaymentWebhookEvent } from '../../p
 import { NotificationsService } from '../notifications/notifications.service';
 import { OrdersService } from './orders.service';
 import { StockService } from './stock.service';
+import { unwindOrderWallet, WalletService } from './wallet';
 
 @Injectable()
 export class PaymentsService {
@@ -25,6 +26,7 @@ export class PaymentsService {
     private readonly audit: AuditService,
     private readonly jobs: JobsService,
     private readonly notifications: NotificationsService,
+    private readonly wallet: WalletService,
   ) {}
 
   /** Online payment is available only with live/test keys, or the sandbox outside production (DECISIONS D33). */
@@ -125,7 +127,10 @@ export class PaymentsService {
       if (cartId) await tx.cartItem.deleteMany({ where: { cartId } });
       return 'paid';
     });
-    if (outcome === 'paid') await this.jobs.add('orders.notify', { orderId: payment.orderId, templateKey: 'ORDER_PLACED' });
+    if (outcome === 'paid') {
+      await this.jobs.add('orders.notify', { orderId: payment.orderId, templateKey: 'ORDER_PLACED' });
+      await this.wallet.queueReferral(payment.orderId);
+    }
     if (outcome === 'late') {
       await this.autoRefund(payment.orderId, payment.id, evt.providerPaymentId!, evt.amountPaise ?? payment.amountPaise, 'Payment received after the hold expired');
       await this.alertStaff(`Late payment refunded on order ${payment.order.number}`);
@@ -142,6 +147,7 @@ export class PaymentsService {
       if (order.paymentStatus !== 'PENDING') return;
       await this.stock.release(tx, order.id, 'payment-failed');
       await tx.order.update({ where: { id: order.id }, data: { paymentStatus: 'FAILED', status: 'FAILED' } });
+      await unwindOrderWallet(tx, order.id);
       await tx.orderEvent.create({ data: { orderId: order.id, type: 'PAYMENT_UPDATED', fromStatus: order.status, toStatus: 'FAILED', message: 'Online payment failed; pieces released.' } });
     });
   }

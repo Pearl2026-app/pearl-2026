@@ -2,6 +2,7 @@ import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { Prisma } from '@sahyadri/db';
 import { conflict } from '../../common/errors';
 import { refundOrderPoints } from './loyalty';
+import { unwindOrderWallet } from './wallet';
 import { PrismaService } from '../../prisma/prisma.service';
 import { JobsService } from '../../queue/jobs.service';
 
@@ -162,6 +163,7 @@ export class StockService implements OnModuleInit {
     if (order && order.status === 'PLACED' && order.paymentStatus === 'PENDING') {
       await tx.order.update({ where: { id: orderId }, data: { status: 'FAILED', paymentStatus: 'FAILED' } });
       await refundOrderPoints(tx, orderId);
+      await unwindOrderWallet(tx, orderId);
       await tx.orderEvent.create({ data: { orderId, type: 'STATUS_CHANGED', fromStatus: 'PLACED', toStatus: 'FAILED', message: `Payment was not completed within ${HOLD_MINUTES} minutes; the pieces were released.` } });
     }
   }
@@ -177,6 +179,7 @@ export class StockService implements OnModuleInit {
       await this.release(tx, orderId, 'superseded');
       await tx.order.update({ where: { id: orderId }, data: { status: 'FAILED', paymentStatus: 'FAILED' } });
       await refundOrderPoints(tx, orderId);
+      await unwindOrderWallet(tx, orderId);
       await tx.orderEvent.create({ data: { orderId, type: 'STATUS_CHANGED', fromStatus: 'PLACED', toStatus: 'FAILED', message: 'Replaced by a new checkout from the same cart; the pieces were released.' } });
     });
   }

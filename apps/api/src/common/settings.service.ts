@@ -35,6 +35,19 @@ export const SETTING_SCHEMAS = {
     refereeRewardPaise: z.number().int().nonnegative().default(50_000),
     rewardValidDays: z.number().int().positive().default(90),
   }),
+  /**
+   * Referral wallet (client meeting, 4 Nov): whoever shares their code earns this much in their wallet when an order
+   * placed with it is confirmed; the wallet pays at checkout or is withdrawn as cash.
+   */
+  wallet: z.object({
+    enabled: z.boolean().default(true),
+    referralRewardPaise: z.number().int().nonnegative().max(10_000_000).default(20_000),
+    /** EVERY_ORDER: every confirmed order of the referred customer; FIRST_ORDER: only their first */
+    rewardOn: z.enum(['EVERY_ORDER', 'FIRST_ORDER']).default('EVERY_ORDER'),
+    minCashoutPaise: z.number().int().nonnegative().max(100_000_000).default(50_000),
+    /** Shown to customers on the withdraw form */
+    payoutNote: z.string().max(500).default('Paid to your UPI ID or bank account within 3 working days.'),
+  }),
   /** Credit points (meeting of 19 Oct): earn on delivered orders, pay part of the next order with them. */
   loyalty: z.object({
     enabled: z.boolean().default(true),

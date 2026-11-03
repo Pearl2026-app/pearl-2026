@@ -3,6 +3,7 @@ import { Injectable } from '@nestjs/common';
 import { verifyPassword } from '@sahyadri/db';
 import { PASSWORD_ROLES, permissionSet, type Role } from '@sahyadri/shared';
 import { pointsBalancePaise } from '../modules/orders/loyalty';
+import { walletBalancePaise } from '../modules/orders/wallet';
 import { PrismaService } from '../prisma/prisma.service';
 import { JobsService } from '../queue/jobs.service';
 import { AuditService } from '../common/audit.service';
@@ -191,6 +192,7 @@ export class AuthService {
     });
     const au = toAuthUser(u, null);
     const pointsPaise = u.customer ? await pointsBalancePaise(this.prisma, u.customer.id) : 0;
+    const walletPaise = u.customer ? Math.max(0, await walletBalancePaise(this.prisma, u.customer.id)) : 0;
     return {
       id: u.id,
       role: u.role,
@@ -202,7 +204,7 @@ export class AuthService {
       vendor: u.vendor,
       franchise: u.franchise,
       deliveryPartner: u.deliveryPartner,
-      customer: u.customer ? { ...u.customer, pointsPaise } : null,
+      customer: u.customer ? { ...u.customer, pointsPaise, walletPaise } : null,
       permissions: permissionSet({ role: au.role, staffGrants: au.grants }),
     };
   }

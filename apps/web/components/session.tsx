@@ -15,6 +15,7 @@ export interface Me {
     cityId: string | null;
     preferredPaymentMethod: string | null;
     pointsPaise?: number;
+    walletPaise?: number;
     b2bStatus?: string;
   } | null;
 }

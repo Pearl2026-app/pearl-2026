@@ -13,6 +13,7 @@ import { badRequest, notFound } from '../../common/errors';
 import { listQuery, orderBy, paginate } from '../../common/list';
 import { customerScope } from '../../common/scope';
 import { pointsBalancePaise } from '../orders/loyalty';
+import { walletBalancePaise, walletBalances } from '../orders/wallet';
 import { config } from '../../config/config';
 import { JobsService } from '../../queue/jobs.service';
 import { NotificationsService } from '../notifications/notifications.service';
@@ -238,6 +239,16 @@ const linkIds = (u: {
 class CustomersController {
   constructor(private readonly prisma: PrismaService, private readonly audit: AuditService, private readonly tokens: TokensService) {}
 
+  /** Credit points and wallet balances for a page of customers: two grouped queries, not one per row. */
+  private async balances(ids: string[]) {
+    if (!ids.length) return { points: new Map<string, number>(), wallet: new Map<string, number>() };
+    const [pts, wallet] = await Promise.all([
+      this.prisma.loyaltyLedger.groupBy({ by: ['customerId'], where: { customerId: { in: ids } }, _sum: { points: true } }),
+      walletBalances(this.prisma, ids),
+    ]);
+    return { points: new Map(pts.map((r) => [r.customerId, Math.max(0, (r._sum.points ?? 0) * 100)])), wallet };
+  }
+
   private async spend(ids: string[]) {
     if (!ids.length) return new Map<string, { orders: number; spend: number }>();
     const rows = await this.prisma.order.groupBy({
@@ -275,6 +286,7 @@ class CustomersController {
     if (q.format === 'csv') {
       const rows = await this.prisma.customer.findMany({ where, include, orderBy: sort, take: 100_000 });
       const s = await this.spend(rows.map((r) => r.id));
+      const b = await this.balances(rows.map((r) => r.id));
       sendCsv(res, 'customers.csv', rows, [
         { header: 'Name', value: (r) => r.user.name },
         { header: 'Phone', value: (r) => r.user.phone },
@@ -282,6 +294,8 @@ class CustomersController {
         { header: 'City', value: (r) => r.city?.name },
         { header: 'Orders', value: (r) => s.get(r.id)?.orders ?? 0 },
         { header: 'Total spend (₹)', value: (r) => (s.get(r.id)?.spend ?? 0) / 100 },
+        { header: 'Credit points', value: (r) => (b.points.get(r.id) ?? 0) / 100 },
+        { header: 'Wallet (₹)', value: (r) => (b.wallet.get(r.id) ?? 0) / 100 },
         { header: 'Referral code', value: (r) => r.referralCode },
         { header: 'Status', value: (r) => (r.isBlocked ? 'Blocked' : 'Active') },
         { header: 'Joined', value: (r) => r.createdAt },
@@ -289,8 +303,18 @@ class CustomersController {
       return;
     }
     const page = await paginate(q, () => this.prisma.customer.count({ where }), (skip, take) => this.prisma.customer.findMany({ where, include, orderBy: sort, skip, take }));
-    const s = await this.spend(page.items.map((c) => c.id));
-    return { ...page, items: page.items.map((c) => ({ ...c, orderCount: s.get(c.id)?.orders ?? 0, totalSpendPaise: s.get(c.id)?.spend ?? 0 })) };
+    const ids = page.items.map((c) => c.id);
+    const [s, b] = await Promise.all([this.spend(ids), this.balances(ids)]);
+    return {
+      ...page,
+      items: page.items.map((c) => ({
+        ...c,
+        orderCount: s.get(c.id)?.orders ?? 0,
+        totalSpendPaise: s.get(c.id)?.spend ?? 0,
+        pointsPaise: b.points.get(c.id) ?? 0,
+        walletPaise: b.wallet.get(c.id) ?? 0,
+      })),
+    };
   }
 
   @Get(':id')
@@ -311,11 +335,28 @@ class CustomersController {
     if (!c) throw notFound('Customer');
     const s = await this.spend([c.id]);
     // Credit points: the live balance and the last entries, shown on the customer page (client doc, 26 Oct).
-    const [points, ledger] = await Promise.all([
+    // Referral wallet: balance and history for everyone who can see the customer; cash-out requests (with bank
+    // details) for head office only.
+    const headOffice = user.role === 'SUPER_ADMIN' || user.role === 'STAFF';
+    const [points, ledger, wallet, walletEntries, walletPayouts] = await Promise.all([
       pointsBalancePaise(this.prisma, c.id),
       this.prisma.loyaltyLedger.findMany({ where: { customerId: c.id }, orderBy: { createdAt: 'desc' }, take: 20, select: { id: true, points: true, reason: true, orderId: true, createdAt: true } }),
+      walletBalancePaise(this.prisma, c.id),
+      this.prisma.walletEntry.findMany({ where: { customerId: c.id }, orderBy: { createdAt: 'desc' }, take: 50, select: { id: true, amountPaise: true, kind: true, note: true, orderId: true, createdAt: true } }),
+      headOffice
+        ? this.prisma.walletPayout.findMany({ where: { customerId: c.id }, orderBy: { createdAt: 'desc' }, take: 20, select: { id: true, amountPaise: true, method: true, upiId: true, bankAccountNumber: true, bankIfsc: true, status: true, reference: true, note: true, paidAt: true, createdAt: true } })
+        : Promise.resolve([]),
     ]);
-    return { ...c, orderCount: s.get(c.id)?.orders ?? 0, totalSpendPaise: s.get(c.id)?.spend ?? 0, pointsPaise: points, pointsLedger: ledger };
+    return {
+      ...c,
+      orderCount: s.get(c.id)?.orders ?? 0,
+      totalSpendPaise: s.get(c.id)?.spend ?? 0,
+      pointsPaise: points,
+      pointsLedger: ledger,
+      walletPaise: wallet,
+      walletEntries,
+      walletPayouts,
+    };
   }
 
   @Post(':id/:action')
@@ -346,9 +387,29 @@ class RegistrationAlerts implements OnModuleInit {
   }
 
   private async alert(d: { customerId: string; kind: 'B2C' | 'B2B' }) {
-    const c = await this.prisma.customer.findUnique({ where: { id: d.customerId }, select: { id: true, businessName: true, user: { select: { name: true, phone: true, email: true } } } });
+    const c = await this.prisma.customer.findUnique({
+      where: { id: d.customerId },
+      select: { id: true, businessName: true, businessGstin: true, shopName: true, shopAddress: true, b2bContactPhone: true, b2bContactEmail: true, b2bNote: true, user: { select: { name: true, phone: true, email: true } } },
+    });
     if (!c) return;
     const admins = await this.prisma.user.findMany({ where: { role: 'SUPER_ADMIN', isActive: true, email: { not: null } }, select: { email: true } });
+    const b2bTemplate = d.kind === 'B2B' && (await this.prisma.messageTemplate.count({ where: { key: 'NEW_B2B_APPLICATION', channel: 'EMAIL', isActive: true } })) > 0;
+    if (b2bTemplate) {
+      // Business applications carry everything head office needs to verify them (meeting, 4 Nov).
+      const vars = {
+        name: c.user.name,
+        businessName: c.businessName ?? '—',
+        gstin: c.businessGstin ?? '—',
+        shopName: c.shopName ?? '—',
+        shopAddress: c.shopAddress ?? '—',
+        contactPhone: c.b2bContactPhone ?? c.user.phone ?? '—',
+        contactEmail: c.b2bContactEmail ?? c.user.email ?? '—',
+        note: c.b2bNote ?? '—',
+        reviewUrl: `${config().ADMIN_URL}/business-buyers`,
+      };
+      for (const a of admins) await this.notifications.send({ templateKey: 'NEW_B2B_APPLICATION', vars, to: { email: a.email! }, context: { customerId: c.id } });
+      return;
+    }
     const vars = {
       kind: d.kind === 'B2B' ? `business buyer (B2B)${c.businessName ? ` — ${c.businessName}` : ''}` : 'customer',
       name: c.user.name,

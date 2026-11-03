@@ -130,7 +130,7 @@ export class CartService {
   }
 
   /** Full cart view with server-computed totals (GST and delivery included). */
-  async view(cart: Cart | null, user: AuthUser | null, cityId?: string | null) {
+  async view(cart: Cart | null, user: AuthUser | null, cityId?: string | null, opts: { redeemWallet?: boolean } = {}) {
     const empty = { token: cart?.guestToken ?? null, items: [], count: 0, couponCode: null, couponError: null, totals: null, issues: [] as string[] };
     if (!cart) return empty;
     const items = await this.prisma.cartItem.findMany({ where: { cartId: cart.id }, orderBy: { createdAt: 'asc' }, include: { product: { select: { ...CARD_SELECT, status: true, archivedAt: true, cities: { select: { cityId: true } } } } } });
@@ -148,7 +148,7 @@ export class CartService {
     const buyable = lines.filter((l) => !l.problem);
     const customerId = user?.role === 'CUSTOMER' ? user.customerId : null;
     const priced = buyable.length
-      ? await this.pricing.price({ items: buyable.map((l) => ({ productId: l.productId, quantity: l.quantity, size: l.size })), couponCode: cart.couponCode, customerId, phone: cart.contactPhone, cityId: city })
+      ? await this.pricing.price({ items: buyable.map((l) => ({ productId: l.productId, quantity: l.quantity, size: l.size })), couponCode: cart.couponCode, customerId, phone: cart.contactPhone, cityId: city, redeemWallet: !!opts.redeemWallet && !!customerId })
       : null;
     const payments = await this.settings.get('payments');
     const total = priced?.totals.totalPaise ?? 0;
@@ -159,6 +159,8 @@ export class CartService {
       couponCode: cart.couponCode,
       couponError: priced?.couponError ?? null,
       coupon: priced?.coupon ?? null,
+      /** Referral wallet: what it pays of this order (already taken off the totals) */
+      wallet: priced?.wallet ?? null,
       totals: priced ? { ...priced.totals, lines: undefined } : null,
       issues: lines.filter((l) => l.problem).map((l) => `${l.product.name}: ${l.problem}`),
       paymentMethods: {

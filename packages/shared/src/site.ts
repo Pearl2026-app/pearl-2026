@@ -10,6 +10,7 @@ export const ACCOUNT_MENU = [
   { label: 'Manage Addresses', href: '/account/addresses' },
   { label: 'Wishlist', href: '/account/wishlist' },
   { label: 'Referral Code', href: '/account/referral' },
+  { label: 'Wallet', href: '/account/wallet' },
   { label: 'Returns', href: '/account/returns' },
   { label: 'Business Account', href: '/account/business' },
   { label: 'Terms & Conditions', href: '/terms' },

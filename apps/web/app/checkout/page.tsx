@@ -1,7 +1,7 @@
 'use client';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { rememberOrder } from '@/components/order-strip';
 import { formatINR } from '@sahyadri/shared';
 import { FormField, Notice, SelectInput, TextInput } from '@/components/form-bits';
@@ -49,6 +49,9 @@ export default function CheckoutPage() {
   const [giftMessage, setGiftMessage] = useState('');
   const [business, setBusiness] = useState(false);
   const [usePoints, setUsePoints] = useState(false);
+  const [useWallet, setUseWallet] = useState(false);
+  /** Read by the quote so every re-price (city, address) keeps the wallet choice. */
+  const walletRef = useRef(false);
   const [gstin, setGstin] = useState('');
   const [businessName, setBusinessName] = useState('');
   const [saveAddress, setSaveAddress] = useState(true);
@@ -65,7 +68,7 @@ export default function CheckoutPage() {
 
   const quote = useCallback(async (city: string) => {
     try {
-      const q = await api<CartView>('/checkout/quote', { method: 'POST', json: city ? { cityId: city } : {} });
+      const q = await api<CartView>('/checkout/quote', { method: 'POST', json: { ...(city ? { cityId: city } : {}), ...(walletRef.current ? { useWallet: true } : {}) } });
       setCart(q);
       if (q.paymentMethods && !q.paymentMethods.online && q.paymentMethods.cod) setMethod('COD');
       if (q.paymentMethods && q.paymentMethods.online && !q.paymentMethods.cod) setMethod('ONLINE');
@@ -119,6 +122,7 @@ export default function CheckoutPage() {
         paymentMethod: method,
         note: note || null,
         ...(usePoints ? { usePoints: true } : {}),
+        ...(useWallet ? { useWallet: true } : {}),
         ...(business && gstin.trim() ? { gstin: gstin.trim().toUpperCase(), businessName: businessName.trim() || null } : {}),
         ...(gift ? { giftWrap: true, giftMessage: giftMessage.trim() || null } : {}),
         saveAddress: !!me && addressId === 'new' && saveAddress,
@@ -238,6 +242,24 @@ export default function CheckoutPage() {
               </div>
             )}
             <FormField label="Delivery note (optional)">{(id) => <TextInput id={id} value={note} onChange={(e) => setNote(e.target.value)} placeholder="Gate code, best time to deliver…" />}</FormField>
+            {me && (me.customer?.walletPaise ?? 0) > 0 && (
+              <label className={`flex min-h-11 cursor-pointer items-center gap-3 border p-4 text-sm ${useWallet ? 'border-accent bg-accent-soft' : 'border-line bg-surface'}`}>
+                <input
+                  type="checkbox"
+                  checked={useWallet}
+                  onChange={(e) => {
+                    setUseWallet(e.target.checked);
+                    walletRef.current = e.target.checked;
+                    void quote(cityId);
+                  }}
+                  className="h-5 w-5"
+                />
+                <span>
+                  <strong>Use wallet balance ({formatINR(me.customer!.walletPaise ?? 0, { compact: true })})</strong>
+                  {useWallet && cart?.wallet ? ` · ${formatINR(cart.wallet.usedPaise, { compact: true })} off this order` : ' · your referral rewards pay part of this order'}
+                </span>
+              </label>
+            )}
             {me && (me.customer?.pointsPaise ?? 0) > 0 && (
               <label className={`flex min-h-11 cursor-pointer items-center gap-3 border p-4 text-sm ${usePoints ? 'border-accent bg-accent-soft' : 'border-line bg-surface'}`}>
                 <input type="checkbox" checked={usePoints} onChange={(e) => setUsePoints(e.target.checked)} className="h-5 w-5" />
@@ -311,7 +333,7 @@ export default function CheckoutPage() {
             ))}
           </ul>
           {cart.issues.length > 0 && <Notice tone="danger">{cart.issues.join('. ')}</Notice>}
-          {cart.totals && <TotalsTable t={cart.totals} couponCode={cart.coupon?.code ?? cart.couponCode} />}
+          {cart.totals && <TotalsTable t={cart.totals} couponCode={cart.coupon?.code ?? cart.couponCode} walletPaise={cart.wallet?.usedPaise ?? 0} />}
           {hasUnique && method === 'ONLINE' && <p className="mt-3 text-xs text-muted">One-of-a-kind pieces are held for you for 15 minutes while you pay.</p>}
           <div className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-bg/95 p-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] backdrop-blur lg:static lg:mt-6 lg:border-0 lg:bg-transparent lg:p-0">
             <button type="submit" disabled={busy || !cart.totals || cart.issues.length > 0} className="flex min-h-12 w-full items-center justify-center bg-accent text-[15px] text-white hover:bg-accent-hover disabled:opacity-60">
