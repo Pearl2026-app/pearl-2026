@@ -1,4 +1,5 @@
 import { FarmSalesController } from './farm-sales';
+import { commissionSplit } from '@sahyadri/shared';
 import { Controller, Get, Module, Param, Query, Res } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import type { Response } from 'express';
@@ -21,7 +22,23 @@ const rangeQuery = z.object({
   from: z.coerce.date().optional(),
   to: z.coerce.date().optional(),
   format: z.enum(['json', 'csv']).optional(),
+  /** CSV of one extra table of a report (e.g. the people behind the WhatsApp figures) */
+  section: z.string().max(40).optional(),
 });
+
+type Row = Record<string, unknown>;
+interface Section {
+  title: string;
+  rows: Row[];
+  columns: CsvColumn<Row>[];
+}
+interface Built {
+  rows: Row[];
+  columns: CsvColumn<Row>[];
+  summary?: Record<string, unknown>;
+  /** Further tables shown under the main one, each with its own download */
+  sections?: Record<string, Section>;
+}
 
 /** Month key in India time, e.g. 2026-10. */
 const monthKey = (d: Date) => d.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' }).slice(0, 7);
@@ -137,22 +154,34 @@ export class ReportsController {
   async report(@CurrentUser() user: AuthUser, @Param('kind') kind: string, @Query() raw: Record<string, string>, @Res({ passthrough: true }) res: Response) {
     const q = rangeQuery.parse(raw);
     const { from, to } = range(q, 30);
-    const build: Record<string, () => Promise<{ rows: Record<string, unknown>[]; columns: CsvColumn<Record<string, unknown>>[]; summary?: Record<string, unknown> }>> = {
+    const build: Record<string, () => Promise<Built>> = {
       sales: () => this.sales(user, from, to),
       gst: () => this.gst(user, from, to),
       enquiries: () => this.enquiries(user, from, to),
       whatsapp: () => this.whatsapp(user, from, to),
       partners: () => this.partners(user, from, to),
       products: () => this.products(user, from, to),
+      commission: () => this.commission(user, from, to),
     };
     if (!build[kind]) throw notFound('Report');
     if (kind === 'gst' && user.role !== 'SUPER_ADMIN' && user.role !== 'STAFF' && user.role !== 'CITY_MANAGER') throw notFound('Report');
+    // The commission split is head office's own accounting.
+    if (kind === 'commission' && user.role !== 'SUPER_ADMIN' && user.role !== 'STAFF') throw notFound('Report');
     const r = await build[kind]!();
     if (q.format === 'csv') {
-      sendCsv(res, `${kind}-${dayKey(from)}-to-${dayKey(to)}.csv`, r.rows, r.columns);
+      const sec = q.section ? r.sections?.[q.section] : undefined;
+      if (q.section && !sec) throw notFound('Report section');
+      if (sec) sendCsv(res, `${kind}-${q.section}-${dayKey(from)}-to-${dayKey(to)}.csv`, sec.rows, sec.columns);
+      else sendCsv(res, `${kind}-${dayKey(from)}-to-${dayKey(to)}.csv`, r.rows, r.columns);
       return;
     }
-    return { range: { from, to }, columns: r.columns.map((c) => c.header), rows: r.rows, summary: r.summary ?? null };
+    return {
+      range: { from, to },
+      columns: r.columns.map((c) => c.header),
+      rows: r.rows,
+      summary: r.summary ?? null,
+      sections: Object.entries(r.sections ?? {}).map(([key, x]) => ({ key, title: x.title, columns: x.columns.map((c) => c.header), rows: x.rows })),
+    };
   }
 
   /** Paid sales by day: orders, gross, discounts, GST, refunds and net. */
@@ -250,7 +279,24 @@ export class ReportsController {
   private async whatsapp(user: AuthUser, from: Date, to: Date) {
     const list = await this.prisma.enquiry.findMany({
       where: { AND: [enquiriesFor(user), { createdAt: { gte: from, lte: to } }] },
-      select: { source: true, stage: true, product: { select: { name: true, sku: true } }, city: { select: { name: true } }, whatsAppNumber: { select: { label: true } }, convertedOrder: { select: { totalPaise: true, paymentStatus: true } } },
+      select: {
+        reference: true,
+        type: true,
+        createdAt: true,
+        contactName: true,
+        contactPhone: true,
+        message: true,
+        pageUrl: true,
+        source: true,
+        stage: true,
+        customer: { select: { user: { select: { name: true, phone: true } } } },
+        product: { select: { name: true, sku: true } },
+        city: { select: { name: true } },
+        whatsAppNumber: { select: { label: true } },
+        convertedOrder: { select: { totalPaise: true, paymentStatus: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 20_000,
     });
     // Field order matches the columns, so the admin table lines up.
     const rows: Array<{ dimension: string; value: string; enquiries: number; orders: number; conversionPct: number; salesPaise: number }> = [];
@@ -272,9 +318,42 @@ export class ReportsController {
     group('Source', (e) => e.source || 'Direct');
     group('WhatsApp number', (e) => e.whatsAppNumber?.label ?? 'Not routed');
     const orders = list.filter((e) => e.convertedOrder).length;
+    // The people behind the counts (meeting of 4 Nov): who asked, what about, from which page, and when.
+    const people = list.map((e) => ({
+      date: e.createdAt.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', dateStyle: 'medium', timeStyle: 'short' }),
+      reference: e.reference,
+      name: e.contactName ?? e.customer?.user.name ?? '',
+      phone: e.contactPhone ?? e.customer?.user.phone ?? '',
+      type: e.type,
+      askedAbout: (e.message ?? '').replace(/\s+/g, ' ').trim().slice(0, 300) || (e.product?.name ?? ''),
+      product: e.product ? `${e.product.name} (${e.product.sku})` : '',
+      page: e.pageUrl ?? '',
+      city: e.city?.name ?? '',
+      source: e.source || 'Direct',
+      stage: e.stage,
+    }));
     return {
       rows,
       summary: { enquiries: list.length, orders, conversionPct: pct(orders, list.length) },
+      sections: {
+        people: {
+          title: 'Who enquired',
+          rows: people,
+          columns: [
+            { header: 'Date', value: (r: any) => r.date },
+            { header: 'Reference', value: (r: any) => r.reference },
+            { header: 'Name', value: (r: any) => r.name },
+            { header: 'Phone', value: (r: any) => r.phone },
+            { header: 'Type', value: (r: any) => r.type },
+            { header: 'Asked about', value: (r: any) => r.askedAbout },
+            { header: 'Product', value: (r: any) => r.product },
+            { header: 'Page', value: (r: any) => r.page },
+            { header: 'City', value: (r: any) => r.city },
+            { header: 'Source', value: (r: any) => r.source },
+            { header: 'Stage', value: (r: any) => r.stage },
+          ],
+        },
+      },
       columns: [
         { header: 'By', value: (r: any) => r.dimension },
         { header: 'Value', value: (r: any) => r.value },
@@ -315,6 +394,128 @@ export class ReportsController {
         { header: 'Delivered', value: (r: any) => r.delivered },
         { header: 'Cancelled / failed / returned', value: (r: any) => r.cancelled },
         { header: 'Paid sales (₹)', value: (r: any) => r.salesPaise / 100 },
+      ],
+    };
+  }
+
+  /**
+   * Commission split (meeting of 4 Nov), one row per piece sold in paid orders: the pearl value is shared between the
+   * farm, the trader and the franchise or vendor that sold it (percentages in Settings); the metal value and the
+   * making charge go to the trader in full. Metal and making come from the product's costs; a piece without them
+   * counts its whole sale value (without GST) as pearl value.
+   */
+  private async commission(user: AuthUser, from: Date, to: Date): Promise<Built> {
+    const shares = await this.settings.get('commission');
+    const items = await this.prisma.orderItem.findMany({
+      where: { order: { AND: [orderScope(user), { placedAt: { gte: from, lte: to }, paymentStatus: { in: PAID }, status: { notIn: CLOSED_BAD }, archivedAt: null }] } },
+      select: {
+        sku: true,
+        name: true,
+        farmName: true,
+        quantity: true,
+        lineTotalPaise: true,
+        gstPaise: true,
+        product: { select: { metalCostPaise: true, labourCostPaise: true, farm: { select: { name: true } }, vendor: { select: { name: true } } } },
+        order: { select: { number: true, placedAt: true, franchise: { select: { name: true } }, vendor: { select: { name: true } } } },
+      },
+      orderBy: { order: { placedAt: 'asc' } },
+      take: 50_000,
+    });
+    const rows = items.map((i) => {
+      const salePaise = i.lineTotalPaise - i.gstPaise;
+      const s = commissionSplit({
+        saleValuePaise: salePaise,
+        metalPaise: (i.product?.metalCostPaise ?? 0) * i.quantity,
+        makingPaise: (i.product?.labourCostPaise ?? 0) * i.quantity,
+        farmerPercent: shares.farmerPercent,
+        traderPercent: shares.traderPercent,
+        partnerPercent: shares.partnerPercent,
+      });
+      const partner = i.order.franchise
+        ? `Franchise: ${i.order.franchise.name}`
+        : i.order.vendor
+          ? `Vendor: ${i.order.vendor.name}`
+          : i.product?.vendor
+            ? `Vendor: ${i.product.vendor.name}`
+            : 'Direct (head office)';
+      // Field order matches the columns, so the admin table lines up.
+      return {
+        day: dayKey(i.order.placedAt),
+        order: i.order.number,
+        piece: `${i.name} (${i.sku})`,
+        farm: i.product?.farm?.name ?? i.farmName ?? 'No farm',
+        partner,
+        quantity: i.quantity,
+        salePaise,
+        metalPaise: s.metalValuePaise,
+        makingPaise: s.makingPaise,
+        pearlPaise: s.pearlValuePaise,
+        farmerPaise: s.farmerPaise,
+        traderPearlPaise: s.traderPearlPaise,
+        partnerSharePaise: s.partnerPaise,
+        traderTotalPaise: s.traderTotalPaise,
+      };
+    });
+    type R = (typeof rows)[number];
+    const total = (k: keyof R, list: R[] = rows) => list.reduce((a, r) => a + (r[k] as number), 0);
+    const groupBy = (key: 'farm' | 'partner') => {
+      const m = new Map<string, R[]>();
+      for (const r of rows) m.set(r[key], [...(m.get(r[key]) ?? []), r]);
+      return [...m.entries()].map(([name, list]) => ({ name, list })).sort((a, b) => total('salePaise', b.list) - total('salePaise', a.list));
+    };
+    const money = (header: string, k: string) => ({ header, value: (r: Row) => (r[k] as number) / 100 });
+    const text = (header: string, k: string) => ({ header, value: (r: Row) => r[k] });
+    return {
+      rows,
+      summary: {
+        pieces: total('quantity'),
+        salePaise: total('salePaise'),
+        pearlPaise: total('pearlPaise'),
+        farmerPaise: total('farmerPaise'),
+        traderTotalPaise: total('traderTotalPaise'),
+        partnerSharePaise: total('partnerSharePaise'),
+      },
+      sections: {
+        farms: {
+          title: `Totals per farm (farmer ${shares.farmerPercent}% of the pearl value)`,
+          rows: groupBy('farm').map(({ name, list }) => ({ farm: name, pieces: total('quantity', list), salePaise: total('salePaise', list), pearlPaise: total('pearlPaise', list), farmerPaise: total('farmerPaise', list) })),
+          columns: [text('Farm', 'farm'), text('Pieces', 'pieces'), money('Sale value (₹)', 'salePaise'), money('Pearl value (₹)', 'pearlPaise'), money('Farmer share (₹)', 'farmerPaise')],
+        },
+        partners: {
+          title: `Totals per franchise / vendor (${shares.partnerPercent}% of the pearl value)`,
+          rows: groupBy('partner').map(({ name, list }) => ({
+            partner: name,
+            pieces: total('quantity', list),
+            salePaise: total('salePaise', list),
+            pearlPaise: total('pearlPaise', list),
+            partnerSharePaise: total('partnerSharePaise', list),
+            traderTotalPaise: total('traderTotalPaise', list),
+          })),
+          columns: [
+            text('Franchise / vendor', 'partner'),
+            text('Pieces', 'pieces'),
+            money('Sale value (₹)', 'salePaise'),
+            money('Pearl value (₹)', 'pearlPaise'),
+            money('Franchise / vendor share (₹)', 'partnerSharePaise'),
+            money('Trader total (₹)', 'traderTotalPaise'),
+          ],
+        },
+      },
+      columns: [
+        text('Day', 'day'),
+        text('Order', 'order'),
+        text('Piece', 'piece'),
+        text('Farm', 'farm'),
+        text('Sold by', 'partner'),
+        text('Qty', 'quantity'),
+        money('Sale value excl. GST (₹)', 'salePaise'),
+        money('Metal value → trader (₹)', 'metalPaise'),
+        money('Making → trader (₹)', 'makingPaise'),
+        money('Pearl value (₹)', 'pearlPaise'),
+        money(`Farmer ${shares.farmerPercent}% (₹)`, 'farmerPaise'),
+        money(`Trader ${shares.traderPercent}% (₹)`, 'traderPearlPaise'),
+        money(`Franchise / vendor ${shares.partnerPercent}% (₹)`, 'partnerSharePaise'),
+        money('Trader total (₹)', 'traderTotalPaise'),
       ],
     };
   }

@@ -12,6 +12,7 @@ import { badRequest, forbidden } from '../../common/errors';
 import { PrismaService } from '../../prisma/prisma.service';
 import { JobsService } from '../../queue/jobs.service';
 import { PEARL_RATE_FEED, type PearlRateFeed } from '../../providers/types';
+import { MetalRatesController, MetalRatesService } from './metal-rates';
 
 const DEFAULT_GST_BP = 300;
 const headOffice = (u: AuthUser) => u.role === 'SUPER_ADMIN' || u.role === 'STAFF';
@@ -210,8 +211,8 @@ export class PricingCalcController {
 }
 
 @Module({
-  controllers: [PearlRatesController, MarginRulesController, PricingCalcController],
-  providers: [PearlPricingService],
-  exports: [PearlPricingService],
+  controllers: [PearlRatesController, MarginRulesController, PricingCalcController, MetalRatesController],
+  providers: [PearlPricingService, MetalRatesService],
+  exports: [PearlPricingService, MetalRatesService],
 })
 export class PearlPricingModule {}

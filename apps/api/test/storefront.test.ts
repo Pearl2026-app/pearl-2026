@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import sharp from 'sharp';
 import { api, bearer, db, drain, getApp, http, tokenFor } from './helpers';
 
 beforeAll(async () => {
@@ -229,6 +230,60 @@ describe('careers', () => {
     const file = await http().get(path).expect(200);
     expect(file.headers['content-type']).toBe('application/pdf');
     await http().get(path.replace(/sig=[^&]+/, 'sig=bad')).expect(404);
+  });
+
+  it('takes an ID proof beside the resume, and a photographed resume', async () => {
+    const pdf = Buffer.from('%PDF-1.4\n1 0 obj<<>>endobj\ntrailer<<>>\n%%EOF');
+    const png = await sharp({ create: { width: 20, height: 20, channels: 3, background: '#ffffff' } }).png().toBuffer();
+    await http()
+      .post(api('/careers/jewellery-sales-associate-pune/apply'))
+      .field('name', 'Meera Joshi')
+      .field('email', 'meera.id@example.com')
+      .field('phone', '9876500006')
+      .attach('resume', png, { filename: 'cv.png', contentType: 'image/png' })
+      .attach('idProof', pdf, { filename: 'id.pdf', contentType: 'application/pdf' })
+      .expect(201);
+    const a = await db.jobApplication.findFirstOrThrow({ where: { email: 'meera.id@example.com' } });
+    expect(a.idProofUrl?.startsWith('private:')).toBe(true);
+    const link = await http().get(api(`/admin/job-applications/${a.id}/id-proof`)).set(bearer(await tokenFor('superAdmin'))).expect(200);
+    expect(link.body.url).toContain('/api/v1/files/job-documents/');
+    // An ID proof must be a photo or PDF.
+    await http()
+      .post(api('/careers/jewellery-sales-associate-pune/apply'))
+      .field('name', 'Meera Two')
+      .field('email', 'meera.two@example.com')
+      .field('phone', '9876500007')
+      .attach('resume', pdf, { filename: 'cv.pdf', contentType: 'application/pdf' })
+      .attach('idProof', Buffer.from('PK\u0003\u0004 docx'), { filename: 'id.docx', contentType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' })
+      .expect(400);
+  });
+});
+
+describe('delivery partner applications', () => {
+  it('welcomes an approved partner by email and SMS with how to sign in', async () => {
+    const png = await sharp({ create: { width: 20, height: 20, channels: 3, background: '#ffffff' } }).png().toBuffer();
+    const phone = `+9198${String(Date.now()).slice(-8)}`;
+    await http()
+      .post(api('/partners/delivery/apply'))
+      .field('name', 'Sunil Pawar')
+      .field('phone', phone)
+      .field('email', 'sunil.partner@example.com')
+      .field('citySlug', 'pune')
+      .field('address', '12 Station Road, Shivajinagar, Pune')
+      .field('vehicleNumber', 'MH12 AB 1234')
+      .field('licenceNumber', 'MH1220200001234')
+      .attach('licence', png, { filename: 'l.png', contentType: 'image/png' })
+      .attach('rc', png, { filename: 'rc.png', contentType: 'image/png' })
+      .attach('addressProof', png, { filename: 'a.png', contentType: 'image/png' })
+      .expect(200);
+    const dp = await db.deliveryPartner.findUniqueOrThrow({ where: { phone } });
+    expect(dp.email).toBe('sunil.partner@example.com');
+    const r = await http().post(api(`/admin/delivery-partners/${dp.id}/approve`)).set(bearer(await tokenFor('superAdmin'))).send({}).expect(200);
+    expect(r.body.welcomed).toBe(true);
+    const logs = await db.notificationLog.findMany({ where: { templateKey: 'PARTNER_WELCOME', recipient: { in: [phone, 'sunil.partner@example.com'] } } });
+    expect(logs.map((l) => l.channel).sort()).toEqual(['EMAIL', 'SMS']);
+    expect(logs.find((l) => l.channel === 'EMAIL')!.body).toContain('/login');
+    expect(await db.user.findFirst({ where: { phone, role: 'DELIVERY_PARTNER', isActive: true } })).not.toBeNull();
   });
 });
 

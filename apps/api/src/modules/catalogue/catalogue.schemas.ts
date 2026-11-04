@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { basisPoints, paise, slug } from '@sahyadri/shared';
+import { basisPoints, METAL_RATE_KEYS, paise, slug } from '@sahyadri/shared';
 
 const optStr = (max = 200) => z.string().trim().max(max).optional().nullable();
 const seo = { seoTitle: optStr(70), seoDescription: optStr(170) };
@@ -74,6 +74,18 @@ const productFields = {
   sizeMm: z.number().min(0).max(1000).optional().nullable(),
   metal: optStr(80),
   certification: optStr(200),
+  /** Lab / grading certificate entered when the piece is added; verifiable at /verify/{number} */
+  certificateNumber: z
+    .string()
+    .trim()
+    .regex(/^[A-Za-z0-9][A-Za-z0-9 ._-]{1,59}$/, 'Letters, digits, spaces, dots and hyphens')
+    .optional()
+    .nullable()
+    .or(z.literal('').transform(() => null)),
+  certificateUrl: optStr(500),
+  /** Price follows the daily metal rate (net weight × rate + margin + making + pearl cost) */
+  priceFollowsMetalRate: z.boolean().optional(),
+  metalRateKey: z.enum(METAL_RATE_KEYS).optional().nullable(),
   netWeight: z.number().min(0).max(100000).optional().nullable(),
   grossWeight: z.number().min(0).max(100000).optional().nullable(),
   stockType: z.enum(['UNIQUE', 'QUANTITY']).optional(),

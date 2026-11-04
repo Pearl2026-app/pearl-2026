@@ -61,6 +61,26 @@ export const SETTING_SCHEMAS = {
     /** Default minimum order quantity for the business price */
     minQty: z.number().int().min(1).max(1_000_000).default(10),
   }),
+  /**
+   * Commission split (meeting of 4 Nov): the percentages apply to the pearl value of each sale; the metal value
+   * (and the making charge) go to the trader in full.
+   */
+  commission: z
+    .object({
+      farmerPercent: z.number().min(0).max(100).default(50),
+      traderPercent: z.number().min(0).max(100).default(30),
+      /** The franchise or vendor that made the sale */
+      partnerPercent: z.number().min(0).max(100).default(20),
+    })
+    .refine((v) => Math.abs(v.farmerPercent + v.traderPercent + v.partnerPercent - 100) < 0.001, { message: 'The three shares must add up to 100%', path: ['partnerPercent'] }),
+  /** Daily metal rates: the margin added per metal for products whose price follows the rate. */
+  metal_pricing: z.object({
+    /** Daily rate feed (JSON) when METAL_RATE_FEED_URL is not set; empty = rates are entered by hand */
+    feedUrl: z.string().default(''),
+    margins: z
+      .record(z.string(), z.object({ percent: z.number().min(0).max(500).default(0), perGramPaise: z.number().int().min(0).max(100_000_000).default(0) }))
+      .default({}),
+  }),
   cart_reminder: z.object({ enabled: z.boolean().default(true), delayMinutes: z.number().int().min(5).default(120) }),
   review_request: z.object({ enabled: z.boolean().default(true), delayDays: z.number().int().min(0).default(3) }),
   delivery_proof: z.object({ otpAbovePaise: z.number().int().nonnegative().default(5_000_000) }),
