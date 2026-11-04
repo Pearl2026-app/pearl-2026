@@ -25,6 +25,7 @@ export function PageTitle({ eyebrow, title, intro }: { eyebrow?: string; title: 
     <div className="fade-in max-w-3xl py-6 lg:py-10">
       {eyebrow && <p className="eyebrow mb-3">{eyebrow}</p>}
       <h1 className="font-serif text-4xl leading-tight text-ink lg:text-[56px]">{title}</h1>
+      <span aria-hidden className="mt-5 block h-px w-24 bg-gradient-to-r from-gold to-transparent" />
       {intro && <div className="mt-4 text-lg leading-relaxed text-muted">{intro}</div>}
     </div>
   );
@@ -32,7 +33,7 @@ export function PageTitle({ eyebrow, title, intro }: { eyebrow?: string; title: 
 
 export function SectionHeading({ eyebrow, title, action }: { eyebrow?: string; title: string; action?: ReactNode }) {
   return (
-    <div className="mb-9 flex items-end justify-between gap-6">
+    <div data-reveal className="mb-9 flex items-end justify-between gap-6">
       <div className="ruled-heading min-w-0 flex-1">
         <div className="shrink-0">
           {eyebrow && <p className="eyebrow mb-2">{eyebrow}</p>}
@@ -47,12 +48,12 @@ export function SectionHeading({ eyebrow, title, action }: { eyebrow?: string; t
 export function ButtonLink({ href, children, variant = 'solid', className = '' }: { href: string; children: ReactNode; variant?: 'solid' | 'outline' | 'text'; className?: string }) {
   const cls =
     variant === 'solid'
-      ? 'bg-accent text-white hover:bg-accent-hover'
+      ? 'rounded-full bg-accent text-white hover:bg-accent-hover shine'
       : variant === 'outline'
-        ? 'border border-ink text-ink hover:bg-ink hover:text-white'
+        ? 'rounded-full border border-ink/40 text-ink hover:bg-ink hover:text-white'
         : 'text-accent underline-offset-4 hover:underline';
   return (
-    <Link href={href} className={`lux-track inline-flex min-h-12 items-center justify-center px-7 transition-colors ${variant === 'text' ? 'px-0 no-underline hover:text-ink' : ''} ${cls} ${className}`}>
+    <Link href={href} data-magnetic={variant === 'text' ? undefined : ''} className={`lux-track inline-flex min-h-12 items-center justify-center px-7 transition-colors ${variant === 'text' ? 'px-0 no-underline hover:text-ink' : ''} ${cls} ${className}`}>
       {children}
     </Link>
   );

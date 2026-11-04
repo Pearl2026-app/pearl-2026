@@ -51,6 +51,7 @@ export const CARD_SELECT = {
   soldAt: true,
   publishedAt: true,
   isExclusive: true,
+  videoUrl: true,
   farm: { select: { name: true, slug: true } },
   collection: { select: { name: true, slug: true } },
   category: { select: { name: true, slug: true } },
@@ -80,6 +81,7 @@ export function toCard(p: CardRow) {
       ? (p.sizes as Array<{ label: string; quantity: number }>).map((x) => ({ label: x.label, available: x.quantity > 0 }))
       : null,
     isExclusive: p.isExclusive,
+    videoUrl: p.videoUrl,
     isSold: sold,
     available,
     farm: p.farm,

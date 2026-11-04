@@ -95,7 +95,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
       />
       <div className="grid gap-8 lg:grid-cols-[1.25fr_1fr] lg:gap-16">
         <Gallery images={p.images} video={p.videoUrl} name={p.name} />
-        <div className="flex flex-col gap-6 lg:sticky lg:top-28 lg:self-start">
+        <div className="glass flex flex-col gap-6 rounded-3xl p-5 lg:sticky lg:top-28 lg:self-start lg:p-8">
           <div>
             {p.collection && (
               <Link href={`/collections/${p.collection.slug}`} className="eyebrow hover:text-accent">

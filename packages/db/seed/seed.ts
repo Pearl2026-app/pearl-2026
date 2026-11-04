@@ -13,6 +13,7 @@ import { hashPassword } from '../src/password';
 import { productSvg, sceneSvg } from './art';
 import { copyRealPhotos, photo, SAMPLE_BANNER_ART, SAMPLE_PHOTOS, SAMPLE_PRODUCTS, sampleSlug } from './samples';
 import realStock from './real-stock.json';
+import { importClientCollection } from './collection';
 
 const prisma = new PrismaClient();
 const PASSWORD = process.env.SEED_PASSWORD ?? 'Sahyadri@2026';
@@ -1576,6 +1577,7 @@ async function partnerLogins(swastikFarmId: string) {
   }
 
   await importRealStock();
+  await importClientCollection(prisma, STORAGE);
 
   // One rider application waiting for approval (documents are not included in the sample).
   const pune = await prisma.city.findFirst({ where: { slug: 'pune' } });

@@ -3,6 +3,7 @@ import { headers } from 'next/headers';
 import localFont from 'next/font/local';
 import { Footer } from '@/components/footer';
 import { Header } from '@/components/header';
+import { Motion } from '@/components/motion';
 import { OrderStrip } from '@/components/order-strip';
 import { SessionProvider } from '@/components/session';
 import { SiteProvider } from '@/components/site-context';
@@ -39,11 +40,11 @@ export async function generateMetadata(): Promise<Metadata> {
     description: site?.seo.defaultDescription,
     applicationName: 'Sahyadri Pearls',
     formatDetection: { telephone: false },
-    icons: { icon: '/icon.svg' },
+    icons: { icon: '/icon.svg', apple: '/brand/logo.png' },
   };
 }
 
-export const viewport: Viewport = { themeColor: '#FFFFFF', width: 'device-width', initialScale: 1 };
+export const viewport: Viewport = { themeColor: '#F7F3E9', width: 'device-width', initialScale: 1 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const site = (await get<Site>('/site', { revalidate: 300 }))!;
@@ -77,6 +78,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             <main id="main">{children}</main>
             <Footer site={site} />
             <WhatsAppFloat />
+            <Motion />
           </SessionProvider>
         </SiteProvider>
         <JsonLd

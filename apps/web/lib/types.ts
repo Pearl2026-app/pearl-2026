@@ -20,6 +20,7 @@ export interface ProductCard {
   metal: string | null;
   isUnique: boolean;
   isExclusive?: boolean;
+  videoUrl?: string | null;
   sizes?: Array<{ label: string; available: boolean }> | null;
   isSold: boolean;
   available: boolean;

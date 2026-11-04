@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { HeroCarousel } from '@/components/hero-carousel';
+import { CinematicHero, HangingLine, ScrollShowcase } from '@/components/home-motion';
 import { LocationGate } from '@/components/location-gate';
 import { IconFor } from '@/components/icons';
 import { ProductCard as Card, ProductGrid } from '@/components/product-card';
@@ -44,7 +45,8 @@ export const metadata = meta({
 /** A banner's button, drawn as a span because the whole banner is the link. */
 const BannerButton = ({ label, light }: { label: string; light?: boolean }) => (
   <span
-    className={`mt-8 inline-flex min-h-12 items-center px-8 text-[15px] tracking-wide transition-colors ${light ? 'bg-white text-ink group-hover:bg-orient' : 'bg-ink text-white group-hover:bg-accent-hover'}`}
+    data-magnetic
+    className={`mt-8 inline-flex min-h-12 items-center rounded-full px-8 text-[15px] tracking-wide transition-colors ${light ? 'bg-gold text-ink group-hover:bg-white' : 'bg-ink text-white group-hover:bg-accent-hover'}`}
   >
     {label}
   </span>
@@ -61,25 +63,30 @@ export default async function HomePage() {
   const trust = h.blocks['home.trust'];
   const cta = h.blocks['home.custom_cta'];
   const categories = site?.categories ?? [];
+  // The client's own collection leads the page: a piece with a film for the hero, three for the showcase.
+  const pool = [...(h.exclusive ?? []), ...h.featured, ...h.newest].filter((p, i, a) => a.findIndex((x) => x.id === p.id) === i);
+  const heroPiece = pool.find((p) => p.videoUrl) ?? pool.find((p) => p.images.length) ?? null;
+  const showcase = pool.filter((p) => p.images.length > 1 && p.id !== heroPiece?.id).slice(0, 3);
+  const line = pool.filter((p) => p.images.length).slice(0, 7);
 
   return (
     <>
       {/* The first thing a new visitor meets: where should we deliver? */}
       <LocationGate />
-      {heroes.length > 0 && <HeroCarousel slides={heroes} />}
+      <CinematicHero piece={heroPiece} fallbackImage={heroes[0]?.imageUrl} />
 
       {/* Shop by category: the quickest way in. */}
       {categories.length > 0 && (
         <Container className="pt-14 lg:pt-20">
-          <SectionHeading title="Shop by category" />
-          <ul className="no-scrollbar -mx-4 flex gap-4 overflow-x-auto px-4 pb-2 sm:gap-6 lg:mx-0 lg:grid lg:grid-cols-6 lg:gap-8 lg:overflow-visible lg:px-0">
+          <SectionHeading eyebrow="Find your piece" title="Shop by category" />
+          <ul data-reveal className="no-scrollbar -mx-4 flex gap-4 overflow-x-auto px-4 pb-2 sm:gap-6 lg:mx-0 lg:grid lg:grid-cols-6 lg:gap-8 lg:overflow-visible lg:px-0">
             {categories.map((c) => (
               <li key={c.slug} className="w-[92px] shrink-0 sm:w-28 lg:w-auto">
                 <Link
                   href={`/jewellery/${c.slug}`}
                   className="group flex flex-col items-center gap-3 text-center"
                 >
-                  <span className="nacre block aspect-square w-full overflow-hidden rounded-full ring-1 ring-line transition-shadow duration-300 group-hover:ring-2 group-hover:ring-gold">
+                  <span data-tilt="12" className="glass block aspect-square w-full overflow-hidden rounded-full p-1.5 transition-shadow duration-500 group-hover:shadow-[0_18px_40px_-14px_rgb(184_144_66/0.6)]">
                     {c.imageUrl && (
                       <img
                         src={c.imageUrl}
@@ -87,7 +94,7 @@ export default async function HomePage() {
                         loading="lazy"
                         width={200}
                         height={200}
-                        className="img-zoom h-full w-full object-cover"
+                        className="img-zoom h-full w-full rounded-full object-cover"
                       />
                     )}
                   </span>
@@ -97,6 +104,14 @@ export default async function HomePage() {
             ))}
           </ul>
         </Container>
+      )}
+
+      <ScrollShowcase pieces={showcase} />
+      <HangingLine pieces={line} />
+      {heroes.length > 0 && (
+        <div data-reveal className="mx-2 overflow-hidden rounded-3xl lg:mx-5">
+          <HeroCarousel slides={heroes} />
+        </div>
       )}
 
       {/* Shop by farm: every pearl comes from a named farm, so customers can start from the farm they trust. */}
@@ -113,14 +128,14 @@ export default async function HomePage() {
           <ul className="no-scrollbar -mx-4 flex snap-x gap-4 overflow-x-auto px-4 pb-2 lg:mx-0 lg:grid lg:grid-cols-4 lg:gap-6 lg:overflow-visible lg:px-0">
             {h.farms!.map((f) => (
               <li key={f.slug} className="w-[70%] shrink-0 snap-start sm:w-[45%] lg:w-auto">
-                <Link href={`/jewellery?farm=${encodeURIComponent(f.slug)}`} className="group block">
-                  <span className="nacre block aspect-[4/5] overflow-hidden">
+                <Link href={`/jewellery?farm=${encodeURIComponent(f.slug)}`} data-cursor="Explore" className="glass group block rounded-2xl p-2">
+                  <span className="nacre block aspect-[4/5] overflow-hidden rounded-xl">
                     {f.heroImageUrl && (
                       <img src={f.heroImageUrl} alt="" loading="lazy" width={480} height={600} className="img-zoom h-full w-full object-cover" />
                     )}
                   </span>
-                  <span className="mt-3 block font-serif text-xl">{f.name}</span>
-                  <span className="block text-sm text-muted">
+                  <span className="mt-3 block px-2 font-serif text-xl">{f.name}</span>
+                  <span className="block px-2 pb-2 text-sm text-muted">
                     {f.location} · {f.productCount} {f.productCount === 1 ? 'piece' : 'pieces'}
                   </span>
                 </Link>
@@ -149,7 +164,9 @@ export default async function HomePage() {
         <Container className="pt-20 lg:pt-28">
           <Link
             href={wide.linkUrl ?? '/jewellery'}
-            className="group grid overflow-hidden bg-surface md:grid-cols-2"
+            data-reveal
+            data-cursor="Shop"
+            className="glass group grid overflow-hidden rounded-3xl md:grid-cols-2"
           >
             <div className="nacre overflow-hidden">
               <img
@@ -177,7 +194,7 @@ export default async function HomePage() {
           <ul className="grid gap-6 md:grid-cols-2">
             {tiles.slice(0, 2).map((b) => (
               <li key={b.id}>
-                <Link href={b.linkUrl ?? '/jewellery'} className="group block bg-surface">
+                <Link href={b.linkUrl ?? '/jewellery'} data-reveal data-tilt="4" className="glass group block overflow-hidden rounded-3xl">
                   <div className="nacre overflow-hidden">
                     <img
                       src={b.imageUrl}
@@ -261,7 +278,8 @@ export default async function HomePage() {
         <Container className="pt-20 lg:pt-28">
           <Link
             href={cta.data.linkUrl ?? '/customized-jewellery'}
-            className="group flex flex-col items-center bg-ink px-6 py-16 text-center text-white lg:py-24"
+            data-reveal
+            className="glass-dark shine group flex flex-col items-center rounded-3xl bg-[radial-gradient(120%_120%_at_50%_0%,#47628a,#070e4d)] px-6 py-16 text-center text-white lg:py-24"
           >
             <h2 className="font-serif text-4xl lg:text-6xl">{cta.title}</h2>
             <p className="mt-4 max-w-md text-white/80">
@@ -277,7 +295,7 @@ export default async function HomePage() {
           <SectionHeading title="Loved by our customers" />
           <ul className="grid gap-10 md:grid-cols-3">
             {h.testimonials.slice(0, 3).map((t) => (
-              <li key={t.id} className="border-t border-gold pt-6">
+              <li key={t.id} data-reveal data-tilt="5" className="glass rounded-2xl border-t-2 !border-t-gold p-6">
                 <p aria-label={`${t.rating ?? 5} out of 5 stars`} className="text-gold">
                   {'★'.repeat(t.rating ?? 5)}
                 </p>
@@ -294,7 +312,7 @@ export default async function HomePage() {
 
       {trust && (
         <Container className="pt-20 lg:pt-28">
-          <ul className="grid grid-cols-2 gap-6 border-y border-line py-10 lg:grid-cols-4">
+          <ul data-reveal className="glass grid grid-cols-2 gap-6 rounded-3xl py-10 lg:grid-cols-4">
             {(trust.data.items as Array<{ icon: string; title: string }>).map((t) => (
               <li key={t.title} className="flex flex-col items-center gap-3 text-center">
                 <IconFor name={t.icon} className="text-gold" width={28} height={28} />

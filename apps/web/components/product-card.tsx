@@ -25,9 +25,13 @@ export function Price({
 export function ProductCard({ p, priority }: { p: Card; priority?: boolean }) {
   const quickAdd = p.available && !p.isSold && !p.priceOnRequest && p.pricePaise != null;
   return (
-    <div className="group relative">
-      <Link href={`/product/${p.slug}`} className="flex flex-col gap-4 focus-visible:outline-offset-4">
-        <div className="nacre relative overflow-hidden">
+    <div className="group relative" data-tilt="7">
+      <Link
+        href={`/product/${p.slug}`}
+        data-cursor="View"
+        className="glass flex flex-col gap-4 rounded-2xl p-2 pb-4 transition-shadow duration-500 group-hover:shadow-[0_24px_60px_-20px_rgb(7_14_77/0.35)] focus-visible:outline-offset-4"
+      >
+        <div className="nacre relative overflow-hidden rounded-xl">
           <PearlImage
             image={p.images[0]}
             alt={p.images[0]?.alt ?? p.name}
@@ -42,33 +46,34 @@ export function ProductCard({ p, priority }: { p: Card; priority?: boolean }) {
               className="absolute inset-0 aspect-square h-full w-full object-cover opacity-0 transition-opacity duration-500 ease-[var(--ease-calm)] group-hover:opacity-100"
             />
           )}
+          <span className="tilt-glare" aria-hidden />
           {p.isSold && (
             <span className="absolute top-3 left-3 rounded-full bg-ink px-3 py-1 text-xs text-white">
               Sold
             </span>
           )}
           {!p.isSold && p.isExclusive && (
-            <span className="absolute top-3 left-3 rounded-full bg-ink px-3 py-1 text-xs tracking-wide text-white">
+            <span className="glass-dark absolute top-3 left-3 rounded-full px-3 py-1 text-xs tracking-wide">
               Exclusive
             </span>
           )}
           {!p.isSold && !p.isExclusive && p.isUnique && (
-            <span className="absolute top-3 left-3 rounded-full bg-surface/95 px-3 py-1 text-xs text-ink">
+            <span className="glass absolute top-3 left-3 rounded-full px-3 py-1 text-xs text-ink">
               One of a kind
             </span>
           )}
         </div>
         {/* The international-house card: just the name and the price, centred, with air around them. */}
         <div className="flex flex-col items-center gap-1 px-2 text-center">
-          <h3 className="text-[14px] leading-snug font-medium text-ink underline-offset-4 group-hover:underline">
+          <h3 className="text-[14px] leading-snug font-medium text-ink">
             {p.name}
           </h3>
-          <Price p={p} className={`price text-[13px] ${p.priceOnRequest ? 'text-muted italic' : 'text-muted'}`} />
+          <Price p={p} className={`price text-[13px] ${p.priceOnRequest ? 'text-muted italic' : 'text-gold font-normal'}`} />
         </div>
       </Link>
       {/* Over the image's corner, outside the link (a button cannot sit inside a link). */}
       {quickAdd && (
-        <div className="pointer-events-none absolute inset-x-0 top-0 aspect-square">
+        <div className="pointer-events-none absolute inset-x-2 top-2 aspect-square">
           <QuickAdd productId={p.id} slug={p.slug} name={p.name} />
         </div>
       )}
@@ -80,7 +85,7 @@ export function ProductGrid({ products, priorityCount = 0 }: { products: Card[];
   return (
     <ul className="grid grid-cols-2 gap-x-3 gap-y-12 md:grid-cols-3 lg:grid-cols-4 lg:gap-x-6 lg:gap-y-16">
       {products.map((p, i) => (
-        <li key={p.id}>
+        <li key={p.id} data-reveal style={{ ['--reveal-delay' as string]: `${(i % 4) * 70}ms` }}>
           <ProductCard p={p} priority={i < priorityCount} />
         </li>
       ))}

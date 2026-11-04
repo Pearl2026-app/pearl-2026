@@ -2,25 +2,27 @@
 @import '@sahyadri/ui/theme.css';
 @source '../../../packages/ui/src';
 
-/* Website palette, black and white (client request, 27 Oct; the admin keeps the shared palette in packages/ui).
-   Pure white ground, near-black ink and buttons, neutral greys for secondary text and hairlines. */
+/* Brand palette (client brand guide, 4 Nov): Deep Royal Navy, Steel Blue, Antique Gold on Pearl Ivory.
+   Surfaces are frosted glass over a soft ivory ground with drifting navy, steel and gold light. */
 @theme {
-  --color-bg: #ffffff;
-  --color-surface: #ffffff;
-  --color-surface-muted: #f4f4f4;
-  --color-ink: #111111;
-  --color-muted: #6b6b6b;
-  --color-line: #e4e4e4;
-  --color-accent: #111111;
-  --color-accent-hover: #000000;
-  --color-accent-soft: #f0f0f0;
-  --color-gold: #767676;
-  --color-orient: #ececec;
+  --color-bg: #f7f3e9;
+  --color-surface: #fffdf8;
+  --color-surface-muted: #efe9da;
+  --color-ink: #070e4d;
+  --color-muted: #47628a;
+  --color-line: rgb(7 14 77 / 0.12);
+  --color-accent: #070e4d;
+  --color-accent-hover: #12207a;
+  --color-accent-soft: #e7e3f1;
+  --color-gold: #b89042;
+  --color-gold-soft: #e9dcc0;
+  --color-steel: #47628a;
+  --color-orient: #ece4d0;
   --font-serif: var(--font-poppins), Poppins, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   --font-sans: var(--font-poppins), Poppins, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-  /* Slightly rounded controls: friendlier without losing the quiet, premium line. */
-  --radius-sm: 0.375rem;
-  --radius-md: 0.625rem;
+  --radius-sm: 0.5rem;
+  --radius-md: 0.875rem;
+  --ease-silk: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 html {
@@ -118,8 +120,19 @@ h2.font-serif {
   scrollbar-width: none;
 }
 
+/* Lenis drives smooth scrolling where motion is welcome; native smooth scroll is the fallback. */
 html {
   scroll-behavior: smooth;
+}
+html.lenis,
+html.lenis body {
+  height: auto;
+}
+.lenis.lenis-smooth {
+  scroll-behavior: auto !important;
+}
+.lenis.lenis-stopped {
+  overflow: hidden;
 }
 /* The cart count settles in with a small bounce when it changes. */
 .pop {
@@ -134,5 +147,207 @@ html {
   }
   100% {
     transform: none;
+  }
+}
+
+/* ── Ambient light behind the glass ─────────────────────────────────────────── */
+body {
+  background: var(--color-bg);
+}
+body::before {
+  content: '';
+  position: fixed;
+  inset: -20vmax;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(38vmax 38vmax at 12% 18%, rgb(71 98 138 / 0.18), transparent 60%),
+    radial-gradient(34vmax 34vmax at 88% 12%, rgb(184 144 66 / 0.16), transparent 62%),
+    radial-gradient(42vmax 42vmax at 70% 88%, rgb(7 14 77 / 0.10), transparent 60%),
+    radial-gradient(30vmax 30vmax at 20% 85%, rgb(184 144 66 / 0.10), transparent 60%);
+  filter: blur(10px);
+  animation: drift 28s var(--ease-silk) infinite alternate;
+}
+@keyframes drift {
+  to {
+    transform: translate3d(3vmax, -2vmax, 0) scale(1.06);
+  }
+}
+
+/* ── Glass ──────────────────────────────────────────────────────────────────── */
+.glass {
+  background: linear-gradient(135deg, rgb(255 255 255 / 0.62), rgb(255 255 255 / 0.34));
+  -webkit-backdrop-filter: blur(18px) saturate(160%);
+  backdrop-filter: blur(18px) saturate(160%);
+  border: 1px solid rgb(255 255 255 / 0.65);
+  box-shadow:
+    0 1px 0 rgb(255 255 255 / 0.7) inset,
+    0 10px 40px -12px rgb(7 14 77 / 0.18);
+}
+.glass-dark {
+  background: linear-gradient(135deg, rgb(7 14 77 / 0.55), rgb(7 14 77 / 0.28));
+  -webkit-backdrop-filter: blur(20px) saturate(150%);
+  backdrop-filter: blur(20px) saturate(150%);
+  border: 1px solid rgb(255 255 255 / 0.16);
+  color: #fff;
+  box-shadow: 0 20px 60px -20px rgb(7 14 77 / 0.5);
+}
+.glass-line {
+  border-color: rgb(255 255 255 / 0.55);
+}
+.gold-text {
+  background: linear-gradient(100deg, #8a6a2c, #d9b56a 45%, #b89042 60%, #8a6a2c);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.shine {
+  position: relative;
+  overflow: hidden;
+}
+.shine::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(115deg, transparent 30%, rgb(255 255 255 / 0.45) 48%, transparent 66%);
+  transform: translateX(-120%);
+  transition: transform 0.9s var(--ease-silk);
+  pointer-events: none;
+}
+.shine:hover::after {
+  transform: translateX(120%);
+}
+
+/* ── Cursor (pointer devices only; the component never mounts on touch) ─────── */
+.cursor-dot,
+.cursor-ring {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 100;
+  pointer-events: none;
+  border-radius: 9999px;
+  will-change: transform;
+}
+.cursor-dot {
+  width: 6px;
+  height: 6px;
+  margin: -3px 0 0 -3px;
+  background: var(--color-gold);
+}
+.cursor-ring {
+  width: 38px;
+  height: 38px;
+  margin: -19px 0 0 -19px;
+  border: 1px solid rgb(184 144 66 / 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition:
+    width 0.35s var(--ease-silk),
+    height 0.35s var(--ease-silk),
+    margin 0.35s var(--ease-silk),
+    background-color 0.35s var(--ease-silk),
+    border-color 0.35s var(--ease-silk),
+    opacity 0.3s;
+}
+.cursor-ring span {
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #fff;
+  opacity: 0;
+  transition: opacity 0.25s;
+}
+.cursor-ring.is-hover {
+  width: 64px;
+  height: 64px;
+  margin: -32px 0 0 -32px;
+  background: rgb(184 144 66 / 0.12);
+}
+.cursor-ring.is-label {
+  width: 84px;
+  height: 84px;
+  margin: -42px 0 0 -42px;
+  background: rgb(7 14 77 / 0.78);
+  border-color: transparent;
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+}
+.cursor-ring.is-label span {
+  opacity: 1;
+}
+.cursor-ring.is-hidden,
+.cursor-dot.is-hidden {
+  opacity: 0;
+}
+
+/* ── Tilt cards: the motion layer sets --rx/--ry/--mx/--my from the pointer ──── */
+[data-tilt] {
+  transform: perspective(900px) rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg));
+  transition: transform 0.5s var(--ease-silk);
+  transform-style: preserve-3d;
+  will-change: transform;
+}
+[data-tilt].is-tilting {
+  transition: transform 0.08s linear;
+}
+[data-tilt] .tilt-glare {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
+  background: radial-gradient(240px circle at var(--mx, 50%) var(--my, 50%), rgb(255 255 255 / 0.45), transparent 60%);
+  transition: opacity 0.4s;
+}
+[data-tilt].is-tilting .tilt-glare {
+  opacity: 1;
+}
+[data-magnetic] {
+  transition: transform 0.45s var(--ease-silk);
+}
+
+/* ── Scroll reveal ────────────────────────────────────────────────────────── */
+html.motion-ready [data-reveal] {
+  opacity: 0;
+  transform: translateY(28px);
+  transition:
+    opacity 0.9s var(--ease-silk),
+    transform 0.9s var(--ease-silk);
+  transition-delay: var(--reveal-delay, 0ms);
+}
+html.motion-ready [data-reveal].is-in {
+  opacity: 1;
+  transform: none;
+}
+
+/* ── Hanging line (products swing on a thread, nudged by the cursor) ───────── */
+.hang {
+  transform-origin: 50% -40px;
+  transform: rotate(var(--swing, 0deg));
+  transition: transform 0.9s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.hang::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: -40px;
+  height: 40px;
+  border-left: 1px solid rgb(184 144 66 / 0.6);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body::before {
+    animation: none;
+  }
+  html.motion-ready [data-reveal] {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+  [data-tilt],
+  .hang {
+    transform: none !important;
+    transition: none;
   }
 }

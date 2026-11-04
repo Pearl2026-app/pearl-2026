@@ -22,27 +22,35 @@ async function list(id) {
 }
 
 async function walk(id, path, out) {
-  for (const it of await list(id)) {
-    if (it.mime.includes('folder')) await walk(it.id, [...path, it.name], out);
-    else out.push({ ...it, path });
-  }
+  const items = await list(id);
+  await Promise.all(items.map((it) => (it.mime.includes('folder') ? walk(it.id, [...path, it.name], out) : (out.push({ ...it, path }), null))));
   return out;
 }
 
-async function bytes(url) {
-  for (let i = 0; i < 4; i++) {
-    const r = await fetch(url, { headers: UA, redirect: 'follow' });
-    if (r.ok) {
-      const b = Buffer.from(await r.arrayBuffer());
-      if (b.length > 1000) return b;
+async function bytes(url, ms = 60_000) {
+  for (let i = 0; i < 3; i++) {
+    try {
+      const r = await fetch(url, { headers: UA, redirect: 'follow', signal: AbortSignal.timeout(ms) });
+      if (r.ok) {
+        const b = Buffer.from(await r.arrayBuffer());
+        if (b.length > 1000) return b;
+      }
+    } catch (e) {
+      console.warn('retry', url.slice(0, 90), String(e).slice(0, 80));
     }
     await new Promise((s) => setTimeout(s, 1500 * (i + 1)));
   }
   throw new Error(`download failed: ${url}`);
 }
 
+/** Runs fn over items, n at a time. */
+async function pool(items, n, fn) {
+  let i = 0;
+  await Promise.all(Array.from({ length: n }, async () => { while (i < items.length) { const k = i++; await fn(items[k], k); } }));
+}
+
 const image = (id) => bytes(`https://drive.google.com/thumbnail?id=${id}&sz=w2000`);
-const video = (id) => bytes(`https://drive.usercontent.google.com/download?id=${id}&export=download&confirm=t`);
+const video = (id) => bytes(`https://drive.usercontent.google.com/download?id=${id}&export=download&confirm=t`, 180_000);
 const slug = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 
 rmSync(OUT, { recursive: true, force: true });
@@ -81,37 +89,42 @@ for (const f of files) {
 }
 
 const manifest = [];
-const videoDone = new Set();
 const order = (a, b) => parseInt(a.name) - parseInt(b.name) || a.name.localeCompare(b.name);
-for (const d of [...designs.values()].sort((a, b) => (a.design + a.variant).localeCompare(b.design + b.variant))) {
+const list2 = [...designs.values()].sort((a, b) => (a.design + a.variant).localeCompare(b.design + b.variant));
+// One video per design keeps the repository small: the first variant (in order) that has one.
+const videoFor = new Map();
+for (const d of list2) if (d.videos.length && !videoFor.has(d.design)) videoFor.set(d.design, d);
+
+await pool(list2, 6, async (d) => {
   const dir = join(OUT, slug(d.design), d.variant);
   mkdirSync(dir, { recursive: true });
   const images = [];
-  for (const [i, f] of d.images.sort(order).entries()) {
+  await pool(d.images.sort(order).map((f, i) => [f, i]), 4, async ([f, i]) => {
     const name = `${i + 1}.webp`;
-    await sharp(await image(f.id)).resize({ width: 1400, height: 1400, fit: 'inside', withoutEnlargement: true }).webp({ quality: 80 }).toFile(join(dir, name));
-    images.push(`${slug(d.design)}/${d.variant}/${name}`);
-  }
+    try {
+      await sharp(await image(f.id)).resize({ width: 1400, height: 1400, fit: 'inside', withoutEnlargement: true }).webp({ quality: 80 }).toFile(join(dir, name));
+      images[i] = `${slug(d.design)}/${d.variant}/${name}`;
+    } catch (e) {
+      console.warn('image skipped', d.design, d.variant, f.name, String(e).slice(0, 120));
+    }
+  });
   let videoRel = null;
-  // One video per design keeps the repository small; the first variant that has one wins.
-  if (d.videos.length && !videoDone.has(d.design)) {
+  if (videoFor.get(d.design) === d) {
     try {
       const raw = join(dir, 'raw.mp4');
       writeFileSync(raw, await video(d.videos[0].id));
       const outFile = join(dir, 'video.mp4');
-      execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-i', raw, '-t', '15', '-an', '-vf', "scale='min(720,iw)':-2", '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '30', '-movflags', '+faststart', outFile]);
+      execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-i', raw, '-t', '15', '-an', '-vf', "scale='min(720,iw)':-2", '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '30', '-movflags', '+faststart', outFile], { timeout: 240_000 });
       rmSync(raw);
-      if (existsSync(outFile) && statSync(outFile).size > 0) {
-        videoRel = `${slug(d.design)}/${d.variant}/video.mp4`;
-        videoDone.add(d.design);
-      }
+      if (existsSync(outFile) && statSync(outFile).size > 0) videoRel = `${slug(d.design)}/${d.variant}/video.mp4`;
     } catch (e) {
       console.warn('video skipped', d.design, d.variant, String(e).slice(0, 200));
     }
   }
-  manifest.push({ design: d.design, variant: d.variant, category: d.category, gender: d.gender, images, video: videoRel });
-  console.log(d.design, d.variant, images.length, 'images', videoRel ? '+ video' : '');
-}
+  manifest.push({ design: d.design, variant: d.variant, category: d.category, gender: d.gender, images: images.filter(Boolean), video: videoRel });
+  console.log(d.design, d.variant, images.filter(Boolean).length, 'images', videoRel ? '+ video' : '');
+});
+manifest.sort((a, b) => (a.design + a.variant).localeCompare(b.design + b.variant));
 
 mkdirSync(dirname(join(OUT, 'manifest.json')), { recursive: true });
 writeFileSync(join(OUT, 'manifest.json'), JSON.stringify(manifest, null, 2) + '\n');

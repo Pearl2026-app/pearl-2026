@@ -93,10 +93,10 @@ function MegaMenu({ onClose }: { onClose: () => void }) {
     );
   return (
     <div
-      className="absolute inset-x-0 top-full hidden border-t border-line bg-bg shadow-[0_24px_40px_-24px_rgba(0,0,0,0.18)] lg:block"
+      className="fade-in absolute inset-x-2 top-full mt-2 hidden lg:inset-x-5 lg:block"
       onMouseLeave={onClose}
     >
-      <div className="mx-auto grid max-w-7xl grid-cols-5 gap-8 px-8 py-10">
+      <div className="glass mx-auto grid max-w-7xl grid-cols-5 gap-8 rounded-2xl px-8 py-10">
         {col('Shop by farm', [
           ...site.farms.map((f) => ({ href: `/jewellery?farm=${encodeURIComponent(f.slug)}`, label: f.name })),
           { href: '/our-farm', label: 'Meet the farms' },
@@ -171,10 +171,10 @@ export function Header() {
       {site.demo && <DemoRibbon />}
       <Announcement />
       <header
-        className="sticky top-0 z-40 border-b border-line/70 bg-bg/95 backdrop-blur"
+        className="sticky top-0 z-40 px-2 pt-2 lg:px-5 lg:pt-3"
         onKeyDown={(e) => e.key === 'Escape' && setMega(false)}
       >
-        <div className="mx-auto flex h-16 max-w-7xl items-center gap-2 px-4 lg:h-20 lg:px-8">
+        <div className="glass mx-auto flex h-16 max-w-7xl items-center gap-2 rounded-2xl px-3 lg:h-[72px] lg:px-6">
           <button
             className="-ml-2 flex h-11 w-11 items-center justify-center lg:hidden"
             onClick={() => setMenu(true)}
@@ -185,10 +185,22 @@ export function Header() {
           </button>
           <Link
             href="/"
-            className="font-serif text-2xl tracking-wide whitespace-nowrap text-accent lg:text-[26px]"
+            data-magnetic
+            className="flex items-center gap-2.5 font-serif text-xl tracking-wide whitespace-nowrap text-accent lg:text-[24px]"
             aria-label="Sahyadri Pearls home"
           >
-            Sahyadri Pearls
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/brand/logo.png"
+              alt=""
+              width={40}
+              height={40}
+              className="h-9 w-9 rounded-full object-contain lg:h-10 lg:w-10"
+              onError={(e) => (e.currentTarget.style.display = 'none')}
+            />
+            <span>
+              Sahyadri <span className="gold-text">Pearls</span>
+            </span>
           </Link>
           <nav aria-label="Main" className="ml-10 hidden items-center gap-7 lg:flex">
             {NAV.map((n) =>
@@ -274,7 +286,7 @@ export function Header() {
         {search && (
           <form
             role="search"
-            className="border-t border-line bg-bg"
+            className="glass mx-auto mt-2 max-w-3xl rounded-2xl"
             onSubmit={(e) => {
               e.preventDefault();
               if (q.trim()) router.push(`/search?q=${encodeURIComponent(q.trim())}`);
@@ -299,13 +311,13 @@ export function Header() {
         {menu && (
           <div className="fixed inset-0 z-50 lg:hidden" role="dialog" aria-modal="true" aria-label="Menu">
             <button
-              className="absolute inset-0 bg-ink/30"
+              className="absolute inset-0 bg-ink/30 backdrop-blur-sm"
               onClick={() => setMenu(false)}
               aria-label="Close menu"
             />
-            <div className="fade-in relative flex h-full w-[86%] max-w-sm flex-col overflow-y-auto bg-bg p-6">
+            <div className="fade-in glass relative flex h-full w-[86%] max-w-sm flex-col overflow-y-auto rounded-r-3xl p-6">
               <div className="mb-6 flex items-center justify-between">
-                <span className="font-serif text-2xl text-accent">Sahyadri Pearls</span>
+                <span className="font-serif text-2xl text-accent">Sahyadri <span className="gold-text">Pearls</span></span>
                 <button
                   className="flex h-11 w-11 items-center justify-center"
                   onClick={() => setMenu(false)}
