@@ -41,7 +41,8 @@ test('an enquiry becomes an order that is delivered with proof', async ({ page, 
   await dialog.getByRole('button', { name: 'Create order' }).click();
   await expect(admin).toHaveURL(/\/admin\/orders\/[a-z0-9]+$/);
   const orderUrl = admin.url();
-  const orderNumber = (await admin.getByRole('heading', { level: 1 }).textContent())!.replace('Order ', '').trim();
+  // The heading also holds the ⓘ explainer button, so take just the order number.
+  const orderNumber = (await admin.getByRole('heading', { level: 1 }).textContent())!.match(/[A-Z]{2}-\d{4}-\d{5}/)![0];
 
   await admin.getByRole('button', { name: 'Mark confirmed' }).click();
   await admin.getByRole('button', { name: 'Mark packed' }).click();
@@ -73,7 +74,7 @@ test('an enquiry becomes an order that is delivered with proof', async ({ page, 
 
   // 4. Head office sees it delivered.
   await admin.goto(orderUrl);
-  await expect(admin.getByRole('heading', { level: 1 })).toHaveText(`Order ${orderNumber}`);
+  await expect(admin.getByRole('heading', { level: 1 })).toContainText(`Order ${orderNumber}`);
   await expect(admin.getByText('Delivered', { exact: true }).first()).toBeVisible();
   await expect(admin.getByText('COD Collected', { exact: true }).first()).toBeVisible();
   await office.close();
