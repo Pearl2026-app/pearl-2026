@@ -1,0 +1,60 @@
+# One-off diagnosis (run by hand): replays the demo deployment's startup against a database that already has the
+# last good deployment's migrations, then boots the API in demo mode and checks /health.
+name: Diagnose demo deploy
+on:
+  workflow_dispatch:
+    inputs:
+      good:
+        description: Last commit that deployed
+        default: edb1b97
+      bad:
+        description: Commit that fails to deploy
+        default: main
+
+permissions:
+  contents: read
+
+jobs:
+  replay:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: pw
+          POSTGRES_DB: demo
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgresql://postgres:pw@localhost:5432/demo
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Database at the last good deployment
+        run: |
+          git checkout -q ${{ inputs.good }}
+          pnpm install --frozen-lockfile --filter "@sahyadri/db..." > /dev/null
+          cd packages/db && npx prisma migrate deploy && SEED_PASSWORD=Sahyadri@2026 npx tsx seed/seed.ts > /dev/null && echo "seeded at good"
+      - name: Migrate to the failing commit
+        run: |
+          git checkout -q ${{ inputs.bad }}
+          pnpm install --frozen-lockfile --filter "@sahyadri/api..." > /dev/null
+          cd packages/db && npx prisma migrate deploy
+      - name: Seed again (as the demo does on start)
+        run: cd packages/db && SEED_PASSWORD=Sahyadri@2026 STORAGE_LOCAL_DIR=/tmp/uploads npx tsx seed/seed.ts 2>&1 | tail -20
+      - name: Build and boot the API in demo mode
+        run: |
+          pnpm --filter "@sahyadri/api..." build > /dev/null
+          cd apps/api
+          DEMO_MODE=true NODE_ENV=production PORT=4000 STORAGE_LOCAL_DIR=/tmp/uploads JWT_ACCESS_SECRET=x-access-secret-for-diagnosis-only-1234567890 JWT_REFRESH_SECRET=x-refresh-secret-for-diagnosis-only-1234567890 \
+            node dist/main.js > /tmp/api.log 2>&1 &
+          for i in $(seq 1 60); do curl -sf localhost:4000/api/v1/health && break; sleep 2; done
+          echo; echo "---- API log ----"; tail -60 /tmp/api.log
+          curl -sf localhost:4000/api/v1/health

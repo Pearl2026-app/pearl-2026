@@ -56,7 +56,7 @@ self.addEventListener('install', () => self.skipWaiting());
 self.addEventListener('activate', (e) => e.waitUntil(self.clients.claim()));
 self.addEventListener('fetch', (e) => e.respondWith(fetch(e.request)));
 EOF
-  sed -i "s#</head>#<link rel=\"manifest\" href=\"/apps/$name/manifest.json\"/><meta name=\"theme-color\" content=\"$colour\"/><link rel=\"apple-touch-icon\" href=\"/apps/$name/app-icon.png\"/><meta name=\"apple-mobile-web-app-capable\" content=\"yes\"/><script>if('serviceWorker' in navigator)navigator.serviceWorker.register('/apps/$name/sw.js',{scope:'/apps/$name/'});</script></head>#" "$OUT/$name/index.html"
+  sed -i "s|</head>|<link rel=\"manifest\" href=\"/apps/$name/manifest.json\"/><meta name=\"theme-color\" content=\"$colour\"/><link rel=\"apple-touch-icon\" href=\"/apps/$name/app-icon.png\"/><meta name=\"apple-mobile-web-app-capable\" content=\"yes\"/><script>if('serviceWorker' in navigator)navigator.serviceWorker.register('/apps/$name/sw.js',{scope:'/apps/$name/'});</script></head>|" "$OUT/$name/index.html"
   echo "Made the $name app installable (PWA)."
 }
 make_installable delivery 'Sahyadri Pearls Delivery' 'SP Delivery' '#1F4E52'
