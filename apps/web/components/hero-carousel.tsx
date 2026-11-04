@@ -57,8 +57,8 @@ export function HeroCarousel({ slides }: { slides: Slide[] }) {
     >
       <div ref={track} className="no-scrollbar flex snap-x snap-mandatory overflow-x-auto">
         {slides.map((s, i) => {
-          // The first banner's title is the page's main heading.
-          const Title = i === 0 ? 'h1' : 'h2';
+          // The page's main heading is the cinematic hero's; banners are sub-headings.
+          const Title = 'h2';
           return (
             <Link
               key={s.id}
