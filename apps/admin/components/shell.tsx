@@ -178,7 +178,7 @@ export function Shell({ children }: { children: ReactNode }) {
         <aside className="sticky top-0 hidden h-screen w-60 shrink-0 overflow-y-auto border-r border-line bg-surface lg:block">
           <div className="flex items-center gap-3 border-b border-line px-4 py-4">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/admin/logo.svg" alt="" width={36} height={36} className="rounded-md" />
+            <img src="/admin/brand/logo.png" alt="" width={56} height={36} className="h-9 w-auto object-contain" />
             <div>
               <p className="font-serif text-xl font-semibold text-accent">Sahyadri Pearls</p>
               <p className="text-xs text-muted">
@@ -210,7 +210,7 @@ export function Shell({ children }: { children: ReactNode }) {
             </button>
             <span className="flex items-center gap-2 font-serif text-lg text-accent lg:hidden">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/admin/logo.svg" alt="" width={24} height={24} className="rounded-sm" />
+              <img src="/admin/brand/logo.png" alt="" width={38} height={24} className="h-6 w-auto object-contain" />
               Sahyadri Pearls
             </span>
             <div className="ml-auto flex items-center gap-3 text-sm">

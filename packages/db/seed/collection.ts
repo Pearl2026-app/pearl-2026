@@ -14,6 +14,8 @@ interface Variant {
   gender: string | null;
   images: string[];
   video: string | null;
+  /** Metal colour of the render: Yellow Gold, Rose Gold or White Gold. */
+  finish?: string;
 }
 
 const SRC = join(__dirname, 'collection');
@@ -25,12 +27,31 @@ export function copyCollectionMedia(storageDir: string): boolean {
   return true;
 }
 
-const VARIANT_NAME: Record<string, string> = { '1': 'I', '2': 'II', '3': 'III' };
+/** Design names, from the renders (4 Nov). Edit freely in the admin; the seed never overwrites names. */
+const DESIGN_NAME: Record<string, string> = {
+  'SP-JRP-01': 'Filigree Crown Pearl Ring',
+  'SP-JRP-02': 'Crossover Pearl Solitaire',
+  'SP-JRP-03': 'Textured Leaf Dome Ring',
+  'SP-JRP-04': 'Scallop Shell Pearl Ring',
+  'SP-JRP-05': 'Wire-Wrapped Pearl Ring',
+  'SP-JRP-06': 'Four-Prong Pearl Ring',
+  'SP-JRP-07': 'Bypass Pearl Ring',
+  'SP-JRP-08': 'Ribbed Dome Pearl Ring',
+  'SP-JRP-09': 'Wave Pearl Ring',
+  'SP-JRP-10': 'Almond Eye Pearl Ring',
+  'SP-JRP-ER-01': 'Teardrop Hoop Pearl Drops',
+  'SP-JRP-ER-02': 'Halo Pearl Studs',
+  'SP-JRP-ER-03': 'Swirl Bezel Pearl Studs',
+  'SP-JRP-ER-04': 'Classic Pearl Studs',
+  'SP-JRP-ER-05': 'Teardrop Loop Pearl Earrings',
+  'SP-JRP-ER-06': 'Crescent Pearl Studs',
+  'SP-JRP-ER-07': 'Pearl Huggie Drops',
+};
 
 function nameFor(v: Variant): string {
-  const code = v.design.replace(/^SP-JRP-/, '');
-  const kind = /earring/i.test(v.category) ? 'Pearl Earrings' : v.gender && /^male$/i.test(v.gender) ? "Men's Pearl Ring" : 'Pearl Ring';
-  return `Sahyadri ${kind} ${code} · ${VARIANT_NAME[v.variant] ?? v.variant}`;
+  const base = DESIGN_NAME[v.design] ?? `Pearl ${/earring/i.test(v.category) ? 'Earrings' : 'Ring'} ${v.design.replace(/^SP-JRP-/, '')}`;
+  const forHim = !/earring/i.test(v.category) && !!v.gender && /^male$/i.test(v.gender);
+  return `${forHim ? "Men's " : ''}${base}${v.finish ? ` · ${v.finish}` : ` · ${v.variant}`}`;
 }
 
 const slugify = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
@@ -67,7 +88,7 @@ export async function importClientCollection(prisma: PrismaClient, storageDir: s
           sku,
           name,
           slug: slugify(`${name}-${sku}`),
-          description: `Design ${v.design}, variant ${v.variant}, from the Sahyadri Pearls signature collection. Cultured pearls, hand-set. Ask us for the price, metal options and ${isRing ? 'your ring size' : 'matching pieces'}.`,
+          description: `From the Sahyadri Pearls signature collection (design ${v.design}${v.finish ? `, ${v.finish.toLowerCase()} finish` : ''}). A cultured pearl, hand-set${isRing ? ', made to your ring size' : ''}. Also available in ${['Yellow Gold', 'Rose Gold', 'White Gold'].filter((f) => f !== v.finish).join(' and ').toLowerCase()}. Ask us for the price.`,
           status: 'PUBLISHED',
           publishedAt: new Date(now.getTime() - i * 60_000),
           categoryId,
@@ -79,6 +100,7 @@ export async function importClientCollection(prisma: PrismaClient, storageDir: s
           isFeatured: v.variant === '1',
           isExclusive: true,
           colour: 'White',
+          metal: v.finish ? `${v.finish} finish` : null,
           videoUrl: v.video ? `/media/collection/${v.video}` : null,
         },
         select: { id: true },

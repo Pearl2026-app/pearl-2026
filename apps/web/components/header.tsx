@@ -190,17 +190,7 @@ export function Header() {
             aria-label="Sahyadri Pearls home"
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src="/brand/logo.png"
-              alt=""
-              width={40}
-              height={40}
-              className="h-9 w-9 rounded-full object-contain lg:h-10 lg:w-10"
-              onError={(e) => (e.currentTarget.style.display = 'none')}
-            />
-            <span>
-              Sahyadri <span className="gold-text">Pearls</span>
-            </span>
+            <img src="/brand/logo.png" alt="Sahyadri Pearls" width={84} height={54} className="h-11 w-auto object-contain drop-shadow-sm lg:h-[52px]" />
           </Link>
           <nav aria-label="Main" className="ml-10 hidden items-center gap-7 lg:flex">
             {NAV.map((n) =>
@@ -317,7 +307,8 @@ export function Header() {
             />
             <div className="fade-in glass relative flex h-full w-[86%] max-w-sm flex-col overflow-y-auto rounded-r-3xl p-6">
               <div className="mb-6 flex items-center justify-between">
-                <span className="font-serif text-2xl text-accent">Sahyadri <span className="gold-text">Pearls</span></span>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/brand/logo.png" alt="Sahyadri Pearls" width={84} height={54} className="h-12 w-auto object-contain" />
                 <button
                   className="flex h-11 w-11 items-center justify-center"
                   onClick={() => setMenu(false)}
