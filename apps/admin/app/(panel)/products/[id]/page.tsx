@@ -46,8 +46,16 @@ const SECTIONS: Array<{ title: string; fields: FieldDef[] }> = [
       { name: 'sku', label: 'SR code', required: true, hint: 'The stock register code from the stock list, e.g. SPF-26S4369.' },
       { name: 'categoryId', label: 'Category', type: 'ref', ref: { path: '/admin/categories' }, required: true },
       { name: 'collectionId', label: 'Collection', type: 'ref', ref: { path: '/admin/collections' } },
-      { name: 'farmId', label: 'Origin farm', type: 'ref', ref: { path: '/admin/farms' } },
       { name: 'vendorId', label: 'Vendor', type: 'ref', ref: { path: '/admin/vendors' }, hint: 'Leave empty for own stock.' },
+      {
+        name: 'franchiseId',
+        label: 'Franchise',
+        type: 'ref',
+        ref: { path: '/admin/franchises', query: { isActive: 'true' } },
+        placeholder: 'Head office (shown everywhere)',
+        hint: 'Shown only to customers in this franchise’s area.',
+      },
+      { name: 'farmId', label: 'Origin farm', type: 'ref', ref: { path: '/admin/farms' } },
       { name: 'description', label: 'Description', type: 'textarea', wide: true },
     ],
   },
@@ -118,7 +126,7 @@ const SECTIONS: Array<{ title: string; fields: FieldDef[] }> = [
   },
 ];
 const ALL_FIELDS = SECTIONS.flatMap((s) => s.fields);
-const VENDOR_HIDDEN = new Set(['vendorId', 'isFeatured', 'isExclusive', 'sortOrder']);
+const VENDOR_HIDDEN = new Set(['vendorId', 'franchiseId', 'isFeatured', 'isExclusive', 'sortOrder']);
 const COST_FIELDS = new Set(['metalCostPaise', 'labourCostPaise', 'pearlCostPaise']);
 
 function SortableImage({ img, onMain, onRemove, disabled }: { img: Img; onMain: () => void; onRemove: () => void; disabled: boolean }) {

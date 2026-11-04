@@ -34,8 +34,8 @@ export interface CrudOptions<C extends z.ZodTypeAny, U extends z.ZodTypeAny> {
   remove: 'deactivate' | 'archive' | 'delete';
   /** Extra where for the caller (rule 1) */
   scope?: (u: AuthUser) => Record<string, unknown>;
-  /** Map validated input to Prisma data (e.g. cityIds → nested writes) */
-  toData?: (input: any, mode: 'create' | 'update', id?: string) => Record<string, unknown> | Promise<Record<string, unknown>>;
+  /** Map validated input to Prisma data (e.g. cityIds → nested writes); may check the database first */
+  toData?: (input: any, mode: 'create' | 'update', id?: string, prisma?: PrismaService) => Record<string, unknown> | Promise<Record<string, unknown>>;
   /** Check scope on writes (e.g. a city manager may only write their own city) */
   checkWrite?: (u: AuthUser, data: Record<string, unknown>) => void;
   csv?: CsvColumn<any>[];
@@ -110,7 +110,7 @@ export function crudController<C extends z.ZodTypeAny, U extends z.ZodTypeAny>(o
     @Requires(o.module, 'create')
     @ApiBody({ type: CreateDto })
     async create(@CurrentUser() user: AuthUser, @Body(new ZodValidationPipe(o.create)) input: z.infer<C>) {
-      const data = o.toData ? await o.toData(input, 'create') : (input as Record<string, unknown>);
+      const data = o.toData ? await o.toData(input, 'create', undefined, this.prisma) : (input as Record<string, unknown>);
       o.checkWrite?.(user, data);
       const row = await this.prisma.$transaction(async (tx) => {
         const created = await (tx as any)[o.model].create({ data, include: o.include });
@@ -126,7 +126,7 @@ export function crudController<C extends z.ZodTypeAny, U extends z.ZodTypeAny>(o
     @ApiBody({ type: UpdateDto })
     async update(@CurrentUser() user: AuthUser, @Param('id') id: string, @Body(new ZodValidationPipe(o.update)) input: z.infer<U>) {
       const before = await this.findScoped(user, id);
-      const data = o.toData ? await o.toData(input, 'update', id) : (input as Record<string, unknown>);
+      const data = o.toData ? await o.toData(input, 'update', id, this.prisma) : (input as Record<string, unknown>);
       o.checkWrite?.(user, { ...before, ...data });
       const row = await this.prisma.$transaction(async (tx) => {
         const updated = await (tx as any)[o.model].update({ where: { id }, data, include: o.include });

@@ -8,6 +8,7 @@ import { productScope } from '../../common/scope';
 import { SettingsService } from '../../common/settings.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { MediaService, type IncomingFile } from '../media/media.service';
+import { assertActiveFranchise } from '../network/franchise-areas';
 import { ADMIN_ONLY_FIELDS, COST_FIELDS, VENDOR_DIRECT_FIELDS, type ProductInput } from './catalogue.schemas';
 
 export const PRODUCT_DETAIL_INCLUDE = {
@@ -16,6 +17,7 @@ export const PRODUCT_DETAIL_INCLUDE = {
   collection: { select: { id: true, name: true, slug: true } },
   farm: { select: { id: true, name: true, slug: true } },
   vendor: { select: { id: true, name: true } },
+  franchise: { select: { id: true, name: true } },
   cities: { include: { city: { select: { id: true, name: true } } } },
   relatedFrom: { orderBy: { sortOrder: 'asc' }, include: { related: { select: { id: true, name: true, sku: true, slug: true } } } },
   certificates: { where: { revokedAt: null }, select: { id: true, code: true, issuedAt: true } },
@@ -84,6 +86,7 @@ export class ProductsService {
   async create(user: AuthUser, input: ProductInput) {
     const isVendor = user.role === 'VENDOR';
     if (isVendor) for (const f of ADMIN_ONLY_FIELDS) delete (input as Record<string, unknown>)[f];
+    await assertActiveFranchise(this.prisma, input.franchiseId);
     const data = this.toData(input) as Prisma.ProductUncheckedCreateInput;
     data.slug = await this.uniqueSlug(input.slug ?? input.name);
     // Every new piece gets a business (B2B) price automatically, unless one was typed (client doc, 26 Oct).
@@ -113,6 +116,7 @@ export class ProductsService {
     const before = await this.find(user, id);
     if (before.archivedAt) throw badRequest('ARCHIVED', 'Restore this product before editing it.');
     if (user.role === 'VENDOR') return this.vendorUpdate(user, before, input);
+    if (input.franchiseId && input.franchiseId !== before.franchiseId) await assertActiveFranchise(this.prisma, input.franchiseId);
     const data = this.toData(input);
     if (input.slug || (input.name && input.name !== before.name && !input.slug && before.status !== 'PUBLISHED')) {
       data.slug = await this.uniqueSlug(input.slug ?? input.name!, id);

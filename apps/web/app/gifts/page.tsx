@@ -3,7 +3,7 @@ import { bandHref, PRICE_BANDS } from '@/lib/guides';
 import { ProductGrid } from '@/components/product-card';
 import { Breadcrumbs, ButtonLink, Container, PageTitle, SectionHeading } from '@/components/ui';
 import { breadcrumbJsonLd, JsonLd, meta } from '@/lib/seo';
-import { cityFromCookie, get } from '@/lib/server-api';
+import { cityFromCookie, get, pinFromCookie } from '@/lib/server-api';
 import type { Page, ProductCard, Site } from '@/lib/types';
 
 export const metadata = meta({
@@ -20,8 +20,8 @@ const OCCASIONS = [
 ];
 
 export default async function GiftsPage() {
-  const city = await cityFromCookie();
-  const q = (max: number) => `/catalogue/products?priceMax=${max * 100}&inStock=true&sort=featured&pageSize=8${city ? `&city=${city}` : ''}`;
+  const [city, pin] = await Promise.all([cityFromCookie(), pinFromCookie()]);
+  const q = (max: number) => `/catalogue/products?priceMax=${max * 100}&inStock=true&sort=featured&pageSize=8${city ? `&city=${city}` : ''}${pin ? `&pin=${pin}` : ''}`;
   const [site, under10, under25] = await Promise.all([get<Site>('/site', { revalidate: 300 }), get<Page<ProductCard>>(q(10_000), { revalidate: 60 }), get<Page<ProductCard>>(q(25_000), { revalidate: 60 })]);
   const occasions = OCCASIONS.filter((o) => !o.href.startsWith('/collections/') || site?.shop.collections.some((c) => o.href.endsWith(`/${c.slug}`)));
   const first = under10?.items.length ? { title: 'Gifts under ₹10,000', items: under10.items, href: bandHref(PRICE_BANDS[0]) } : under25?.items.length ? { title: 'Gifts under ₹25,000', items: under25.items, href: bandHref({ max: 25_000 }) } : null;

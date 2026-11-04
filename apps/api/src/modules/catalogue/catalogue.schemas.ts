@@ -59,6 +59,8 @@ const productFields = {
   collectionId: z.string().optional().nullable(),
   farmId: z.string().optional().nullable(),
   vendorId: z.string().optional().nullable(),
+  /** The franchise this piece belongs to: shown only in its area. Empty = head office stock, shown everywhere. */
+  franchiseId: z.string().optional().nullable(),
   pricePaise: paise.max(2_000_000_000),
   compareAtPaise: paise.optional().nullable(),
   metalCostPaise: paise.optional().nullable(),
@@ -104,7 +106,7 @@ export type ProductInput = z.infer<typeof productCreate>;
 /** Fields a vendor may change directly without approval. */
 export const VENDOR_DIRECT_FIELDS = ['quantity', 'outOfStock', 'sizes'] as const;
 /** Fields only head office may set. */
-export const ADMIN_ONLY_FIELDS = ['vendorId', 'status', 'isFeatured', 'isExclusive', 'sortOrder'] as const;
+export const ADMIN_ONLY_FIELDS = ['vendorId', 'franchiseId', 'status', 'isFeatured', 'isExclusive', 'sortOrder'] as const;
 /** Cost fields hidden from franchise and city-manager responses. */
 export const COST_FIELDS = ['metalCostPaise', 'labourCostPaise', 'pearlCostPaise'] as const;
 

@@ -13,6 +13,7 @@ import { listQuery, orderBy, paginate } from '../../common/list';
 import { productScope } from '../../common/scope';
 import { config } from '../../config/config';
 import { PrismaService } from '../../prisma/prisma.service';
+import { assertActiveFranchise } from '../network/franchise-areas';
 import { imageOrder, imagePatch, productCreate, productUpdate, rejectInput } from './catalogue.schemas';
 import { ProductImportService } from './product-import.service';
 import { ProductsService, redactCosts } from './products.service';
@@ -23,6 +24,8 @@ const filters = listQuery.extend({
   collectionId: z.string().optional(),
   farmId: z.string().optional(),
   vendorId: z.string().optional(),
+  /** "none" = head office stock only */
+  franchiseId: z.string().optional(),
   stockType: z.enum(['UNIQUE', 'QUANTITY']).optional(),
   outOfStock: z.enum(['true', 'false']).optional(),
   pendingApproval: z.enum(['true']).optional(),
@@ -52,6 +55,7 @@ export class ProductsController {
         q.collectionId ? { collectionId: q.collectionId } : {},
         q.farmId ? { farmId: q.farmId } : {},
         q.vendorId ? { vendorId: q.vendorId } : {},
+        q.franchiseId ? { franchiseId: q.franchiseId === 'none' ? null : q.franchiseId } : {},
         q.stockType ? { stockType: q.stockType } : {},
         q.outOfStock === 'true' ? { OR: [{ outOfStock: true }, { quantity: 0 }] } : q.outOfStock === 'false' ? { outOfStock: false, quantity: { gt: 0 } } : {},
         q.pendingApproval ? { OR: [{ status: 'PENDING_APPROVAL' }, { NOT: { pendingChanges: { equals: Prisma.DbNull } } }] } : {},
@@ -64,6 +68,7 @@ export class ProductsController {
       category: { select: { id: true, name: true } },
       farm: { select: { id: true, name: true } },
       vendor: { select: { id: true, name: true } },
+      franchise: { select: { id: true, name: true } },
     };
     if (q.format === 'csv') {
       const rows = await this.prisma.product.findMany({ where, orderBy: sort, include, take: 50_000 });
@@ -75,6 +80,7 @@ export class ProductsController {
         { header: 'Category', value: (r) => r.category.name },
         { header: 'Farm', value: (r) => r.farm?.name },
         { header: 'Vendor', value: (r) => r.vendor?.name },
+        { header: 'Franchise', value: (r) => r.franchise?.name ?? 'Head office' },
         { header: 'Price (₹)', value: (r) => r.pricePaise / 100 },
         { header: 'Price on request', value: (r) => (r.priceOnRequest ? 'yes' : 'no') },
         ...(costs
@@ -185,12 +191,17 @@ export class ProductsController {
     return { changed, matched: rows.length };
   }
 
-  /** A copy of a piece as a draft: same details and cities, no images or certificates, a fresh SKU. */
+  /**
+   * A copy of a piece as a draft: same details, cities and franchise, no certificates, a fresh SKU. Send
+   * { franchiseId } to make the copy for another franchise (null = head office stock).
+   */
   @Post(':id/duplicate')
   @HttpCode(200)
   @Requires('PRODUCTS', 'create')
-  async duplicate(@CurrentUser() user: AuthUser, @Param('id') id: string) {
+  async duplicate(@CurrentUser() user: AuthUser, @Param('id') id: string, @Body() body: unknown) {
     if (user.role !== 'SUPER_ADMIN' && user.role !== 'STAFF') throw forbidden('Only head office can duplicate pieces.');
+    const opts = z.object({ franchiseId: z.string().optional().nullable() }).parse(body ?? {});
+    await assertActiveFranchise(this.prisma, opts.franchiseId);
     const p = await this.prisma.product.findFirst({ where: { id }, include: { cities: true, images: { orderBy: [{ kind: 'asc' }, { sortOrder: 'asc' }] } } });
     if (!p) throw badRequest('NOT_FOUND', 'That piece no longer exists.');
     const { id: _id, slug, sku, createdAt, updatedAt, publishedAt: _publishedAt, soldAt: _soldAt, archivedAt: _archivedAt, searchVector, pendingChanges, cities, images, ...rest } = p as typeof p & { searchVector?: unknown };
@@ -208,6 +219,7 @@ export class ProductsController {
         soldAt: null,
         archivedAt: null,
         isFeatured: false,
+        ...(opts.franchiseId !== undefined ? { franchiseId: opts.franchiseId } : {}),
         cities: { create: cities.map((c) => ({ cityId: c.cityId })) },
         images: { create: images.map((i, k) => ({ url: i.url, variants: i.variants as Prisma.InputJsonValue, alt: i.alt, kind: i.kind, width: i.width, height: i.height, sortOrder: k })) },
       },

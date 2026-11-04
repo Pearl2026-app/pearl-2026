@@ -21,6 +21,8 @@ const answersInput = z.object({
   shape: z.string().trim().max(30).optional(),
   ringSize: z.string().trim().max(10).optional(),
   citySlug: z.string().trim().max(60).optional(),
+  /** The shopper's PIN code: a franchise's own rings are shown only in its area */
+  pin: z.string().trim().max(10).optional(),
 });
 export type RingAnswers = z.infer<typeof answersInput>;
 
@@ -61,7 +63,7 @@ export class RingFinderController {
     const city = a.citySlug ? await this.prisma.city.findFirst({ where: { slug: a.citySlug, isActive: true }, select: { id: true } }) : null;
     const base: Prisma.ProductWhereInput = {
       AND: [
-        publicWhere(city?.id),
+        publicWhere(city?.id, a.pin),
         { category: { slug: 'rings' } },
         { outOfStock: false, quantity: { gt: 0 }, soldAt: null, priceOnRequest: false },
         a.budgetMaxPaise ? { pricePaise: { lte: a.budgetMaxPaise } } : {},
