@@ -43,12 +43,12 @@ jobs:
           note() { local t="$1"; shift; local body; body=$(tail -c 3500 "$@" | sed ':a;N;$!ba;s/%/%25/g;s/\r/%0D/g;s/\n/%0A/g'); echo "::notice title=$t::$body"; }
           set +e
           git checkout -q ${{ inputs.good }}
-          { pnpm install --frozen-lockfile --filter "@sahyadri/db..." && pnpm --filter @sahyadri/shared build; } > /tmp/1.log 2>&1 || { note "install good" /tmp/1.log; exit 1; }
+          { pnpm install --frozen-lockfile --filter "@sahyadri/db..." && pnpm --filter "@sahyadri/db..." build; } > /tmp/1.log 2>&1 || { note "install good" /tmp/1.log; exit 1; }
           (cd packages/db && npx prisma migrate deploy) > /tmp/2.log 2>&1 || { note "migrate good" /tmp/2.log; exit 1; }
           (cd packages/db && SEED_PASSWORD=Sahyadri@2026 STORAGE_LOCAL_DIR=/tmp/uploads npx tsx seed/seed.ts) > /tmp/3.log 2>&1 || { note "seed good" /tmp/3.log; exit 1; }
           note "good ok" /tmp/2.log
           git checkout -q ${{ inputs.bad }}
-          { pnpm install --frozen-lockfile --filter "@sahyadri/api..." && pnpm --filter @sahyadri/shared build; } > /tmp/4.log 2>&1 || { note "install bad" /tmp/4.log; exit 1; }
+          { pnpm install --frozen-lockfile --filter "@sahyadri/api..." && pnpm --filter "@sahyadri/db..." build; } > /tmp/4.log 2>&1 || { note "install bad" /tmp/4.log; exit 1; }
           (cd packages/db && npx prisma migrate deploy) > /tmp/5.log 2>&1; r=$?; note "migrate bad (exit $r)" /tmp/5.log; [ $r = 0 ] || exit 1
           (cd packages/db && SEED_PASSWORD=Sahyadri@2026 STORAGE_LOCAL_DIR=/tmp/uploads npx tsx seed/seed.ts) > /tmp/6.log 2>&1; note "seed bad (exit $?)" /tmp/6.log
           pnpm --filter "@sahyadri/api..." build > /tmp/7.log 2>&1 || { note "build bad" /tmp/7.log; exit 1; }
