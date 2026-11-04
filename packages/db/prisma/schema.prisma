@@ -597,6 +597,8 @@ model DeliveryPartner {
 
   /// Riders who apply on the website wait as PENDING until head office checks their documents (APPROVED / REJECTED).
   approvalStatus  String    @default("APPROVED")
+  /// Where the welcome message (how to sign in) goes when head office approves the application
+  email           String?
   address         String?
   vehicleNumber   String?
   licenceNumber   String?
@@ -760,6 +762,13 @@ model Product {
   b2bPricePaise Int?
   b2bMinQty     Int?
   b2bOnly       Boolean @default(false)
+  /// Lab / grading certificate entered when the piece is added; the number is verifiable at /verify/{number}
+  certificateNumber String?
+  certificateUrl    String?
+  /// Price follows the daily metal rate: netWeight × rate (+ margin) + making (labourCostPaise) + pearl cost
+  priceFollowsMetalRate Boolean @default(false)
+  /// Which daily rate to follow (GOLD_24K, GOLD_22K, GOLD_18K, GOLD_14K, SILVER_999, SILVER_925, PLATINUM)
+  metalRateKey          String?
   sortOrder  Int       @default(0)
   soldAt     DateTime? // set when a UNIQUE piece is sold
 
@@ -1626,6 +1635,8 @@ model JobApplication {
   phone        String
   coverNote    String?
   resumeUrl    String // private storage, signed URLs only
+  /// ID proof (image or PDF), private like the resume
+  idProofUrl   String?
   status       JobApplicationStatus @default(NEW)
   createdAt    DateTime             @default(now())
   updatedAt    DateTime             @updatedAt
@@ -1653,6 +1664,23 @@ model PearlRate {
   updatedAt         DateTime        @updatedAt
 
   @@index([grade, farmId, isActive])
+}
+
+/// Daily gold, silver and platinum rate per gram (entered by head office or fetched from a feed). One row per metal per day.
+model MetalRate {
+  id               String          @id @default(cuid())
+  /// GOLD_24K, GOLD_22K, GOLD_18K, GOLD_14K, SILVER_999, SILVER_925, PLATINUM
+  metal            String
+  ratePerGramPaise Int
+  /// The day the rate applies to (India time)
+  effectiveDate    DateTime        @db.Date
+  source           PearlRateSource @default(MANUAL)
+  createdById      String?
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+
+  @@unique([metal, effectiveDate])
+  @@index([effectiveDate])
 }
 
 /// Margin applied by the price calculator. Most specific match wins.

@@ -9,3 +9,4 @@ export * from './site';
 export * from './delivery';
 export * from './redirect';
 export * from './routing';
+export * from './metal';
