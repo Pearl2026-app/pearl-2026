@@ -95,8 +95,9 @@ export async function importClientCollection(prisma: PrismaClient, storageDir: s
           collectionId: collection.id,
           priceOnRequest: true,
           pricePaise: 0,
-          stockType: 'UNIQUE',
-          quantity: 1,
+          // Designs made to order in any of the three finishes, not single pieces.
+          stockType: 'QUANTITY',
+          quantity: 10,
           isFeatured: v.variant === '1',
           isExclusive: true,
           colour: 'White',

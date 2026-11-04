@@ -294,9 +294,11 @@ export class PublicCatalogueController {
       this.prisma.review.aggregate({ where: { productId: p.id, status: 'APPROVED' }, _avg: { rating: true }, _count: { _all: true } }),
     ]);
     let related: CardRow[] = p.relatedFrom.map((r) => r.related);
-    if (related.length < 4) {
+    // Fill up with pieces from the same collection first, then the same category.
+    for (const scope of [p.collectionId ? { collectionId: p.collectionId } : null, { categoryId: p.categoryId }]) {
+      if (!scope || related.length >= 4) continue;
       const more = await this.prisma.product.findMany({
-        where: { AND: [publicWhere(cityId, pin), { categoryId: p.categoryId }, { id: { notIn: [p.id, ...related.map((r) => r.id)] } }, { soldAt: null }] },
+        where: { AND: [publicWhere(cityId, pin), scope, { id: { notIn: [p.id, ...related.map((r) => r.id)] } }, { soldAt: null }] },
         select: CARD_SELECT,
         take: 4 - related.length,
         orderBy: { publishedAt: 'desc' },

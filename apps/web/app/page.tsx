@@ -65,24 +65,45 @@ export default async function HomePage() {
   const trust = h.blocks['home.trust'];
   const cta = h.blocks['home.custom_cta'];
   const categories = site?.categories ?? [];
-  // The client's own collection leads the page: a piece with a film for the hero, three for the showcase.
+  // The client's own signature collection leads the page; the older stock-list photos stay in the catalogue.
   const pool = [...(h.exclusive ?? []), ...h.featured, ...h.newest].filter((p, i, a) => a.findIndex((x) => x.id === p.id) === i);
-  const heroPiece = pool.find((p) => p.videoUrl) ?? pool.find((p) => p.images.length) ?? null;
-  const showcase = pool.filter((p) => p.images.length > 1 && p.id !== heroPiece?.id).slice(0, 3);
-  const line = pool.filter((p) => p.images.length).slice(0, 7);
+  const signature = pool.filter((p) => p.collection?.slug === 'signature' && p.images.length);
+  const lead = signature.length ? signature : pool.filter((p) => p.images.length);
+  const designOf = (p: { sku: string }) => p.sku.replace(/-\d+$/, '');
+  const oneEach = lead.filter((p, i, a) => a.findIndex((x) => designOf(x) === designOf(p)) === i);
+  const heroPiece = lead.find((p) => p.videoUrl) ?? lead[0] ?? null;
+  const floats = oneEach.filter((p) => p.id !== heroPiece?.id).slice(0, 2);
+  const showcase = oneEach.filter((p) => p.images.length > 1 && p.id !== heroPiece?.id).slice(2, 5);
+  const line = oneEach.slice(0, 7);
+  const featuredGrid = (signature.length ? lead : h.featured).slice(0, 8);
 
   return (
     <>
       {/* The first thing a new visitor meets: where should we deliver? */}
       <LocationGate />
-      <CinematicHero piece={heroPiece} fallbackImage={heroes[0]?.imageUrl} />
+      <CinematicHero piece={heroPiece} floats={floats} />
+      {featuredGrid.length > 0 && (
+        <Container className="pt-16 lg:pt-24">
+          <SectionHeading
+            eyebrow="Yellow, rose and white gold"
+            title={signature.length ? 'The Signature Collection' : 'Bestsellers'}
+            action={
+              <ButtonLink href={signature.length ? '/collections/signature' : '/jewellery'} variant="text">
+                View all
+              </ButtonLink>
+            }
+          />
+          <ProductGrid products={featuredGrid} priorityCount={2} />
+        </Container>
+      )}
+      <ScrollShowcase pieces={showcase} />
 
       {/* Shop by category: the quickest way in. */}
       {categories.length > 0 && (
         <Container className="pt-14 lg:pt-20">
           <SectionHeading eyebrow="Find your piece" title="Shop by category" />
           <ul data-reveal className="no-scrollbar -mx-4 flex gap-4 overflow-x-auto px-4 pb-2 sm:gap-6 lg:mx-0 lg:grid lg:grid-cols-6 lg:gap-8 lg:overflow-visible lg:px-0">
-            {categories.map((c) => (
+            {categories.map((c) => ({ ...c, imageUrl: oneEach.find((p) => p.category.slug === c.slug)?.images[0]?.url ?? c.imageUrl })).map((c) => (
               <li key={c.slug} className="w-[92px] shrink-0 sm:w-28 lg:w-auto">
                 <Link
                   href={`/jewellery/${c.slug}`}
@@ -96,7 +117,7 @@ export default async function HomePage() {
                         loading="lazy"
                         width={200}
                         height={200}
-                        className="img-zoom h-full w-full rounded-full object-cover"
+                        className="img-zoom h-full w-full rounded-full object-cover mix-blend-multiply"
                       />
                     )}
                   </span>
@@ -108,7 +129,6 @@ export default async function HomePage() {
         </Container>
       )}
 
-      <ScrollShowcase pieces={showcase} />
       <HangingLine pieces={line} />
       {heroes.length > 0 && (
         <div data-reveal className="mx-2 overflow-hidden rounded-3xl lg:mx-5">
@@ -147,19 +167,6 @@ export default async function HomePage() {
         </Container>
       )}
 
-      {h.featured.length > 0 && (
-        <Container className="pt-16 lg:pt-24">
-          <SectionHeading
-            title="Bestsellers"
-            action={
-              <ButtonLink href="/jewellery" variant="text">
-                View all
-              </ButtonLink>
-            }
-          />
-          <ProductGrid products={h.featured.slice(0, 8)} priorityCount={2} />
-        </Container>
-      )}
 
       {/* Mid-page banner: picture and words side by side, the whole panel is the link. */}
       {wide && (

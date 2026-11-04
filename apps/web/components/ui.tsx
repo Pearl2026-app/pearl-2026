@@ -33,7 +33,7 @@ export function PageTitle({ eyebrow, title, intro }: { eyebrow?: string; title: 
 
 export function SectionHeading({ eyebrow, title, action }: { eyebrow?: string; title: string; action?: ReactNode }) {
   return (
-    <div data-reveal className="mb-9 flex items-end justify-between gap-6">
+    <div data-reveal className="mb-9 flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
       <div className="ruled-heading min-w-0 flex-1">
         <div className="shrink-0">
           {eyebrow && <p className="eyebrow mb-2">{eyebrow}</p>}

@@ -36,14 +36,14 @@ export function ProductCard({ p, priority }: { p: Card; priority?: boolean }) {
             image={p.images[0]}
             alt={p.images[0]?.alt ?? p.name}
             priority={priority}
-            className={`img-zoom aspect-square w-full object-cover ${p.isSold ? 'opacity-60' : ''}`}
+            className={`img-zoom aspect-square w-full object-contain p-3 mix-blend-multiply ${p.isSold ? 'opacity-60' : ''}`}
           />
           {/* The second photograph, revealed on hover where a pointer exists. */}
           {p.images[1] && !p.isSold && (
             <PearlImage
               image={p.images[1]}
               alt=""
-              className="absolute inset-0 aspect-square h-full w-full object-cover opacity-0 transition-opacity duration-500 ease-[var(--ease-calm)] group-hover:opacity-100"
+              className="absolute inset-0 aspect-square h-full w-full object-contain p-3 opacity-0 mix-blend-multiply transition-opacity duration-500 ease-[var(--ease-calm)] group-hover:opacity-100"
             />
           )}
           <span className="tilt-glare" aria-hidden />

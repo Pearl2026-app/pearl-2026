@@ -103,7 +103,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
           <div>
             {p.collection && (
               <Link href={`/collections/${p.collection.slug}`} className="eyebrow hover:text-accent">
-                {p.collection.name} collection
+                {/collection/i.test(p.collection.name) ? p.collection.name : `${p.collection.name} collection`}
               </Link>
             )}
             {p.isExclusive && (

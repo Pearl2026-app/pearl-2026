@@ -32,7 +32,7 @@ export function Gallery({ images, video, name }: { images: ImageRef[]; video: st
         {slides.map((s, i) => (
           <li key={i}>
             <button onClick={() => go(i)} aria-label={s.kind === 'video' ? 'Play video' : `Image ${i + 1}`} aria-current={i === index} className={cx('glass block w-full overflow-hidden rounded-xl p-0.5 transition-all', i === index ? 'ring-2 ring-gold' : 'opacity-70 hover:opacity-100')}>
-              {s.kind === 'image' ? <PearlImage image={s.image} sizes="72px" className="aspect-square w-full object-cover" alt="" /> : <span className="flex aspect-square items-center justify-center bg-surface-muted text-xs">▶ Video</span>}
+              {s.kind === 'image' ? <span className="nacre block rounded-lg"><PearlImage image={s.image} sizes="72px" className="aspect-square w-full object-contain mix-blend-multiply" alt="" /></span> : <span className="flex aspect-square items-center justify-center bg-surface-muted text-xs">▶ Video</span>}
             </button>
           </li>
         ))}
@@ -43,7 +43,7 @@ export function Gallery({ images, video, name }: { images: ImageRef[]; video: st
             <div key={i} className="w-full shrink-0 snap-center" aria-roledescription="slide" aria-label={`${i + 1} of ${slides.length}`}>
               {s.kind === 'image' ? (
                 <button
-                  className="group block w-full cursor-zoom-in overflow-hidden rounded-2xl bg-surface"
+                  className="nacre group block w-full cursor-zoom-in overflow-hidden rounded-2xl"
                   onClick={() => setZoom(true)}
                   onMouseMove={(e) => {
                     const r = e.currentTarget.getBoundingClientRect();
@@ -51,10 +51,10 @@ export function Gallery({ images, video, name }: { images: ImageRef[]; video: st
                   }}
                   aria-label="Zoom image"
                 >
-                  <PearlImage image={s.image} priority={i === 0} sizes="(min-width: 1024px) 55vw, 100vw" alt={s.image.alt ?? name} className="aspect-square w-full object-cover transition-transform duration-500 lg:group-hover:scale-[1.6]" style={{ transformOrigin: origin }} />
+                  <PearlImage image={s.image} priority={i === 0} sizes="(min-width: 1024px) 55vw, 100vw" alt={s.image.alt ?? name} className="aspect-square w-full object-contain mix-blend-multiply transition-transform duration-500 lg:group-hover:scale-[1.6]" style={{ transformOrigin: origin }} />
                 </button>
               ) : (
-                <video src={s.url} controls autoPlay muted loop playsInline preload="metadata" className="aspect-square w-full rounded-2xl bg-ink object-cover" aria-label={`${name} video`} />
+                <video src={s.url} controls autoPlay muted loop playsInline preload="metadata" className="nacre aspect-square w-full rounded-2xl object-contain mix-blend-multiply" aria-label={`${name} video`} />
               )}
             </div>
           ))}

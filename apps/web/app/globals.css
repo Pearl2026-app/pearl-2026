@@ -78,6 +78,11 @@ h2.font-serif {
   border-top: 1px solid var(--color-line);
   transform: translateY(-0.45em);
 }
+@media (max-width: 639px) {
+  .ruled-heading::after {
+    display: none;
+  }
+}
 
 /* A quiet line above a heading: small spaced capitals in the wayfinding voice. */
 .eyebrow {
@@ -90,9 +95,7 @@ h2.font-serif {
 /* The lustre wash behind pearl imagery: soft silver orient fading into mist. */
 .nacre {
   background:
-    radial-gradient(120% 80% at 30% 20%, #ffffff 0%, transparent 55%),
-    radial-gradient(90% 70% at 80% 90%, var(--color-orient) 0%, transparent 60%),
-    var(--color-surface-muted);
+    radial-gradient(90% 70% at 50% 42%, #fffdf8 0%, #f6efe0 55%, #ece1c9 100%);
 }
 .fade-in {
   animation: fade 0.6s var(--ease-calm) both;

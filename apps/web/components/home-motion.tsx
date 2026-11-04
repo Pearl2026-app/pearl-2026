@@ -14,96 +14,89 @@ import { Price } from './product-card';
  *   every .hang); clicking one opens it.
  */
 
-export function CinematicHero({ piece, fallbackImage }: { piece: ProductCard | null; fallbackImage?: string | null }) {
-  const video = useRef<HTMLVideoElement>(null);
+export function CinematicHero({ piece, floats = [] }: { piece: ProductCard | null; floats?: ProductCard[]; fallbackImage?: string | null }) {
   const section = useRef<HTMLElement>(null);
   const [y, setY] = useState(0);
   const reduce = useReducedMotion();
 
-  // Scroll: the film eases back and the caption lifts as you leave the hero.
   useEffect(() => {
     if (reduce) return;
-    const on = () => {
-      const h = section.current?.offsetHeight ?? 1;
-      setY(Math.min(1, Math.max(0, window.scrollY / h)));
-    };
+    const on = () => setY(Math.min(1, Math.max(0, window.scrollY / (section.current?.offsetHeight || 1))));
     on();
     addEventListener('scroll', on, { passive: true });
     return () => removeEventListener('scroll', on);
   }, [reduce]);
 
-  const still = piece?.images[0]?.url ?? fallbackImage ?? null;
+  const still = piece?.images[0]?.url ?? null;
+  const [a, b] = floats;
   return (
-    <section
-      ref={section}
-      data-parallax-root
-      className="relative mx-2 mt-3 h-[86svh] min-h-[540px] overflow-hidden rounded-3xl bg-ink lg:mx-5"
-      aria-label="Sahyadri Pearls"
-    >
-      <div className="absolute -inset-6" data-depth="24">
-      <div className="h-full w-full" style={{ transform: `scale(${1.04 + y * 0.08})` }}>
-        {piece?.videoUrl && !reduce ? (
-          <video
-            ref={video}
-            src={piece.videoUrl}
-            poster={still ?? undefined}
-            autoPlay
-            muted
-            loop
-            playsInline
-            preload="metadata"
-            className="h-full w-full object-cover opacity-90"
-          />
-        ) : still ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={still} alt="" className="h-full w-full object-cover opacity-90" />
-        ) : null}
-      </div>
-      </div>
-      {/* Navy wash so the type reads on any frame. */}
-      <div className="absolute inset-0 bg-[radial-gradient(120%_80%_at_20%_80%,rgb(7_14_77/0.85),transparent_60%),linear-gradient(to_top,rgb(7_14_77/0.7),transparent_45%)]" />
-      {/* Floating pearls of light, on their own parallax depths. */}
-      <span aria-hidden data-depth="60" className="absolute top-[18%] right-[14%] h-40 w-40 rounded-full bg-[radial-gradient(circle,rgb(184_144_66/0.45),transparent_65%)] blur-xl" />
-      <span aria-hidden data-depth="90" className="absolute bottom-[22%] left-[46%] h-24 w-24 rounded-full bg-[radial-gradient(circle,rgb(255_255_255/0.35),transparent_65%)] blur-lg" />
-
-      <div className="relative mx-auto flex h-full max-w-7xl items-end px-4 pb-16 lg:px-8 lg:pb-24">
-        <div data-depth="-14">
-        <div
-          className="glass-dark max-w-xl rounded-3xl p-7 lg:p-10"
-          style={{ transform: `translateY(${-y * 60}px)`, opacity: 1 - y * 0.6 }}
-        >
-          <p className="eyebrow !text-[#d9b56a]">Farm-traced cultured pearls</p>
-          <h1 className="mt-3 font-serif text-4xl leading-[1.08] text-white lg:text-6xl">
-            Pearls with a <span className="gold-text">story</span>, set to be worn.
+    <section ref={section} data-parallax-root className="relative overflow-hidden" aria-label="Sahyadri Pearls">
+      <div className="mx-auto grid min-h-[calc(100svh-120px)] max-w-7xl items-center gap-10 px-5 pt-8 pb-16 lg:grid-cols-[1.05fr_1fr] lg:gap-6 lg:px-8 lg:pt-4">
+        <div className="relative z-10" style={{ transform: `translateY(${-y * 40}px)`, opacity: 1 - y * 0.7 }}>
+          <p className="eyebrow fade-in">Farm-traced cultured pearls</p>
+          <h1 className="fade-in mt-5 font-serif text-[44px] leading-[1.02] font-semibold tracking-[-0.035em] text-ink sm:text-6xl lg:text-[84px]">
+            Pearls, grown
+            <br />
+            in the <span className="gold-text">Sahyadris.</span>
           </h1>
-          <p className="mt-4 max-w-md text-white/80">
-            Every piece traced to the farm it grew in, with a certificate you can verify.
+          <p className="fade-in mt-6 max-w-md text-[17px] leading-relaxed text-muted">
+            Hand-set rings and earrings in yellow, rose and white gold, each pearl traced to the farm it grew in.
           </p>
-          <div className="mt-7 flex flex-wrap gap-3">
-            <Link
-              href="/collections/signature"
-              data-magnetic
-              className="lux-track shine inline-flex min-h-12 items-center rounded-full bg-gold px-7 text-ink"
-            >
+          <div className="fade-in mt-9 flex flex-wrap items-center gap-3">
+            <Link href="/collections/signature" data-magnetic className="lux-track shine inline-flex min-h-[52px] items-center rounded-full bg-ink px-8 text-white">
               Explore the collection
             </Link>
-            {piece && (
-              <Link
-                href={`/product/${piece.slug}`}
-                data-magnetic
-                data-cursor="View"
-                className="lux-track inline-flex min-h-12 items-center rounded-full border border-white/40 px-7 text-white hover:bg-white/10"
-              >
-                See this piece
-              </Link>
-            )}
+            <Link href="/customized-jewellery" data-magnetic className="lux-track inline-flex min-h-[52px] items-center rounded-full border border-ink/25 px-7 text-ink hover:border-ink">
+              Design your own
+            </Link>
           </div>
+          <ul className="mt-12 flex flex-wrap gap-x-8 gap-y-3 text-[13px] text-muted">
+            {['Farm-traced', 'Certified & verifiable', 'Insured delivery'].map((t) => (
+              <li key={t} className="flex items-center gap-2">
+                <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-gold" />
+                {t}
+              </li>
+            ))}
+          </ul>
         </div>
+
+        <div className="relative mx-auto aspect-[4/5] w-full max-w-[520px]">
+          {/* The arch: a glass niche with a soft pearl glow behind the piece. */}
+          <div data-depth="10" className="absolute inset-0">
+            <div className="absolute inset-0 rounded-t-[999px] rounded-b-[44px] bg-[radial-gradient(80%_60%_at_50%_45%,#fffdf8,#efe6d2_70%,#e6d6b4)] shadow-[0_40px_80px_-40px_rgb(7_14_77/0.45)]" />
+            <div className="absolute inset-3 rounded-t-[999px] rounded-b-[36px] border border-white/80" />
+          </div>
+          <Link
+            href={piece ? `/product/${piece.slug}` : '/collections/signature'}
+            data-cursor="View"
+            data-depth="-18"
+            className="absolute inset-[9%] top-[14%] flex items-center justify-center"
+          >
+            {piece?.videoUrl && !reduce ? (
+              <video src={piece.videoUrl} poster={still ?? undefined} autoPlay muted loop playsInline preload="metadata" className="h-full w-full object-contain mix-blend-multiply" style={{ transform: `scale(${1 + y * 0.12})` }} />
+            ) : still ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={still} alt={piece?.name ?? ''} className="h-full w-full object-contain mix-blend-multiply" />
+            ) : null}
+          </Link>
+          {/* Two more pieces floating at their own depths. */}
+          {a && (
+            <Link href={`/product/${a.slug}`} data-depth="46" data-cursor="View" className="glass absolute -left-4 bottom-[10%] hidden w-[34%] rounded-3xl p-2 sm:block lg:-left-14">
+              <PearlImage image={a.images[0]} alt={a.name} sizes="180px" className="aspect-square w-full rounded-2xl object-contain mix-blend-multiply" />
+            </Link>
+          )}
+          {b && (
+            <Link href={`/product/${b.slug}`} data-depth="70" data-cursor="View" className="glass absolute -right-3 top-[6%] hidden w-[28%] rounded-3xl p-2 sm:block lg:-right-10">
+              <PearlImage image={b.images[0]} alt={b.name} sizes="150px" className="aspect-square w-full rounded-2xl object-contain mix-blend-multiply" />
+            </Link>
+          )}
+          {piece && (
+            <div data-depth="-30" className="glass absolute right-[6%] bottom-[4%] rounded-2xl px-4 py-3 text-left">
+              <p className="text-[11px] tracking-[0.16em] text-muted uppercase">Now showing</p>
+              <p className="mt-0.5 max-w-[200px] truncate text-sm font-medium text-ink">{piece.name}</p>
+            </div>
+          )}
         </div>
-      </div>
-      <div aria-hidden className="absolute bottom-6 left-1/2 hidden -translate-x-1/2 flex-col items-center gap-2 text-[10px] tracking-[0.3em] text-white/70 uppercase lg:flex">
-        Scroll
-        <span className="h-10 w-px animate-pulse bg-white/60" />
       </div>
     </section>
   );
@@ -139,7 +132,7 @@ export function ScrollShowcase({ pieces, title = 'Turn it in the light' }: { pie
   const local = p * n - active; // 0..1 within the active step
 
   return (
-    <section ref={wrap} className="relative" style={{ height: reduce ? 'auto' : `${n * 100 + 40}vh` }} aria-label={title}>
+    <section ref={wrap} className="relative" style={{ height: reduce ? 'auto' : `${n * 70 + 60}vh` }} aria-label={title}>
       <div className={reduce ? 'py-20' : 'sticky top-0 flex h-[100svh] items-center overflow-hidden'}>
         <div className="mx-auto grid w-full max-w-7xl items-center gap-10 px-4 lg:grid-cols-[1fr_1.1fr] lg:px-8">
           <div className="order-2 lg:order-1">
@@ -171,23 +164,31 @@ export function ScrollShowcase({ pieces, title = 'Turn it in the light' }: { pie
           </div>
           <div className="relative order-1 aspect-square w-full lg:order-2">
             {/* The pedestal. */}
-            <div aria-hidden className="absolute inset-x-[12%] bottom-[6%] h-[14%] rounded-[50%] bg-[radial-gradient(closest-side,rgb(7_14_77/0.22),transparent)] blur-md" />
-            <div className="glass absolute inset-[6%] rounded-[40%]" />
+            <div aria-hidden className="absolute inset-x-[16%] bottom-[4%] h-[10%] rounded-[50%] bg-[radial-gradient(closest-side,rgb(7_14_77/0.25),transparent)] blur-md" />
+            <div className="absolute inset-[4%] rounded-t-[999px] rounded-b-[40px] bg-[radial-gradient(80%_60%_at_50%_45%,#fffdf8,#efe6d2_70%,#e6d6b4)]" />
+            <div className="absolute inset-[6%] rounded-t-[999px] rounded-b-[34px] border border-white/80" />
             {steps.map((s, i) => {
               const on = i === active;
-              const rot = on ? (local - 0.5) * 24 : i < active ? -30 : 30;
-              const scale = on ? 0.92 + local * 0.12 : 0.8;
+              const rot = on ? (local - 0.5) * 10 : i < active ? -14 : 14;
+              const scale = on ? 0.94 + local * 0.08 : 0.86;
+              // Motion sits on the image itself, so its white background still blends into the arch.
               return (
                 <Link
                   key={s.id}
                   href={`/product/${s.slug}`}
                   data-cursor="View"
-                  className="absolute inset-[10%] transition-[opacity,transform] duration-700 ease-[var(--ease-silk)]"
-                  style={{ opacity: on ? 1 : 0, transform: `rotate(${rot}deg) scale(${scale})`, pointerEvents: on ? 'auto' : 'none' }}
+                  className="absolute inset-[14%]"
+                  style={{ pointerEvents: on ? 'auto' : 'none', visibility: on || reduce ? 'visible' : 'hidden' }}
                   tabIndex={on ? 0 : -1}
                   aria-hidden={!on}
                 >
-                  <PearlImage image={s.images[1] ?? s.images[0]} alt={s.name} sizes="(min-width: 1024px) 45vw, 90vw" className="h-full w-full rounded-[36%] object-cover drop-shadow-[0_30px_40px_rgb(7_14_77/0.25)]" />
+                  <PearlImage
+                    image={s.images[1] ?? s.images[0]}
+                    alt={s.name}
+                    sizes="(min-width: 1024px) 45vw, 90vw"
+                    className="h-full w-full object-contain mix-blend-multiply transition-[opacity,transform] duration-700 ease-[var(--ease-silk)]"
+                    style={{ opacity: on ? 1 : 0, transform: `rotate(${rot}deg) scale(${scale})` }}
+                  />
                 </Link>
               );
             })}
@@ -220,7 +221,7 @@ export function HangingLine({ pieces, title = 'Hand-picked, hanging in the light
             <li key={p.id} className="hang relative w-[42vw] shrink-0 snap-center sm:w-[30vw] lg:w-[11.5vw]" style={{ animationDelay: `${i * 120}ms` }}>
               <Link href={`/product/${p.slug}`} data-cursor="View" className="glass group block rounded-2xl p-2">
                 <span className="nacre block overflow-hidden rounded-xl">
-                  <PearlImage image={p.images[0]} alt={p.name} sizes="(min-width: 1024px) 12vw, 40vw" className="img-zoom aspect-[3/4] w-full object-cover" />
+                  <PearlImage image={p.images[0]} alt={p.name} sizes="(min-width: 1024px) 12vw, 40vw" className="img-zoom aspect-[3/4] w-full object-contain p-2 mix-blend-multiply" />
                 </span>
                 <span className="mt-2 block truncate px-1 text-center text-[12px] text-ink">{p.name}</span>
               </Link>
