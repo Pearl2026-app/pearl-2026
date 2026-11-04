@@ -501,6 +501,14 @@ async function main() {
         },
       }),
   );
+  // Areas served (client meeting, 4 Nov): a few PIN codes around each store. Set only while empty, so head office's
+  // own allotment is never overwritten on a re-seed.
+  for (const [f, pins] of [
+    [franchise, ['411001', '411006', '411014', '411036']], // Koregaon Park, Yerawada, Kalyani Nagar, Mundhwa
+    [franchise2, ['400050', '400051', '400052']], // Bandra West, Bandra East, Khar
+  ] as const) {
+    await prisma.franchise.updateMany({ where: { id: f.id, pincodes: { isEmpty: true } }, data: { pincodes: [...pins] } });
+  }
   for (const m of [
     {
       name: 'Zaveri Craftworks',

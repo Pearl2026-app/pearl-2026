@@ -8,12 +8,16 @@ import { Price, ProductGrid } from '@/components/product-card';
 import { Breadcrumbs, Container, SectionHeading } from '@/components/ui';
 import { sizeGuideKind, SPEC_GUIDE_ANCHOR } from '@/lib/guides';
 import { breadcrumbJsonLd, JsonLd, meta, productDescription, productJsonLd } from '@/lib/seo';
-import { cityFromCookie, get } from '@/lib/server-api';
+import { cityFromCookie, get, pinFromCookie } from '@/lib/server-api';
 import type { ProductDetail, Site } from '@/lib/types';
 
 async function load(slug: string) {
-  const city = await cityFromCookie();
-  return get<ProductDetail>(`/catalogue/products/${encodeURIComponent(slug)}${city ? `?city=${city}` : ''}`, {
+  const [city, pin] = await Promise.all([cityFromCookie(), pinFromCookie()]);
+  const where = new URLSearchParams();
+  if (city) where.set('city', city);
+  if (pin) where.set('pin', pin);
+  const qs = where.toString();
+  return get<ProductDetail>(`/catalogue/products/${encodeURIComponent(slug)}${qs ? `?${qs}` : ''}`, {
     revalidate: 30,
   });
 }

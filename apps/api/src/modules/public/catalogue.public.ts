@@ -5,6 +5,7 @@ import { Prisma } from '@sahyadri/db';
 import { Public } from '../../common/decorators';
 import { notFound } from '../../common/errors';
 import { PrismaService } from '../../prisma/prisma.service';
+import { cleanPin } from '../network/franchise-areas';
 
 const csvList = z
   .string()
@@ -16,6 +17,8 @@ export const productQuery = z.object({
   collection: z.string().optional(),
   farm: z.string().optional(),
   city: z.string().optional(),
+  /** The shopper's PIN code: a franchise's pieces are shown only inside its allotted PIN codes */
+  pin: z.string().optional(),
   shape: csvList,
   colour: csvList,
   caratMin: z.coerce.number().min(0).optional(),
@@ -95,24 +98,42 @@ export function toCard(p: CardRow) {
  * Products the public may see in a city: published, not archived, and available to that address (client, 27 Oct) —
  * shown in that city by hand, own stock sold everywhere, or a piece whose vendor serves that city. A vendor's
  * pieces never appear outside the vendor's cities (unless "Where to display" says otherwise by hand).
+ *
+ * A franchise's own pieces (client meeting, 4 Nov) are shown only to shoppers in that franchise's area: their PIN
+ * code is one allotted to it, or, when they have not given a PIN code, their city is one the franchise serves.
  */
-export function publicWhere(cityId?: string | null): Prisma.ProductWhereInput {
+export function publicWhere(cityId?: string | null, pin?: string | null): Prisma.ProductWhereInput {
+  const code = cleanPin(pin);
+  const cityRule: Prisma.ProductWhereInput = cityId
+    ? {
+        OR: [
+          { cities: { some: { cityId } } },
+          { cities: { none: {} }, vendorId: null },
+          { cities: { none: {} }, vendor: { isActive: true, OR: [{ cities: { none: {} } }, { cities: { some: { cityId } } }] } },
+        ],
+      }
+    : {};
+  const area: Prisma.FranchiseWhereInput = code ? { pincodes: { has: code } } : cityId ? { OR: [{ cityId }, { cities: { some: { cityId } } }] } : {};
   return {
     status: 'PUBLISHED',
     archivedAt: null,
     // Business-only pieces are shown to approved business buyers in their account, not in the public store.
     b2bOnly: false,
     category: { isActive: true, archivedAt: null },
-    ...(cityId
-      ? {
-          OR: [
-            { cities: { some: { cityId } } },
-            { cities: { none: {} }, vendorId: null },
-            { cities: { none: {} }, vendor: { isActive: true, OR: [{ cities: { none: {} } }, { cities: { some: { cityId } } }] } },
-          ],
-        }
-      : {}),
+    OR: [{ franchiseId: null, ...cityRule }, { franchise: { isActive: true, ...area } }],
   };
+}
+
+/** Whether a franchise's piece is for this shopper: same rule as publicWhere, for one product already loaded. */
+export function franchiseServes(
+  f: { isActive: boolean; cityId: string; pincodes: string[]; cities: Array<{ cityId: string }> },
+  cityId: string | null,
+  pin?: string | null,
+): boolean {
+  const code = cleanPin(pin);
+  if (!f.isActive) return false;
+  if (code) return f.pincodes.includes(code);
+  return !cityId || f.cityId === cityId || f.cities.some((c) => c.cityId === cityId);
 }
 
 @ApiTags('catalogue (public)')
@@ -144,7 +165,7 @@ export class PublicCatalogueController {
 
   async findProducts(q: ProductQuery) {
     const cityId = await this.cityId(q.city);
-    const and: Prisma.ProductWhereInput[] = [publicWhere(cityId)];
+    const and: Prisma.ProductWhereInput[] = [publicWhere(cityId, q.pin)];
     if (q.category) and.push({ category: { slug: q.category } });
     if (q.collection) and.push({ collection: { slug: q.collection } });
     if (q.farm) {
@@ -212,7 +233,7 @@ export class PublicCatalogueController {
     const cityId = await this.cityId(q.city);
     const where: Prisma.ProductWhereInput = {
       AND: [
-        publicWhere(cityId),
+        publicWhere(cityId, q.pin),
         q.category ? { category: { slug: q.category } } : {},
         q.collection ? { collection: { slug: q.collection } } : {},
         q.farm ? { farm: { slug: q.farm } } : {},
@@ -245,17 +266,19 @@ export class PublicCatalogueController {
 
   @Public()
   @Get('products/:slug')
-  async product(@Param('slug') slug: string, @Query('city') citySlug?: string) {
+  async product(@Param('slug') slug: string, @Query('city') citySlug?: string, @Query('pin') pin?: string) {
+    const cityId = await this.cityId(citySlug);
     const p = await this.prisma.product.findFirst({
       where: { slug, status: 'PUBLISHED', archivedAt: null },
       include: {
         images: { orderBy: [{ kind: 'asc' }, { sortOrder: 'asc' }] },
         farm: { select: { name: true, slug: true, location: true, summary: true, story: true, heroImageUrl: true } },
         vendor: { select: { isActive: true, cities: { select: { cityId: true } } } },
+        franchise: { select: { isActive: true, cityId: true, pincodes: true, cities: { select: { cityId: true } } } },
         collection: { select: { name: true, slug: true } },
         category: { select: { name: true, slug: true } },
         certificates: { where: { revokedAt: null }, select: { code: true }, take: 1 },
-        relatedFrom: { where: { related: publicWhere() }, orderBy: { sortOrder: 'asc' }, include: { related: { select: CARD_SELECT } } },
+        relatedFrom: { where: { related: publicWhere(cityId, pin) }, orderBy: { sortOrder: 'asc' }, include: { related: { select: CARD_SELECT } } },
         stockHolds: { where: { status: 'ACTIVE', expiresAt: { gt: new Date() } }, select: { id: true }, take: 1 },
         cities: { select: { cityId: true } },
       },
@@ -273,14 +296,13 @@ export class PublicCatalogueController {
     let related: CardRow[] = p.relatedFrom.map((r) => r.related);
     if (related.length < 4) {
       const more = await this.prisma.product.findMany({
-        where: { AND: [publicWhere(), { categoryId: p.categoryId }, { id: { notIn: [p.id, ...related.map((r) => r.id)] } }, { soldAt: null }] },
+        where: { AND: [publicWhere(cityId, pin), { categoryId: p.categoryId }, { id: { notIn: [p.id, ...related.map((r) => r.id)] } }, { soldAt: null }] },
         select: CARD_SELECT,
         take: 4 - related.length,
         orderBy: { publishedAt: 'desc' },
       });
       related = [...related, ...more];
     }
-    const cityId = await this.cityId(citySlug);
     const card = toCard(p);
     const reserved = card.available && p.stockType === 'UNIQUE' && p.stockHolds.length > 0;
     return {
@@ -299,12 +321,14 @@ export class PublicCatalogueController {
       farm: p.farm,
       /** A unique piece in someone else's checkout right now. */
       reserved,
-      availableInCity:
-        !cityId ||
-        (p.cities.length > 0
-          ? p.cities.some((c) => c.cityId === cityId)
-          : // No "Where to display" rows: own stock goes everywhere; a vendor's piece follows the vendor's cities.
-            !p.vendor || (p.vendor.isActive && (p.vendor.cities.length === 0 || p.vendor.cities.some((c) => c.cityId === cityId)))),
+      // A franchise's own piece: only in its area (its PIN codes, or its cities when no PIN code is known).
+      availableInCity: p.franchise
+        ? franchiseServes(p.franchise, cityId, pin)
+        : !cityId ||
+          (p.cities.length > 0
+            ? p.cities.some((c) => c.cityId === cityId)
+            : // No "Where to display" rows: own stock goes everywhere; a vendor's piece follows the vendor's cities.
+              !p.vendor || (p.vendor.isActive && (p.vendor.cities.length === 0 || p.vendor.cities.some((c) => c.cityId === cityId)))),
       seoTitle: p.seoTitle,
       seoDescription: p.seoDescription,
       rating: { average: agg._avg.rating ? Math.round(agg._avg.rating * 10) / 10 : null, count: agg._count._all },
@@ -358,10 +382,11 @@ export class PublicCatalogueController {
 
   @Public()
   @Get('farms/:slug')
-  async farm(@Param('slug') slug: string) {
+  async farm(@Param('slug') slug: string, @Query('city') citySlug?: string, @Query('pin') pin?: string) {
     const f = await this.prisma.farm.findFirst({ where: { slug, isActive: true, archivedAt: null } });
     if (!f) throw notFound('Farm');
-    const products = await this.prisma.product.findMany({ where: { AND: [publicWhere(), { farmId: f.id }] }, select: CARD_SELECT, orderBy: [{ soldAt: { sort: 'desc', nulls: 'first' } }, { publishedAt: 'desc' }], take: 48 });
+    // Same pieces the shopper sees elsewhere: a franchise's own pieces only in its area.
+    const products = await this.prisma.product.findMany({ where: { AND: [publicWhere(await this.cityId(citySlug), pin), { farmId: f.id }] }, select: CARD_SELECT, orderBy: [{ soldAt: { sort: 'desc', nulls: 'first' } }, { publishedAt: 'desc' }], take: 48 });
     return { ...f, latitude: f.latitude ? Number(f.latitude) : null, longitude: f.longitude ? Number(f.longitude) : null, products: products.map(toCard) };
   }
 }

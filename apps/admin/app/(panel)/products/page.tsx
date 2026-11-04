@@ -28,6 +28,7 @@ interface Row {
   category: { name: string };
   farm: { name: string } | null;
   vendor: { name: string } | null;
+  franchise?: { name: string } | null;
 }
 
 function Products() {
@@ -171,6 +172,7 @@ function Products() {
               r.stockType === 'UNIQUE' ? (r.soldAt ? <Badge tone="danger">Sold</Badge> : <Badge tone="info">Unique</Badge>) : r.outOfStock || r.quantity === 0 ? <Badge tone="danger">Out</Badge> : r.quantity,
           },
           { key: 'vendor', label: 'Vendor', render: (r) => r.vendor?.name ?? 'Own' },
+          { key: 'franchise', label: 'Franchise', render: (r) => r.franchise?.name ?? 'Head office' },
           {
             key: 'status',
             label: 'Status',

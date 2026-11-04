@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { get, cityFromCookie } from '@/lib/server-api';
+import { get, cityFromCookie, pinFromCookie } from '@/lib/server-api';
 import type { Filters, Page, ProductCard } from '@/lib/types';
 import { FilterPanel, SortSelect } from './filters';
 import { ProductGrid } from './product-card';
@@ -8,11 +8,12 @@ export type SearchParams = Record<string, string | string[] | undefined>;
 const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
 
 /** URL (rupees, friendly names) → API query (paise). */
-export function apiQuery(sp: SearchParams, fixed: Record<string, string | undefined>, city?: string) {
+export function apiQuery(sp: SearchParams, fixed: Record<string, string | undefined>, city?: string, pin?: string) {
   const p = new URLSearchParams();
   const set = (k: string, v?: string) => v && p.set(k, v);
   for (const [k, v] of Object.entries(fixed)) set(k, v);
   set('city', city);
+  set('pin', pin);
   set('shape', one(sp.shape));
   set('colour', one(sp.colour));
   set('farm', fixed.farm ?? one(sp.farm));
@@ -34,10 +35,10 @@ export function apiQuery(sp: SearchParams, fixed: Record<string, string | undefi
 }
 
 export async function Catalogue({ searchParams, fixed, basePath }: { searchParams: SearchParams; fixed: Record<string, string | undefined>; basePath: string }) {
-  const city = await cityFromCookie();
-  const q = apiQuery(searchParams, fixed, city);
+  const [city, pin] = await Promise.all([cityFromCookie(), pinFromCookie()]);
+  const q = apiQuery(searchParams, fixed, city, pin);
   const facetQ = new URLSearchParams();
-  for (const k of ['category', 'collection', 'farm', 'city']) if (q.get(k)) facetQ.set(k, q.get(k)!);
+  for (const k of ['category', 'collection', 'farm', 'city', 'pin']) if (q.get(k)) facetQ.set(k, q.get(k)!);
   const [data, filters] = await Promise.all([
     get<Page<ProductCard>>(`/catalogue/products?${q}`, { revalidate: 60 }),
     get<Filters>(`/catalogue/filters?${facetQ}`, { revalidate: 300 }),

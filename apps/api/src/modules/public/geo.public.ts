@@ -4,6 +4,7 @@ import { Throttle } from '@nestjs/throttler';
 import { Public } from '../../common/decorators';
 import { badRequest } from '../../common/errors';
 import { PrismaService } from '../../prisma/prisma.service';
+import { allottedFranchise } from '../network/franchise-areas';
 import { nearestVendor, pincodePlace } from '../orders/routing';
 
 const norm = (s: string) => s.toLowerCase().replace(/[^a-z]/g, '');
@@ -33,8 +34,12 @@ export class GeoController {
     // 1. A city whose name matches the district (Pune, Mumbai, Gurugram …).
     let city =
       cities.find((c) => norm(place.district).includes(norm(c.name)) || norm(c.name).includes(norm(place.district))) ?? null;
+    // A PIN code head office has allotted to a franchise is served by that franchise only (client meeting, 4 Nov);
+    // the nearest-store match below applies only where no franchise is allotted.
+    const franchise = await allottedFranchise(this.prisma, code);
+    if (franchise) city ??= cities.find((c) => c.id === franchise.cityId) ?? null;
     // 2. Otherwise the city served by the nearest active store.
-    const store = await nearestVendor(this.prisma, code, null);
+    const store = franchise ? null : await nearestVendor(this.prisma, code, null);
     if (!city && store) {
       const served = await this.prisma.vendorCity.findMany({ where: { vendorId: store.id }, select: { cityId: true } });
       city = cities.find((c) => served.some((s) => s.cityId === c.id)) ?? null;
@@ -46,7 +51,11 @@ export class GeoController {
       district: place.district,
       state: place.state,
       city: city ? { slug: city.slug, name: city.name } : null,
-      nearestStore: store ? { name: store.name, km: store.km != null ? Math.round(store.km) : null } : null,
+      nearestStore: franchise
+        ? { name: franchise.name, km: null, allotted: true }
+        : store
+          ? { name: store.name, km: store.km != null ? Math.round(store.km) : null, allotted: false }
+          : null,
     };
   }
 

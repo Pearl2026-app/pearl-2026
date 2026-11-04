@@ -28,6 +28,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { earnOrderPoints, redeemOrderPoints, refundOrderPoints } from './loyalty';
 import { lockWallet, spendWallet, unwindOrderWallet, WalletService } from './wallet';
 import { nearestVendor, pincodePoint } from './routing';
+import { allottedFranchise } from '../network/franchise-areas';
 import { JobsService } from '../../queue/jobs.service';
 import { AuthService } from '../../auth/auth.service';
 import { EnquiriesService } from '../enquiries/enquiries.service';
@@ -181,10 +182,14 @@ export class OrdersService implements OnModuleInit {
       });
     if (!input.items.length && !input.customLine) throw badRequest('EMPTY_ORDER', 'Add at least one piece.');
     const customerId = input.customerId ?? (await this.ensureCustomer(input.contact));
+    // A delivery PIN code allotted to a franchise goes to that franchise only (client meeting, 4 Nov); elsewhere the
+    // city's routing rule decides.
     const franchiseId =
       input.franchiseId !== undefined
         ? input.franchiseId
-        : ((await this.enquiries.route('PRODUCT', city.id)).rule?.assignFranchiseId ?? null);
+        : ((await allottedFranchise(this.prisma, input.address.pincode))?.id ??
+          (await this.enquiries.route('PRODUCT', city.id)).rule?.assignFranchiseId ??
+          null);
     // The vendor nearest the delivery address packs and dispatches the order, and sees it in its panel.
     const fulfilment = await nearestVendor(this.prisma, input.address.pincode, city.id);
     const store = await this.settings.get('store');

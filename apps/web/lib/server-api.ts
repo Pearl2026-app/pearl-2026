@@ -47,3 +47,9 @@ export async function get<T>(path: string, opts: { revalidate?: number; auth?: b
 export async function cityFromCookie(): Promise<string | undefined> {
   return (await cookies()).get('sp_city')?.value || undefined;
 }
+
+/** The shopper's PIN code (typed in the location gate or header): a franchise's pieces show only in its area. */
+export async function pinFromCookie(): Promise<string | undefined> {
+  const pin = (await cookies()).get('sp_pin')?.value;
+  return pin && /^\d{6}$/.test(pin) ? pin : undefined;
+}

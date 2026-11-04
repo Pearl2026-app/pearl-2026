@@ -11,13 +11,24 @@ const readCookie = () => document.cookie.match(/(?:^|; )sp_city=([^;]+)/)?.[1] ?
 const writeCookie = (slug: string) => {
   document.cookie = `${COOKIE}=${slug}; path=/; max-age=${slug ? 60 * 60 * 24 * 365 : 0}; samesite=lax`;
 };
+/** The PIN code goes to the server too: a franchise's own pieces are shown only in its allotted PIN codes. */
+const writePin = (pin: string) => {
+  document.cookie = `${PIN_KEY}=${pin}; path=/; max-age=${pin ? 60 * 60 * 24 * 365 : 0}; samesite=lax`;
+  try {
+    if (pin) localStorage.setItem(PIN_KEY, pin);
+    else localStorage.removeItem(PIN_KEY);
+  } catch {
+    /* ignore */
+  }
+};
 
 interface PinResult {
   pincode: string;
   district: string;
   state: string;
   city: { slug: string; name: string } | null;
-  nearestStore: { name: string; km: number | null } | null;
+  /** allotted: the franchise head office has given this PIN code to */
+  nearestStore: { name: string; km: number | null; allotted?: boolean } | null;
 }
 
 /**
@@ -40,7 +51,10 @@ export function LocationPicker({ compact = false }: { compact?: boolean }) {
     const c = readCookie();
     setCity(c);
     try {
-      setPin(localStorage.getItem(PIN_KEY) ?? '');
+      const saved = localStorage.getItem(PIN_KEY) ?? '';
+      setPin(saved);
+      // PIN codes typed before the server read them: copy into the cookie for the next page.
+      if (/^\d{6}$/.test(saved) && !document.cookie.includes(`${PIN_KEY}=`)) writePin(saved);
     } catch {
       /* ignore */
     }
@@ -81,12 +95,9 @@ export function LocationPicker({ compact = false }: { compact?: boolean }) {
     try {
       const r = await api<PinResult>(`/geo/pincode/${pin}`);
       setFound(r);
-      try {
-        localStorage.setItem(PIN_KEY, pin);
-      } catch {
-        /* ignore */
-      }
+      writePin(pin);
       if (r.city) choose(r.city.slug);
+      else router.refresh();
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -137,7 +148,7 @@ export function LocationPicker({ compact = false }: { compact?: boolean }) {
               {found.nearestStore && (
                 <>
                   <br />
-                  Nearest store: <strong>{found.nearestStore.name}</strong>
+                  {found.nearestStore.allotted ? 'Your store' : 'Nearest store'}: <strong>{found.nearestStore.name}</strong>
                   {found.nearestStore.km != null && ` · about ${found.nearestStore.km} km`}
                 </>
               )}
@@ -148,6 +159,10 @@ export function LocationPicker({ compact = false }: { compact?: boolean }) {
             <select
               value={city}
               onChange={(e) => {
+                // A city picked by hand replaces the PIN code typed earlier.
+                writePin('');
+                setPin('');
+                setFound(null);
                 choose(e.target.value);
                 setOpen(false);
               }}

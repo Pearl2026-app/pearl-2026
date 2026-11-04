@@ -35,11 +35,12 @@ export function RingFinder() {
     setError(null);
     try {
       const city = document.cookie.match(/(?:^|; )sp_city=([^;]+)/)?.[1];
+      const pin = document.cookie.match(/(?:^|; )sp_pin=([^;]+)/)?.[1];
       setResult(
         await api<Result>('/ring-finder', {
           method: 'POST',
           timeoutMs: 15_000,
-          json: { occasion: answers.occasion, budgetMaxPaise: answers.budgetMax ? answers.budgetMax * 100 : undefined, style: answers.style, metal: answers.metal, colour: answers.colour, shape: answers.shape, ringSize: answers.ringSize, citySlug: city },
+          json: { occasion: answers.occasion, budgetMaxPaise: answers.budgetMax ? answers.budgetMax * 100 : undefined, style: answers.style, metal: answers.metal, colour: answers.colour, shape: answers.shape, ringSize: answers.ringSize, citySlug: city, pin },
         }),
       );
     } catch (e) {

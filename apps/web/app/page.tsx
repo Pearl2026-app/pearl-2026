@@ -6,7 +6,7 @@ import { IconFor } from '@/components/icons';
 import { ProductCard as Card, ProductGrid } from '@/components/product-card';
 import { ButtonLink, Container, SectionHeading } from '@/components/ui';
 import { JsonLd, meta, SITE_URL } from '@/lib/seo';
-import { cityFromCookie, get } from '@/lib/server-api';
+import { cityFromCookie, get, pinFromCookie } from '@/lib/server-api';
 import type { ProductCard, Site } from '@/lib/types';
 
 interface Banner {
@@ -54,7 +54,9 @@ const BannerButton = ({ label, light }: { label: string; light?: boolean }) => (
 
 export default async function HomePage() {
   const [h, site] = await Promise.all([
-    cityFromCookie().then((city) => get<Home>(`/content/home${city ? `?city=${encodeURIComponent(city)}` : ''}`, { revalidate: 60 })),
+    Promise.all([cityFromCookie(), pinFromCookie()]).then(([city, pin]) =>
+      get<Home>(`/content/home${city || pin ? `?${new URLSearchParams({ ...(city ? { city } : {}), ...(pin ? { pin } : {}) })}` : ''}`, { revalidate: 60 }),
+    ),
     get<Site>('/site', { revalidate: 300 }),
   ]);
   if (!h) return null;

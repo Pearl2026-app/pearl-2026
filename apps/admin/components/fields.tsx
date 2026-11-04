@@ -21,7 +21,8 @@ export type FieldType =
   | 'date'
   | 'datetime'
   | 'json'
-  | 'list';
+  | 'list'
+  | 'pincodes';
 
 export interface FieldDef {
   name: string;
@@ -137,7 +138,7 @@ function RefSelect({ def, value, onChange, multi, id, d }: { def: FieldDef; valu
   }
   return (
     <Select id={id} aria-describedby={d} value={(value as string) ?? ''} onChange={(e) => onChange(e.target.value || null)}>
-      <option value="">{isLoading ? 'Loading…' : '— None —'}</option>
+      <option value="">{isLoading ? 'Loading…' : (def.placeholder ?? '— None —')}</option>
       {items.map((o) => (
         <option key={String(o.id)} value={String(o.id)}>
           {String(o[label] ?? o.id)}
@@ -212,11 +213,33 @@ export function FieldInput({ def, value, onChange, error }: { def: FieldDef; val
             );
           case 'json':
             return <JsonInput {...common} value={value} onChange={onChange} />;
+          case 'pincodes':
+            return <PincodesInput {...common} value={value} onChange={onChange} />;
           default:
             return <Input {...common} value={(value as string) ?? ''} onChange={(e) => onChange(e.target.value)} />;
         }
       }}
     </Field>
+  );
+}
+
+/** PIN codes typed with commas, spaces or new lines between them: unique entries, in the order typed. */
+export function parsePincodes(text: string): { pins: string[]; bad: string[] } {
+  const all = [...new Set(text.split(/[\s,;]+/).map((x) => x.trim()).filter(Boolean))];
+  return { pins: all.filter((x) => /^\d{6}$/.test(x)), bad: all.filter((x) => !/^\d{6}$/.test(x)) };
+}
+
+function PincodesInput({ value, onChange, ...rest }: { value: unknown; onChange: (v: unknown) => void; id: string; invalid?: boolean; placeholder?: string }) {
+  const text = Array.isArray(value) ? (value as string[]).join(', ') : ((value as string) ?? '');
+  const { pins, bad } = parsePincodes(text);
+  return (
+    <div>
+      <Textarea {...rest} invalid={rest.invalid || bad.length > 0} rows={4} value={text} onChange={(e) => onChange(e.target.value)} />
+      <p className="mt-1 text-xs text-muted">
+        {pins.length} {pins.length === 1 ? 'PIN code' : 'PIN codes'}
+        {bad.length > 0 && <span className="text-danger"> · not 6 digits: {bad.slice(0, 5).join(', ')}{bad.length > 5 ? '…' : ''}</span>}
+      </p>
+    </div>
   );
 }
 

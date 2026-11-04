@@ -2,7 +2,7 @@ import { notFound } from 'next/navigation';
 import { ProductGrid } from '@/components/product-card';
 import { Breadcrumbs, Container, SectionHeading } from '@/components/ui';
 import { breadcrumbJsonLd, JsonLd, meta } from '@/lib/seo';
-import { get } from '@/lib/server-api';
+import { cityFromCookie, get, pinFromCookie } from '@/lib/server-api';
 import type { ProductCard } from '@/lib/types';
 
 
@@ -17,7 +17,12 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 
 export default async function FarmPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const f = await get<Farm>(`/catalogue/farms/${slug}`, { revalidate: 300 });
+  const [city, pin] = await Promise.all([cityFromCookie(), pinFromCookie()]);
+  const where = new URLSearchParams();
+  if (city) where.set('city', city);
+  if (pin) where.set('pin', pin);
+  const qs = where.toString();
+  const f = await get<Farm>(`/catalogue/farms/${slug}${qs ? `?${qs}` : ''}`, { revalidate: 300 });
   if (!f) notFound();
   return (
     <>

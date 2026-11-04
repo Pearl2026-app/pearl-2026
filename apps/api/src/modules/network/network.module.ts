@@ -6,6 +6,8 @@ import { email, phoneE164, slug, slugify, paise } from '@sahyadri/shared';
 import { cityLinks, crudController } from '../../common/crud';
 import { forbidden } from '../../common/errors';
 import type { AuthUser } from '../../common/context';
+import type { PrismaService } from '../../prisma/prisma.service';
+import { assertPincodesFree, pincodeList } from './franchise-areas';
 
 const optStr = (max = 200) => z.string().trim().max(max).optional().nullable();
 const cityIds = z.array(z.string().min(1)).max(100).optional();
@@ -97,6 +99,17 @@ const franchiseBase = {
   openingHours: optStr(200),
   mapUrl: z.string().trim().url().max(500).optional().nullable().or(z.literal('').transform(() => null)),
   cityIds,
+  /** Areas served: the PIN codes allotted to this franchise (client meeting, 4 Nov) */
+  pincodes: pincodeList.optional(),
+};
+/** A PIN code belongs to one active franchise only; checked whenever the PIN codes change or a franchise is switched on. */
+const franchiseData = async (input: any, mode: 'create' | 'update', id?: string, prisma?: PrismaService) => {
+  if (prisma && (input.pincodes !== undefined || input.isActive === true)) {
+    const current = id ? await prisma.franchise.findUnique({ where: { id }, select: { pincodes: true, isActive: true } }) : null;
+    const active = input.isActive ?? current?.isActive ?? true;
+    if (active) await assertPincodesFree(prisma, input.pincodes ?? current?.pincodes ?? [], id);
+  }
+  return vendorData(input, mode);
 };
 export const FranchisesController = crudController({
   path: 'franchises',
@@ -118,7 +131,7 @@ export const FranchisesController = crudController({
   remove: 'deactivate',
   scope: (u) =>
     u.role === 'FRANCHISE' ? { id: u.franchiseId ?? '__none__' } : u.role === 'CITY_MANAGER' ? { cityId: u.cityId ?? '__none__' } : {},
-  toData: vendorData,
+  toData: franchiseData,
 });
 
 // ── Manufacturers ──────────────────────────────────────────────

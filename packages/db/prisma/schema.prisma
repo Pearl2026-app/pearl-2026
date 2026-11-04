@@ -551,11 +551,14 @@ model Franchise {
   showInStoreList Boolean @default(false)
   openingHours    String?
   mapUrl          String?
+  /// PIN codes allotted to this franchise by head office: shoppers there are served only by this franchise
+  pincodes        String[] @default([])
 
   users     User[]
   cities    FranchiseCity[] // extra cities served, beyond the home city
   enquiries Enquiry[]
   orders    Order[]
+  products  Product[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -729,6 +732,9 @@ model Product {
   farm         Farm?       @relation(fields: [farmId], references: [id])
   vendorId     String?
   vendor       Vendor?     @relation(fields: [vendorId], references: [id])
+  /// The franchise this piece belongs to: shown only to shoppers in that franchise's area. Empty = head office stock.
+  franchiseId  String?
+  franchise    Franchise?  @relation(fields: [franchiseId], references: [id])
 
   // Money, integer paise
   pricePaise      Int
@@ -802,6 +808,7 @@ model Product {
   @@index([status, categoryId])
   @@index([farmId])
   @@index([vendorId])
+  @@index([franchiseId])
   @@index([collectionId])
 }
 

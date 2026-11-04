@@ -5,6 +5,8 @@ import { api } from '@/lib/api';
 
 const CITY_COOKIE = 'sp_city';
 const ASKED_COOKIE = 'sp_city_asked';
+/** Read by the server too: a franchise's own pieces are shown only in its allotted PIN codes. */
+const PIN_COOKIE = 'sp_pin';
 const hasCookie = (name: string) => typeof document !== 'undefined' && document.cookie.includes(`${name}=`);
 
 interface PinResult {
@@ -12,7 +14,8 @@ interface PinResult {
   district: string;
   state: string;
   city: { slug: string; name: string } | null;
-  nearestStore: { name: string; km: number | null } | null;
+  /** allotted: the franchise head office has given this PIN code to */
+  nearestStore: { name: string; km: number | null; allotted?: boolean } | null;
 }
 
 /**
@@ -38,6 +41,8 @@ export function LocationGate() {
   const dismiss = () => {
     document.cookie = `${ASKED_COOKIE}=1; path=/; max-age=${60 * 60 * 24 * 30}; samesite=lax`;
     setOpen(false);
+    // A PIN code was checked but matched no city: it still decides which franchise's own pieces are shown.
+    if (found) router.refresh();
   };
 
   const submit = async (e: React.FormEvent) => {
@@ -53,6 +58,7 @@ export function LocationGate() {
       } catch {
         /* private window */
       }
+      document.cookie = `${PIN_COOKIE}=${pin}; path=/; max-age=${60 * 60 * 24 * 365}; samesite=lax`;
       if (r.city) {
         document.cookie = `${CITY_COOKIE}=${r.city.slug}; path=/; max-age=${60 * 60 * 24 * 365}; samesite=lax`;
         document.cookie = `${ASKED_COOKIE}=1; path=/; max-age=${60 * 60 * 24 * 365}; samesite=lax`;
@@ -95,7 +101,7 @@ export function LocationGate() {
         {found && found.city && (
           <p className="mt-3 text-sm">
             Delivering to <strong>{found.district}, {found.state}</strong>
-            {found.nearestStore ? ` · nearest store ${found.nearestStore.name}${found.nearestStore.km != null ? `, ${found.nearestStore.km} km` : ''}` : ''}
+            {found.nearestStore ? ` · ${found.nearestStore.allotted ? 'your store' : 'nearest store'} ${found.nearestStore.name}${found.nearestStore.km != null ? `, ${found.nearestStore.km} km` : ''}` : ''}
           </p>
         )}
         {found && !found.city && (

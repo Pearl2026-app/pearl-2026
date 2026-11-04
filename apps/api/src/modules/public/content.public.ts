@@ -93,8 +93,9 @@ export class PublicContentController {
 
   @Public()
   @Get('content/home')
-  async home(@Query('city') citySlug?: string) {
-    // The shopper's city (chosen in the header or worked out from their PIN code) narrows the pieces shown.
+  async home(@Query('city') citySlug?: string, @Query('pin') pin?: string) {
+    // The shopper's city (chosen in the header or worked out from their PIN code) narrows the pieces shown; their PIN
+    // code decides which franchise's own pieces they see.
     const cityId = citySlug
       ? ((await this.prisma.city.findFirst({ where: { slug: citySlug, isActive: true }, select: { id: true } }))?.id ?? null)
       : null;
@@ -102,16 +103,16 @@ export class PublicContentController {
       this.prisma.banner.findMany({ where: { placement: { in: ['HOME_HERO', 'HOME_SECONDARY'] }, ...live() }, orderBy: { sortOrder: 'asc' } }),
       this.prisma.contentBlock.findMany({ where: { isActive: true, key: { startsWith: 'home.' } }, orderBy: { sortOrder: 'asc' } }),
       this.prisma.collection.findMany({ where: { isActive: true, isFeatured: true, archivedAt: null }, orderBy: { sortOrder: 'asc' }, select: { name: true, slug: true, description: true, imageUrl: true } }),
-      this.prisma.product.findMany({ where: { AND: [publicWhere(cityId), { isFeatured: true }] }, select: CARD_SELECT, orderBy: [{ soldAt: { sort: 'desc', nulls: 'first' } }, { sortOrder: 'asc' }], take: 8 }),
+      this.prisma.product.findMany({ where: { AND: [publicWhere(cityId, pin), { isFeatured: true }] }, select: CARD_SELECT, orderBy: [{ soldAt: { sort: 'desc', nulls: 'first' } }, { sortOrder: 'asc' }], take: 8 }),
       this.prisma.testimonial.findMany({ where: { isActive: true }, orderBy: { sortOrder: 'asc' }, take: 6 }),
       this.prisma.galleryItem.findMany({ where: { isActive: true }, orderBy: { sortOrder: 'asc' }, take: 6 }),
-      this.prisma.product.findMany({ where: { AND: [publicWhere(cityId), { soldAt: null }] }, select: CARD_SELECT, orderBy: { publishedAt: 'desc' }, take: 8 }),
+      this.prisma.product.findMany({ where: { AND: [publicWhere(cityId, pin), { soldAt: null }] }, select: CARD_SELECT, orderBy: { publishedAt: 'desc' }, take: 8 }),
       this.prisma.farm.findMany({
         where: { isActive: true, archivedAt: null },
         orderBy: { sortOrder: 'asc' },
-        select: { name: true, slug: true, location: true, summary: true, heroImageUrl: true, _count: { select: { products: { where: publicWhere(cityId) } } } },
+        select: { name: true, slug: true, location: true, summary: true, heroImageUrl: true, _count: { select: { products: { where: publicWhere(cityId, pin) } } } },
       }),
-      this.prisma.product.findMany({ where: { AND: [publicWhere(cityId), { isExclusive: true }] }, select: CARD_SELECT, orderBy: [{ soldAt: { sort: 'desc', nulls: 'first' } }, { sortOrder: 'asc' }], take: 8 }),
+      this.prisma.product.findMany({ where: { AND: [publicWhere(cityId, pin), { isExclusive: true }] }, select: CARD_SELECT, orderBy: [{ soldAt: { sort: 'desc', nulls: 'first' } }, { sortOrder: 'asc' }], take: 8 }),
     ]);
     return {
       banners,
