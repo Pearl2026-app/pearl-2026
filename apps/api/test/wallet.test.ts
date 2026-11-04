@@ -74,8 +74,8 @@ beforeAll(async () => {
 afterAll(() => db.$disconnect());
 
 describe('referral wallet', () => {
-  const referrerPhone = '9811700001';
-  const friendPhone = '9811700002';
+  const referrerPhone = '9819900071';
+  const friendPhone = '9819900072';
   let referrer: string;
   let friend: string;
 
