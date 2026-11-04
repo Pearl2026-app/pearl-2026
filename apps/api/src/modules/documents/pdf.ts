@@ -143,14 +143,26 @@ export interface PoPdfInput {
   dueDate: Date;
   manufacturer: { name: string; contactName?: string | null; phone?: string | null; email?: string | null; city?: string | null };
   orderNumber?: string | null;
+  /** The catalogue piece, when picked: "Name (SR code)" */
+  piece?: string | null;
+  /** Exact numbers for this piece (meeting of 31 Oct) */
+  specs?: { pearlSizeMm?: string | null; pearlWeightCt?: string | null; metal?: string | null; metalWeightG?: string | null; ringSize?: string | null };
+  /** "Other notes / specification" */
   specification: string;
   quantity: number;
   agreedCostPaise: number;
+  /** Making charge: weight × rate × quantity, + GST */
+  making?: { ratePerGramPaise: number; gstPercent: string; subtotalPaise: number; gstPaise: number; totalPaise: number } | null;
+  pearlsSentAt?: Date | null;
+  /** Design photos as JPEG/PNG bytes (thumbnails) */
+  images?: Buffer[];
+  cadFileName?: string | null;
   notes?: string | null;
 }
 
 export async function purchaseOrderPdf(p: PoPdfInput): Promise<Buffer> {
   const doc = new PDFDocument({ size: 'A4', margin: 50, info: { Title: `Purchase Order ${p.number}`, Author: 'Sahyadri Pearls' } });
+  const day = (d: Date) => d.toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', day: 'numeric', month: 'long', year: 'numeric' });
   header(doc, 'PURCHASE ORDER', p.store);
   doc.fillColor(INK).font('Helvetica').fontSize(9);
   doc.text(`PO no: ${p.number}`, 350, 75, { width: 195, align: 'right' });
@@ -162,19 +174,79 @@ export async function purchaseOrderPdf(p: PoPdfInput): Promise<Buffer> {
   if (p.manufacturer.phone) doc.text(p.manufacturer.phone);
   if (p.manufacturer.email) doc.text(p.manufacturer.email);
   if (p.manufacturer.city) doc.text(p.manufacturer.city);
-  doc.font('Helvetica-Bold').fontSize(10).text('Specification', 50, 235);
-  doc.font('Helvetica').fontSize(9).text(p.specification, 50, 252, { width: 495 });
-  let y = doc.y + 20;
-  const kv = (k: string, v: string) => {
-    doc.font('Helvetica-Bold').text(k, 50, y, { width: 150 }).font('Helvetica').text(v, 200, y, { width: 345 });
-    y += 16;
+
+  let y = 235;
+  const room = (h: number) => {
+    if (y + h > 775) {
+      footer(doc);
+      doc.addPage();
+      y = 50;
+    }
   };
+  const heading = (t: string) => {
+    room(30);
+    doc.fillColor(INK).font('Helvetica-Bold').fontSize(10).text(t, 50, y);
+    y = doc.y + 6;
+    doc.fontSize(9);
+  };
+  const kv = (k: string, v: string, bold = false) => {
+    room(16);
+    doc.font('Helvetica-Bold').text(k, 50, y, { width: 150 });
+    doc.font(bold ? 'Helvetica-Bold' : 'Helvetica').text(v, 200, y, { width: 345 });
+    y = Math.max(doc.y, y + 11) + 2;
+  };
+
+  heading('Piece');
+  if (p.piece) kv('Design', p.piece);
+  const s = p.specs ?? {};
+  if (s.pearlSizeMm) kv('Pearl size', `${s.pearlSizeMm} mm`);
+  if (s.pearlWeightCt) kv('Pearl weight', `${s.pearlWeightCt} ct`);
+  if (s.metal) kv('Metal', s.metal);
+  if (s.metalWeightG) kv('Metal weight', `${s.metalWeightG} g`);
+  if (s.ringSize) kv('Ring size', s.ringSize);
   kv('Quantity', String(p.quantity));
-  kv('Agreed cost', rs(p.agreedCostPaise));
-  kv('Due date', p.dueDate.toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', day: 'numeric', month: 'long', year: 'numeric' }));
+  if (p.cadFileName) kv('CAD file', `${p.cadFileName} (sent with this PO)`);
+  if (p.pearlsSentAt) kv('Pearls sent', day(p.pearlsSentAt));
+
+  if (p.specification.trim()) {
+    y += 6;
+    heading('Other notes / specification');
+    doc.font('Helvetica').text(p.specification, 50, y, { width: 495 });
+    y = doc.y + 8;
+  }
+
+  const images = (p.images ?? []).slice(0, 4);
+  if (images.length) {
+    y += 4;
+    heading('Design photos');
+    room(105);
+    images.forEach((img, i) => {
+      try {
+        doc.image(img, 50 + i * 110, y, { fit: [100, 100], align: 'center', valign: 'center' });
+        doc.rect(50 + i * 110, y, 100, 100).lineWidth(0.5).strokeColor('#E4DDD2').stroke();
+      } catch {
+        // An unreadable image is left out rather than failing the whole PO.
+      }
+    });
+    y += 106;
+  }
+
+  y += 6;
+  heading('Making charge');
+  if (p.making) {
+    kv('Rate', `${rs(p.making.ratePerGramPaise)} per gram`);
+    kv('Subtotal', `${rs(p.making.subtotalPaise)}  (${s.metalWeightG ?? '?'} g x ${rs(p.making.ratePerGramPaise)} x ${p.quantity})`);
+    kv(`GST ${p.making.gstPercent}%`, rs(p.making.gstPaise));
+    kv('Total', rs(p.making.totalPaise), true);
+  }
+  kv('Agreed cost', rs(p.agreedCostPaise), true);
+  kv('Due date', day(p.dueDate));
   if (p.notes) kv('Notes', p.notes);
-  y += 40;
-  doc.text('Authorised signatory', 50, y).text('Accepted by manufacturer', 350, y);
+  y += 6;
+  room(60);
+  doc.fillColor(MUTED).font('Helvetica').fontSize(8).text('Please confirm "Pearls received" before accepting this PO with a deadline. Send your bill for the making charge with the finished pieces.', 50, y, { width: 495 });
+  y = doc.y + 32;
+  doc.fillColor(INK).fontSize(9).text('Authorised signatory', 50, y).text('Accepted by manufacturer', 350, y);
   doc.moveTo(50, y - 6).lineTo(220, y - 6).moveTo(350, y - 6).lineTo(545, y - 6).strokeColor('#999').stroke();
   footer(doc);
   return collect(doc);

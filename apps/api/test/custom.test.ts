@@ -68,7 +68,12 @@ describe('customized orders', () => {
 
     // PO steps drive the production stage.
     expect((await http().post(api(`/admin/purchase-orders/${po.body.id}/status`)).set(bearer(admin)).send({ status: 'RECEIVED' })).body.code).toBe('INVALID_STEP');
-    for (const s of ['SENT', 'ACCEPTED', 'IN_PRODUCTION']) await http().post(api(`/admin/purchase-orders/${po.body.id}/status`)).set(bearer(admin)).send({ status: s }).expect(200);
+    await http().post(api(`/admin/purchase-orders/${po.body.id}/status`)).set(bearer(admin)).send({ status: 'SENT' }).expect(200);
+    // Pearls first: the PO is accepted only once the pearls are received.
+    expect((await http().post(api(`/admin/purchase-orders/${po.body.id}/status`)).set(bearer(admin)).send({ status: 'ACCEPTED' })).body.code).toBe('PEARLS_FIRST');
+    await http().post(api(`/admin/purchase-orders/${po.body.id}/pearls`)).set(bearer(admin)).send({ step: 'SENT' }).expect(200);
+    await http().post(api(`/admin/purchase-orders/${po.body.id}/pearls`)).set(bearer(admin)).send({ step: 'RECEIVED' }).expect(200);
+    for (const s of ['ACCEPTED', 'IN_PRODUCTION']) await http().post(api(`/admin/purchase-orders/${po.body.id}/status`)).set(bearer(admin)).send({ status: s }).expect(200);
     expect((await db.customRequest.findUniqueOrThrow({ where: { id } })).stage).toBe('IN_MANUFACTURING');
     await http().patch(api(`/admin/purchase-orders/${po.body.id}`)).set(bearer(admin)).send({ agreedCostPaise: 1 }).expect(400); // only drafts change
     await http().post(api(`/admin/purchase-orders/${po.body.id}/status`)).set(bearer(admin)).send({ status: 'RECEIVED' }).expect(200);

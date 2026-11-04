@@ -1378,12 +1378,13 @@ model PurchaseOrder {
   product         Product?            @relation(fields: [productId], references: [id])
   /// Ring size / necklace length this PO restocks, when the piece has size options
   size            String?
+  /// "Other notes / specification" — free text beside the exact numbers below
   specification   String
   quantity        Int                 @default(1)
   agreedCostPaise Int
   dueDate         DateTime
   status          PurchaseOrderStatus @default(DRAFT)
-  /// Daily work status from the manufacturer: Receiving PO → Casting → Filling and Finishing → Rhodium → Pearl Setting → Metal Hallmark → Ready for Pickup
+  /// Work stage (packages/shared PO_STAGES): Received PO → Pearls received → Casting → Filing & finishing → Polishing → Rhodium → Pearl setting → Hallmark → Quality check (manufacturer) → Ready for pickup → Quality check at pickup
   stage           String?
   /// [{stage, note, at, by}] — every stage update, newest last
   stageHistory    Json?
@@ -1394,6 +1395,29 @@ model PurchaseOrder {
   notes           String?
   createdAt       DateTime            @default(now())
   updatedAt       DateTime            @updatedAt
+
+  // Exact specification of this piece (meeting of 31 Oct): the same SR-coded design differs piece to piece.
+  pearlSizeMm   Decimal? @db.Decimal(8, 3)
+  pearlWeightCt Decimal? @db.Decimal(8, 3)
+  /// e.g. "92.5 Silver", "18K Gold"
+  metal         String?
+  metalWeightG  Decimal? @db.Decimal(10, 3)
+  ringSize      String?
+  /// CAD design file (private) and design photos (private), so the manufacturer needs no SR code
+  cadUrl        String?
+  imageUrls     String[] @default([])
+
+  /// Head office sends the pearls; the manufacturer confirms receipt before accepting
+  pearlsSentAt     DateTime?
+  pearlsReceivedAt DateTime?
+
+  /// Making charge per gram of metal, per design (e.g. ₹90, ₹120, ₹300)
+  makingRatePerGramPaise Int?
+  gstPercent             Decimal   @default(5) @db.Decimal(5, 2)
+  /// The manufacturer's bill
+  billUrl                String?
+  billAmountPaise        Int?
+  billUploadedAt         DateTime?
 
   @@index([manufacturerId, status])
   @@index([productId])

@@ -30,7 +30,6 @@ export const NAV: NavGroup[] = [
         primary: '#2B5C8A',
       },
       { href: '/custom-orders', info: "Made-to-order requests (shopper's own design or photo). Quote a price, approve, and track making.", label: 'Customized orders', module: 'CUSTOM_ORDERS' },
-      { href: '/purchase-orders', info: 'Orders we place on manufacturers. They accept with a deadline and update 7 daily work stages; you get an email each time.', label: 'Purchase orders', module: 'PURCHASE_ORDERS' },
       {
         href: '/payments', info: 'Every payment received: online, cash on delivery and refunds. Use it to reconcile with the bank.',
         label: 'Payments',
@@ -73,6 +72,8 @@ export const NAV: NavGroup[] = [
     label: 'Customers',
     items: [
       { href: '/customers', info: 'Retail shoppers: contact details, order history and points. Activate or deactivate an account.', label: 'Customers', module: 'USERS', primary: '#6B4C9A' },
+      // Main menu, right below Customers (meeting of 31 Oct). No role list, so manufacturers keep their own POs.
+      { href: '/purchase-orders', info: 'Orders we place on manufacturers with exact specs, photos and CAD. We send the pearls; they confirm, accept with a deadline and update each work stage (you get an email). Making charge, GST and their bill are checked here.', label: 'Purchase orders', module: 'PURCHASE_ORDERS', primary: '#6B4C9A' },
       { href: '/business-buyers', info: "Wholesale (B2B) buyers: approve applications, and see the B2B price list with each piece's business price and minimum order quantity (MOQ).", label: 'Business buyers (B2B)', module: 'USERS', action: 'edit', roles: ['SUPER_ADMIN', 'STAFF'], primary: '#6B4C9A' },
       { href: '/wallet-payouts', info: 'Customers withdrawing their referral wallet as cash. Pay by UPI or bank, then mark paid with the reference — or reject and the money goes back to their wallet.', label: 'Wallet payouts', module: 'USERS', action: 'edit', roles: ['SUPER_ADMIN', 'STAFF'] },
     ],
