@@ -5,7 +5,7 @@ import { get } from '@/lib/server-api';
 
 export const metadata = meta({ title: 'Verify certificate', path: '/verify', noindex: true });
 
-interface Cert { code: string; valid: boolean; issuedAt: string; issuedBy: string | null; details: Record<string, string | number | null> | null; product: { name: string; sku: string; slug: string | null; imageUrl: string | null }; farm: { name: string; slug: string; location: string } | null }
+interface Cert { code: string; valid: boolean; issuedAt: string | null; issuedBy: string | null; details: Record<string, string | number | null> | null; fileUrl?: string | null; product: { name: string; sku: string; slug: string | null; imageUrl: string | null }; farm: { name: string; slug: string; location: string } | null }
 
 export default async function VerifyPage({ params }: { params: Promise<{ code: string }> }) {
   const { code } = await params;
@@ -28,7 +28,8 @@ export default async function VerifyPage({ params }: { params: Promise<{ code: s
           {Object.entries(c.details ?? {}).filter(([k, v]) => v != null && k !== 'farm').map(([k, v]) => (
             <div key={k} className="contents"><dt className="text-muted capitalize">{k.replace(/([A-Z])/g, ' $1')}</dt><dd>{String(v)}</dd></div>
           ))}
-          <dt className="text-muted">Issued</dt><dd>{new Date(c.issuedAt).toLocaleDateString('en-IN')}{c.issuedBy ? ` by ${c.issuedBy}` : ''}</dd>
+          {c.issuedAt && (<><dt className="text-muted">Issued</dt><dd>{new Date(c.issuedAt).toLocaleDateString('en-IN')}{c.issuedBy ? ` by ${c.issuedBy}` : ''}</dd></>)}
+          {c.fileUrl && (<><dt className="text-muted">Certificate</dt><dd><a href={c.fileUrl} target="_blank" rel="noopener noreferrer" className="text-accent underline">View the certificate</a></dd></>)}
         </dl>
       </div>
       {c.product.slug && <Link href={`/product/${c.product.slug}`} className="mt-8 inline-flex min-h-11 items-center text-accent underline">View this piece</Link>}

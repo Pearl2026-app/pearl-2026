@@ -11,6 +11,7 @@ interface Applicant {
   id: string;
   name: string;
   phone: string;
+  email: string | null;
   address: string | null;
   vehicleNumber: string | null;
   licenceNumber: string | null;
@@ -21,8 +22,8 @@ interface Applicant {
 }
 
 /**
- * Riders who applied on the website. Head office (or the city manager) opens the three documents, then approves
- * the rider, which creates their delivery-app login, or rejects them with a reason.
+ * Delivery partners who applied on the website. Head office (or the city manager) opens the three documents, then approves
+ * them, which creates their delivery-app login, or rejects them with a reason.
  */
 export default function RiderApplicationsPage() {
   const toast = useToast();
@@ -44,9 +45,15 @@ export default function RiderApplicationsPage() {
   };
   const decide = useMutation({
     mutationFn: ({ id, ok }: { id: string; ok: boolean }) =>
-      api(`/admin/delivery-partners/${id}/${ok ? 'approve' : 'reject'}`, { method: 'POST', json: ok ? {} : { reason: reason[id] ?? '' } }),
-    onSuccess: (_r, v) => {
-      toast(v.ok ? 'Approved. The rider can now sign in to the delivery app with their mobile number.' : 'Application rejected.');
+      api<{ ok: boolean; welcomed?: boolean }>(`/admin/delivery-partners/${id}/${ok ? 'approve' : 'reject'}`, { method: 'POST', json: ok ? {} : { reason: reason[id] ?? '' } }),
+    onSuccess: (r, v) => {
+      toast(
+        !v.ok
+          ? 'Application rejected.'
+          : r.welcomed
+            ? 'Approved. We have sent the delivery partner a welcome with how to sign in (mobile number and one-time code).'
+            : 'Approved. The delivery partner can now sign in to the delivery app with their mobile number and a one-time code.',
+      );
       void qc.invalidateQueries({ queryKey: ['/admin/delivery-partners'] });
     },
     onError: (e) => toast(errorText(e), 'danger'),
@@ -55,8 +62,8 @@ export default function RiderApplicationsPage() {
   return (
     <div className="max-w-4xl">
       <PageHeader
-        title="Rider applications"
-        description="Riders apply on the website with their driving licence, the bike's RC and an address proof. Check the documents, then approve or reject."
+        title="Delivery partner applications"
+        description="Delivery partners apply on the website with their driving licence, the bike's RC and an address proof. Check the documents, then approve or reject."
         actions={
           <Link href="/delivery-partners" className="inline-flex min-h-9 items-center rounded-sm border border-line bg-surface px-3 text-sm">
             All delivery partners
@@ -81,7 +88,7 @@ export default function RiderApplicationsPage() {
             <div className="flex flex-wrap items-start justify-between gap-2">
               <div>
                 <p className="font-semibold">
-                  {a.name} <span className="font-normal text-muted">· {a.phone}</span>
+                  {a.name} <span className="font-normal text-muted">· {a.phone}{a.email ? ` · ${a.email}` : ''}</span>
                 </p>
                 <p className="text-sm text-muted">
                   {a.cities.map((c) => c.city.name).join(', ')} · applied {a.appliedAt ? new Date(a.appliedAt).toLocaleDateString('en-IN') : '—'}
@@ -132,7 +139,7 @@ export default function RiderApplicationsPage() {
             {a.approvalStatus === 'PENDING' && (
               <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-line pt-3">
                 <Button size="sm" loading={decide.isPending && decide.variables?.id === a.id && decide.variables.ok} onClick={() => decide.mutate({ id: a.id, ok: true })}>
-                  Approve rider
+                  Approve delivery partner
                 </Button>
                 <Input aria-label="Reason for rejecting" placeholder="Reason, if rejecting" className="max-w-xs" value={reason[a.id] ?? ''} onChange={(e) => setReason({ ...reason, [a.id]: e.target.value })} />
                 <Button variant="secondary" size="sm" disabled={(reason[a.id] ?? '').trim().length < 3} onClick={() => decide.mutate({ id: a.id, ok: false })}>

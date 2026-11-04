@@ -18,6 +18,7 @@ export type FieldType =
   | 'refMulti'
   | 'image'
   | 'images'
+  | 'file'
   | 'date'
   | 'datetime'
   | 'json'
@@ -34,6 +35,8 @@ export interface FieldDef {
   ref?: { path: string; label?: string; query?: Record<string, string> };
   /** Upload folder for image fields */
   folder?: string;
+  /** For file fields: the endpoint that takes the file (multipart field "file") and returns { url }, and what to accept */
+  upload?: { path: string; accept?: string; note?: string };
   placeholder?: string;
   /** Only shown when creating / editing */
   only?: 'create' | 'edit';
@@ -56,6 +59,59 @@ export function useRefOptions(ref?: FieldDef['ref']) {
     enabled: !!ref,
     staleTime: 60_000,
   });
+}
+
+/** A document (PDF or photo) uploaded to its own endpoint as soon as it is picked; the field keeps the returned URL. */
+export function FileUpload({ value, onChange, upload }: { value: string | null; onChange: (url: string | null) => void; upload: NonNullable<FieldDef['upload']> }) {
+  const input = useRef<HTMLInputElement>(null);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const send = async (file: File) => {
+    setBusy(true);
+    setErr(null);
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      const r = await api<{ url: string }>(upload.path, { method: 'POST', body: fd });
+      onChange(r.url);
+    } catch (e) {
+      setErr(errorText(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <div className="flex flex-col gap-1">
+      <div className="flex flex-wrap items-center gap-2">
+        {value && (
+          <a href={value} target="_blank" rel="noreferrer" className="text-sm text-accent underline">
+            View file
+          </a>
+        )}
+        <Button type="button" variant="secondary" size="sm" loading={busy} onClick={() => input.current?.click()}>
+          {value ? 'Replace' : 'Upload'}
+        </Button>
+        {value && (
+          <Button type="button" variant="ghost" size="sm" onClick={() => onChange(null)}>
+            Remove
+          </Button>
+        )}
+        <input
+          ref={input}
+          type="file"
+          hidden
+          accept={upload.accept}
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            if (f) void send(f);
+            e.target.value = '';
+          }}
+        />
+      </div>
+      {err && <p className="text-xs text-danger">{err}</p>}
+      {upload.note && <p className="text-xs text-muted">{upload.note}</p>}
+    </div>
+  );
 }
 
 export function ImageUpload({ value, onChange, folder = 'content' }: { value: string | null; onChange: (url: string | null) => void; folder?: string }) {
@@ -190,6 +246,8 @@ export function FieldInput({ def, value, onChange, error }: { def: FieldDef; val
             return <RefSelect def={def} value={value} onChange={onChange} multi id={id} d={d} />;
           case 'image':
             return <ImageUpload value={(value as string) ?? null} onChange={onChange} folder={def.folder} />;
+          case 'file':
+            return def.upload ? <FileUpload value={(value as string) ?? null} onChange={onChange} upload={def.upload} /> : null;
           case 'date':
             return <Input {...common} type="date" value={value ? String(value).slice(0, 10) : ''} onChange={(e) => onChange(e.target.value ? new Date(e.target.value).toISOString() : null)} />;
           case 'datetime':

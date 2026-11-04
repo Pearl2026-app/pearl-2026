@@ -38,10 +38,10 @@ export function OrderMap({ map, address }: { map: MapInfo | undefined; address: 
       <ul className="mt-2 space-y-1 text-sm">
         {map.rider ? (
           <li>
-            <span className="mr-1 inline-block h-2 w-2 rounded-full bg-[#2B5C8A]" /> Rider{map.rider.name ? ` ${map.rider.name}` : ''} is about <strong>{map.riderKmAway} km</strong> away · updated {ago(map.rider.at)}
+            <span className="mr-1 inline-block h-2 w-2 rounded-full bg-[#2B5C8A]" /> Delivery partner{map.rider.name ? ` ${map.rider.name}` : ''} is about <strong>{map.riderKmAway} km</strong> away · updated {ago(map.rider.at)}
           </li>
         ) : (
-          <li className="text-muted">The rider’s live location shows here once they start the delivery.</li>
+          <li className="text-muted">The delivery partner’s live location shows here once they start the delivery.</li>
         )}
         {map.store && (
           <li className="text-muted">

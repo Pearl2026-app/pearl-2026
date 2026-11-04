@@ -82,7 +82,7 @@ export default function OrderPage() {
     }
     if (to === 'DELIVERED') {
       reason = window.prompt(
-        'The rider normally marks delivered with a photo and the customer’s code. How was this order handed over? (for example: collected at the store, with bill number)',
+        'The delivery partner normally marks delivered with a photo and the customer’s code. How was this order handed over? (for example: collected at the store, with bill number)',
       );
       if (!reason?.trim()) return;
     }

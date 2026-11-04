@@ -109,7 +109,8 @@ export function CareerApplyForm({ slug }: { slug: string }) {
       <FormField label="Email" error={errors.email} required>{(id) => <TextInput id={id} name="email" type="email" autoComplete="email" required />}</FormField>
       <FormField label="Mobile number" error={errors.phone} required>{(id) => <TextInput id={id} name="phone" type="tel" autoComplete="tel" required />}</FormField>
       <FormField label="A note about you" error={errors.coverNote}>{(id) => <TextArea id={id} name="coverNote" />}</FormField>
-      <FormField label="Resume (PDF or Word, up to 10 MB)" error={errors.resume} required>{(id) => <input id={id} name="resume" type="file" accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" required className="text-sm" />}</FormField>
+      <FormField label="Resume (PDF, Word or a photo, up to 10 MB)" error={errors.resume} required>{(id) => <input id={id} name="resume" type="file" accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/*" required className="text-sm" />}</FormField>
+      <FormField label="ID proof (photo or PDF, up to 10 MB)" hint="PAN card, driving licence, passport or voter ID." error={errors.idProof}>{(id, d) => <input id={id} aria-describedby={d} name="idProof" type="file" accept="image/*,.pdf,application/pdf" className="text-sm" />}</FormField>
       <div><SubmitButton busy={busy}>Send application</SubmitButton></div>
     </form>
   );
@@ -119,7 +120,7 @@ export { SelectInput };
 
 const DOC_ACCEPT = 'image/*,.pdf,application/pdf';
 
-/** Riders apply with their documents; head office checks them and approves (no Aadhaar asked). */
+/** Delivery partners apply with their documents; head office checks them and approves (no Aadhaar asked). */
 export function RiderApplyForm() {
   const site = useSite();
   const [busy, setBusy] = useState(false);
@@ -129,8 +130,8 @@ export function RiderApplyForm() {
   if (done)
     return (
       <Notice tone="success">
-        Thank you. We have your application and documents. Our team will check them and call you; once approved you can
-        sign in to the delivery app with your mobile number.
+        Thank you. We have your application and documents. Our team will check them and call you; once approved we
+        send you the sign-in steps, and you sign in to the delivery app with your mobile number and a one-time code.
       </Notice>
     );
   return (
@@ -156,6 +157,9 @@ export function RiderApplyForm() {
       <FormField label="Full name" error={errors.name} required>{(id) => <TextInput id={id} name="name" autoComplete="name" required />}</FormField>
       <FormField label="Mobile number" error={errors.phone} required hint="You will sign in to the delivery app with this number.">
         {(id, d) => <TextInput id={id} aria-describedby={d} name="phone" type="tel" autoComplete="tel" required />}
+      </FormField>
+      <FormField label="Email (optional)" error={errors.email} hint="We send the sign-in steps here once you are approved.">
+        {(id, d) => <TextInput id={id} aria-describedby={d} name="email" type="email" autoComplete="email" />}
       </FormField>
       <FormField label="City" error={errors.citySlug} required>
         {(id) => (

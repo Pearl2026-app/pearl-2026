@@ -23,7 +23,7 @@ export const NAV: NavGroup[] = [
     items: [
       { href: '/enquiries', info: 'WhatsApp and website enquiries from shoppers. Reply, follow up, and convert one into an order in a click.', label: 'Enquiries', module: 'ENQUIRIES', primary: '#1F7A4D' },
       {
-        href: '/orders', info: 'Every order from the website, stores and enquiries. Confirm, pack, assign a rider and track it to delivery.',
+        href: '/orders', info: 'Every order from the website, stores and enquiries. Confirm, pack, assign a delivery partner and track it to delivery.',
         label: 'Orders',
         module: 'ORDERS',
         roles: ['SUPER_ADMIN', 'STAFF', 'STATE_MANAGER', 'CITY_MANAGER', 'VENDOR', 'FRANCHISE'],
@@ -48,7 +48,7 @@ export const NAV: NavGroup[] = [
   },
   {
     label: 'Delivery',
-    items: [{ href: '/delivery', info: "The rider's own list: scan pieces at pickup, start delivery, and record proof (photo, customer code, cash).", label: 'My deliveries', roles: ['DELIVERY_PARTNER'], primary: '#2B5C8A' }],
+    items: [{ href: '/delivery', info: "The delivery partner's own list: scan pieces at pickup, start delivery, and record proof (photo, customer code, cash).", label: 'My deliveries', roles: ['DELIVERY_PARTNER'], primary: '#2B5C8A' }],
   },
   {
     label: 'Catalogue',
@@ -106,12 +106,12 @@ export const NAV: NavGroup[] = [
       { href: '/franchises', info: 'Franchise stores under our brand, with their own logo, stock and orders.', label: 'Franchises', module: 'FRANCHISES' },
       { href: '/manufacturers', info: 'Workshops that make our jewellery. They receive and update purchase orders.', label: 'Manufacturers', module: 'MANUFACTURERS' },
       {
-        href: '/delivery-partners', info: 'Our riders, their cities and their current deliveries.',
+        href: '/delivery-partners', info: 'Our delivery partners, their cities and their current deliveries.',
         label: 'Delivery partners',
         module: 'DELIVERY_PARTNERS',
         roles: ['SUPER_ADMIN', 'STAFF', 'STATE_MANAGER', 'CITY_MANAGER', 'VENDOR'],
       },
-      { href: '/rider-applications', info: 'People who applied to become riders. Approve to give them the rider app.', label: 'Rider applications', module: 'DELIVERY_PARTNERS', action: 'edit', roles: ['SUPER_ADMIN', 'STAFF', 'STATE_MANAGER', 'CITY_MANAGER'] },
+      { href: '/rider-applications', info: 'People who applied to become delivery partners. Approve to give them the delivery app; they get the sign-in steps by email and SMS.', label: 'Delivery partner applications', module: 'DELIVERY_PARTNERS', action: 'edit', roles: ['SUPER_ADMIN', 'STAFF', 'STATE_MANAGER', 'CITY_MANAGER'] },
     ],
   },
   {
@@ -119,6 +119,7 @@ export const NAV: NavGroup[] = [
     items: [
       { href: '/pricing/calculator', info: 'Work out a selling price from pearl, metal, making cost and GST.', label: 'Price calculator', module: 'PRICING' },
       { href: '/pearl-rates', info: "Today's pearl rates used by the price calculator.", label: 'Pearl rates', module: 'PRICING', roles: ['SUPER_ADMIN', 'STAFF'] },
+      { href: '/pricing/metal-rates', info: "Today's gold, silver and platinum rate per gram, with margins; pieces set to follow the rate are re-priced when it is saved.", label: 'Metal rates', module: 'PRICING', roles: ['SUPER_ADMIN', 'STAFF'] },
       { href: '/margin-rules', info: 'The markups applied to cost to get selling and B2B prices.', label: 'Margin rules', module: 'PRICING', roles: ['SUPER_ADMIN', 'STAFF'] },
     ],
   },

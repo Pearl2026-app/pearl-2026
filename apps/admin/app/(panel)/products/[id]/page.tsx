@@ -13,6 +13,7 @@ import { useToast } from '@/components/toast';
 import { api, ApiError, errorText } from '@/lib/api';
 import { date, humanize, inr } from '@/lib/format';
 import { useCan, useMe } from '@/lib/session';
+import { METAL_RATE_KEYS, METAL_RATE_LABEL, PRODUCT_METALS } from '@sahyadri/shared';
 
 interface Img {
   id: string;
@@ -60,6 +61,15 @@ const SECTIONS: Array<{ title: string; fields: FieldDef[] }> = [
       { name: 'metalCostPaise', label: 'Metal cost', type: 'money' },
       { name: 'labourCostPaise', label: 'Making cost', type: 'money' },
       { name: 'pearlCostPaise', label: 'Pearl cost', type: 'money', hint: 'Use the price calculator for a suggestion.' },
+      { name: 'priceFollowsMetalRate', label: 'Price follows the daily metal rate', type: 'switch' },
+      {
+        name: 'metalRateKey',
+        label: 'Daily rate it follows',
+        type: 'select',
+        options: METAL_RATE_KEYS.map((k) => ({ value: k, label: METAL_RATE_LABEL[k] })),
+        showIf: (v) => !!v.priceFollowsMetalRate,
+        hint: 'Empty = from the metal. Price = net weight × rate (+ margin) + making + pearl cost, rounded up to ₹10, and updated whenever a rate is saved (Pricing → Metal rates).',
+      },
     ],
   },
   {
@@ -69,10 +79,13 @@ const SECTIONS: Array<{ title: string; fields: FieldDef[] }> = [
       { name: 'shape', label: 'Shape', type: 'select', options: ['Round', 'Near-round', 'Button', 'Drop', 'Rice', 'Baroque', 'Oval', 'Coin'].map((v) => ({ value: v, label: v })) },
       { name: 'colour', label: 'Colour', type: 'select', options: ['White', 'Cream', 'Rose', 'Golden', 'Silver', 'Black', 'Lavender', 'Peach'].map((v) => ({ value: v, label: v })) },
       { name: 'sizeMm', label: 'Pearl size (mm)', type: 'number' },
-      { name: 'metal', label: 'Metal', hint: 'e.g. 92.5 silver, rhodium plated.' },
+      { name: 'metalChoice', label: 'Metal', type: 'select', options: PRODUCT_METALS.map((m) => ({ value: m, label: m })), read: (r: Product) => metalChoiceOf(r.metal) },
+      { name: 'metal', label: 'Metal (describe)', showIf: (v) => v.metalChoice === 'Other', hint: 'e.g. 92.5 silver, rhodium plated.' },
       { name: 'netWeight', label: 'Net weight (g)', type: 'number', hint: 'Metal weight without the pearl.' },
       { name: 'grossWeight', label: 'Gross weight (g)', type: 'number' },
       { name: 'certification', label: 'Certification' },
+      { name: 'certificateNumber', label: 'Certificate number', hint: 'The lab / grading certificate number. Shown on the product page with a Verify link.' },
+      { name: 'certificateUrl', label: 'Certificate file', type: 'file', upload: { path: '/admin/products/certificate-file', accept: 'application/pdf,image/*', note: 'PDF or photo of the certificate, up to 10 MB.' } },
     ],
   },
   {
@@ -118,6 +131,11 @@ const SECTIONS: Array<{ title: string; fields: FieldDef[] }> = [
   },
 ];
 const ALL_FIELDS = SECTIONS.flatMap((s) => s.fields);
+/** The metal dropdown: one of the standard metals, or "Other" with the text typed in. */
+const metalChoiceOf = (metal: unknown) => {
+  if (typeof metal !== 'string' || !metal.trim()) return null;
+  return PRODUCT_METALS.find((m) => m !== 'Other' && m.toLowerCase() === metal.trim().toLowerCase()) ?? 'Other';
+};
 const VENDOR_HIDDEN = new Set(['vendorId', 'isFeatured', 'isExclusive', 'sortOrder']);
 const COST_FIELDS = new Set(['metalCostPaise', 'labourCostPaise', 'pearlCostPaise']);
 
@@ -174,10 +192,15 @@ export default function ProductEditPage() {
     mutationFn: () => {
       const body: Record<string, unknown> = {};
       for (const f of ALL_FIELDS) {
-        if (f.name === 'sizesText') continue;
+        if (f.name === 'sizesText' || f.name === 'metalChoice') continue;
         if (isVendor && VENDOR_HIDDEN.has(f.name)) continue;
         if (!showCosts && COST_FIELDS.has(f.name)) continue;
         if (values[f.name] !== undefined) body[f.name] = values[f.name] === '' ? null : values[f.name];
+      }
+      // Metal: a standard choice is saved as is; "Other" keeps the typed text.
+      if (values.metalChoice !== undefined) {
+        if (!values.metalChoice) body.metal = null;
+        else if (values.metalChoice !== 'Other') body.metal = values.metalChoice;
       }
       // "5:10, 6:8" → stock per size; the server keeps the total quantity as the sum.
       if (typeof values.sizesText === 'string') {

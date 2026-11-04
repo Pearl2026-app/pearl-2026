@@ -1,11 +1,13 @@
 'use client';
+import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { api, ApiError, errorText } from '@/lib/api';
 import { attribution } from '@/lib/enquiry';
 import { FormField, Notice, SelectInput, SubmitButton, TextArea, TextInput } from './form-bits';
 
 const TYPES = ['Ring', 'Necklace', 'Earrings', 'Bracelet', 'Pendant', 'Bridal set', 'Other'];
+const MAX_IMAGES = 6;
 const METALS = ['18k gold', '22k gold', 'White gold', 'Rose gold', 'Sterling silver', 'Platinum', 'Not sure yet'];
 
 /** Customized Jewellery form. Ring Finder hands its answers over through sessionStorage. */
@@ -13,6 +15,8 @@ export function CustomJewelleryForm() {
   const sp = useSearchParams();
   const [v, setV] = useState({ jewelleryType: sp.get('type') ?? '', metal: '', size: '', designNotes: '', budgetRupees: '', extraNotes: '', name: '', phone: '', email: '' });
   const [files, setFiles] = useState<File[]>([]);
+  const previews = useMemo(() => files.map((f) => URL.createObjectURL(f)), [files]);
+  useEffect(() => () => previews.forEach((u) => URL.revokeObjectURL(u)), [previews]);
   const [answers, setAnswers] = useState<Record<string, unknown> | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
@@ -95,12 +99,55 @@ export function CustomJewelleryForm() {
             </SelectInput>
           )}
         </FormField>
-        <FormField label="Size" hint="Ring size, necklace length or wrist size" error={errors.size}>{(id, d) => <TextInput id={id} aria-describedby={d} value={v.size} onChange={set('size')} />}</FormField>
+        <FormField label="Size" hint="Ring size, necklace length or wrist size" error={errors.size}>
+          {(id, d) => (
+            <>
+              <TextInput id={id} aria-describedby={d} value={v.size} onChange={set('size')} />
+              <span className="mt-1 block text-xs text-muted">
+                Not sure? See the <Link href="/pearl-guide#ring-size" className="text-accent underline">ring size guide</Link> or find it with the{' '}
+                <Link href="/ring-finder" className="text-accent underline">Ring Finder</Link>.
+              </span>
+            </>
+          )}
+        </FormField>
         <FormField label="Budget (₹)" error={errors.budgetRupees}>{(id) => <TextInput id={id} inputMode="numeric" value={v.budgetRupees} onChange={set('budgetRupees')} placeholder="e.g. 50000" />}</FormField>
       </div>
       <FormField label="Design notes" hint="Describe the piece: style, pearl colour and shape, occasion" error={errors.designNotes}>{(id, d) => <TextArea id={id} aria-describedby={d} rows={5} value={v.designNotes} onChange={set('designNotes')} />}</FormField>
-      <FormField label="Reference images (up to 6)" hint="Photos or sketches of what you like. JPG or PNG." error={errors.images}>
-        {(id, d) => <input id={id} aria-describedby={d} type="file" accept="image/*" multiple onChange={(e) => setFiles(Array.from(e.target.files ?? []).slice(0, 6))} className="text-sm" />}
+      <FormField
+        label={`Reference images (up to ${MAX_IMAGES})`}
+        hint="Your own photo, a reference picture or an AI-generated image of the design you like. JPG, PNG or WebP; add several."
+        error={errors.images}
+      >
+        {(id, d) => (
+          <div className="flex flex-col gap-3">
+            <input
+              id={id}
+              aria-describedby={d}
+              type="file"
+              accept="image/*"
+              multiple
+              disabled={files.length >= MAX_IMAGES}
+              onChange={(e) => {
+                const picked = Array.from(e.target.files ?? []);
+                setFiles((x) => [...x, ...picked].slice(0, MAX_IMAGES));
+                e.target.value = '';
+              }}
+              className="text-sm"
+            />
+            {files.length > 0 && (
+              <ul className="grid grid-cols-3 gap-2 sm:grid-cols-6">
+                {files.map((f, i) => (
+                  <li key={`${f.name}-${i}`} className="flex flex-col gap-1">
+                    <img src={previews[i]} alt={`Reference ${i + 1}`} className="aspect-square w-full border border-line object-cover" />
+                    <button type="button" className="text-xs text-danger underline" onClick={() => setFiles((x) => x.filter((_, j) => j !== i))}>
+                      Remove
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
       </FormField>
       <FormField label="Anything else" error={errors.extraNotes}>{(id) => <TextArea id={id} rows={3} value={v.extraNotes} onChange={set('extraNotes')} />}</FormField>
       <div className="grid gap-5 border-t border-line pt-5 sm:grid-cols-3">
