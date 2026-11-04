@@ -16,8 +16,10 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Install sharp
-        run: npm install --no-save --no-package-lock sharp@0.33.5
+      - name: Install sharp and ffmpeg
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg
+          npm install --no-save --no-package-lock sharp@0.33.5
       - name: Download and convert
         run: node scripts/import-drive-collection.mjs
       - name: Commit to the client-assets branch
@@ -25,6 +27,7 @@ jobs:
           git config user.name "Sahyadri Pearls"
           git config user.email "metaaccess4hastagcreator@gmail.com"
           git checkout -b client-assets
+          find packages/db/seed/collection -name raw.mp4 -delete
           git add packages/db/seed/collection apps/web/public/brand apps/admin/public/brand
           du -sh packages/db/seed/collection
           git commit -m "Client collection photos, videos and logo from the shared Drive folder"

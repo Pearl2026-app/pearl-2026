@@ -110,15 +110,16 @@ await pool(list2, 6, async (d) => {
   });
   let videoRel = null;
   if (videoFor.get(d.design) === d) {
+    const raw = join(dir, 'raw.mp4');
     try {
-      const raw = join(dir, 'raw.mp4');
       writeFileSync(raw, await video(d.videos[0].id));
       const outFile = join(dir, 'video.mp4');
       execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-i', raw, '-t', '15', '-an', '-vf', "scale='min(720,iw)':-2", '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '30', '-movflags', '+faststart', outFile], { timeout: 240_000 });
-      rmSync(raw);
       if (existsSync(outFile) && statSync(outFile).size > 0) videoRel = `${slug(d.design)}/${d.variant}/video.mp4`;
     } catch (e) {
-      console.warn('video skipped', d.design, d.variant, String(e).slice(0, 200));
+      console.warn('video skipped', d.design, d.variant, String(e).slice(0, 400));
+    } finally {
+      rmSync(raw, { force: true });
     }
   }
   manifest.push({ design: d.design, variant: d.variant, category: d.category, gender: d.gender, images: images.filter(Boolean), video: videoRel });
