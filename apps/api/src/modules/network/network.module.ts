@@ -167,6 +167,7 @@ const dpBase = {
   name: z.string().trim().min(2).max(120),
   phone: phoneE164,
   vehicleInfo: optStr(120),
+  email: z.preprocess((v) => (v === '' ? null : v), z.string().trim().toLowerCase().email('Enter a valid email address').max(200).optional().nullable()),
   /** The vendor whose orders this rider delivers; the vendor picks from its own riders */
   vendorId: z.string().optional().nullable(),
   isAvailable: z.boolean().optional(),
@@ -204,7 +205,7 @@ export const DeliveryPartnersController = crudController({
   toData: (d: any, mode: 'create' | 'update') => vendorData(d, mode),
   checkWrite: (u, data) => {
     if (u.role === 'VENDOR') {
-      if ('vendorId' in data && data.vendorId !== u.vendorId) throw forbidden('You can only manage your own riders.');
+      if ('vendorId' in data && data.vendorId !== u.vendorId) throw forbidden('You can only manage your own delivery partners.');
       (data as Record<string, unknown>).vendorId = u.vendorId;
     }
     // A city manager may edit their partners' details but not move them to other cities.

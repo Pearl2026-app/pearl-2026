@@ -4,7 +4,9 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
   ENQUIRY_TYPE_LABEL,
+  METAL_RATE_LABEL,
   ORDER_STATUS_LABEL,
+  type MetalRateKey,
   type Action,
   type EnquiryType,
   type Module,
@@ -13,6 +15,7 @@ import {
 import { Card, Input, Spinner, StatusBadge } from '@sahyadri/ui';
 import {
   BarChart3,
+  Coins,
   Gem,
   ImagePlus,
   IndianRupee,
@@ -137,6 +140,51 @@ function LowStockPopup({ count }: { count: number }) {
   );
 }
 
+/** The rates shown on the tile: the ones the business prices with most. */
+const TILE_RATES: MetalRateKey[] = ['GOLD_24K', 'GOLD_22K', 'GOLD_18K', 'SILVER_925', 'PLATINUM'];
+
+/** "Today's rates" tile: gold, silver and platinum per gram from the Metal rates page (meeting of 4 Nov). */
+function TodaysRates({ canEdit }: { canEdit: boolean }) {
+  const { data } = useQuery({
+    queryKey: ['/admin/metal-rates/today'],
+    queryFn: () => api<{ date: string; rates: Array<{ metal: MetalRateKey; ratePerGramPaise: number | null; isToday: boolean; effectiveDate: string | null }> }>('/admin/metal-rates/today'),
+    staleTime: 5 * 60_000,
+  });
+  if (!data) return null;
+  const shown = data.rates.filter((r) => TILE_RATES.includes(r.metal) && r.ratePerGramPaise != null);
+  if (!shown.length && !canEdit) return null;
+  const stale = shown.some((r) => !r.isToday);
+  return (
+    <Card className="mb-5">
+      <h2 className="mb-2 flex flex-wrap items-center gap-2 font-semibold">
+        <Coins size={18} className="text-[#9A7546]" aria-hidden /> Today&rsquo;s rates
+        <InfoTip text="Gold, silver and platinum per gram, as entered on Pricing → Metal rates. Pieces set to follow the rate are priced from these." />
+        {canEdit && (
+          <Link href="/pricing/metal-rates" className="ml-auto text-sm font-normal text-accent underline">
+            {shown.length ? 'Update' : 'Enter today’s rates'}
+          </Link>
+        )}
+      </h2>
+      {shown.length ? (
+        <>
+          <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+            {shown.map((r) => (
+              <li key={r.metal} className="rounded-md bg-[#F6F1E8] px-3 py-2 text-[#5C4424]">
+                <span className="block text-xs">{METAL_RATE_LABEL[r.metal]}</span>
+                <span className="text-lg font-semibold tabular-nums">{inr(r.ratePerGramPaise)}</span>
+                <span className="text-xs"> /g</span>
+              </li>
+            ))}
+          </ul>
+          {stale && <p className="mt-2 text-xs text-muted">Some rates are from an earlier day; enter today’s to keep prices current.</p>}
+        </>
+      ) : (
+        <p className="text-sm text-muted">No rates entered yet.</p>
+      )}
+    </Card>
+  );
+}
+
 /** Cards, monthly summaries and recent activity; the date range applies to the whole page. */
 export function Dashboard() {
   const { data: me } = useMe();
@@ -231,6 +279,7 @@ export function Dashboard() {
               </div>
             ) : null;
           })()}
+          {me?.permissions.DASHBOARD?.includes('view') && me.role !== 'DELIVERY_PARTNER' && <TodaysRates canEdit={!!me.permissions.PRICING?.includes('edit') && (me.role === 'SUPER_ADMIN' || me.role === 'STAFF')} />}
           <Card className="mb-5">
             <h2 className="mb-2 flex items-center gap-2 font-semibold">
               <BarChart3 size={18} className="text-[#B4532A]" aria-hidden /> Sales by month

@@ -10,3 +10,4 @@ export * from './delivery';
 export * from './redirect';
 export * from './routing';
 export * from './purchase-orders';
+export * from './metal';

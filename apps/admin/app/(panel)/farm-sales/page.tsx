@@ -11,11 +11,54 @@ import { useMe } from '@/lib/session';
 interface Report {
   from: string;
   to: string;
-  farms: Array<{ id: string; name: string; listedPieces: number; pieces: number; salesPaise: number; orders: number }>;
+  farms: Array<{ id: string; name: string; listedPieces: number; pieces: number; salesPaise: number; orders: number; b2bPaise: number; b2cPaise: number; byChannel: Record<string, number> }>;
+  /** Business buyers vs retail, and where the sales came from */
+  segments: Split[];
+  channels: Split[];
   topPieces: Array<{ id: string; name: string; sku: string; farm: string; carat: number | null; pieces: number; salesPaise: number }>;
 }
 
+interface Split {
+  name: string;
+  pieces: number;
+  salesPaise: number;
+  orders: number;
+}
+
 const day = (d: Date) => d.toISOString().slice(0, 10);
+const SEGMENT_LABEL: Record<string, string> = { B2C: 'Retail (B2C)', B2B: 'Business buyers (B2B)' };
+const CHANNEL_NOTE: Record<string, string> = {
+  Website: 'Website and app checkout',
+  'WhatsApp / enquiry': 'Orders from WhatsApp chats and enquiries',
+  'Campaign / coupon': 'Orders with a coupon or a campaign link',
+  Store: 'Entered by the team: store, phone, walk-in',
+};
+
+/** One small breakdown: a share bar per row. */
+function Breakdown({ title, info, rows, label }: { title: string; info: string; rows: Split[]; label: (name: string) => string }) {
+  const total = rows.reduce((a, r) => a + r.salesPaise, 0);
+  return (
+    <Card>
+      <h2 className="font-semibold">{title}</h2>
+      <p className="mb-3 text-xs text-muted">{info}</p>
+      <ul className="flex flex-col gap-2 text-sm">
+        {rows.map((r) => (
+          <li key={r.name}>
+            <div className="flex items-baseline justify-between gap-2">
+              <span>{label(r.name)}</span>
+              <span className="tabular-nums">
+                {inr(r.salesPaise)} <span className="text-xs text-muted">· {r.pieces} pcs · {r.orders} orders</span>
+              </span>
+            </div>
+            <div className="mt-1 h-1.5 rounded-full bg-surface-muted">
+              <div className="h-1.5 rounded-full bg-[#9A7546]" style={{ width: `${total ? Math.max(1, (r.salesPaise / total) * 100) : 0}%` }} />
+            </div>
+          </li>
+        ))}
+      </ul>
+    </Card>
+  );
+}
 
 /** How each farm's pearls are selling. A farm partner sees only its own farm. */
 export default function FarmSalesPage() {
@@ -35,7 +78,7 @@ export default function FarmSalesPage() {
     <div className="max-w-5xl">
       <PageHeader
         title={me?.role === 'FARMER' ? 'Your farm’s sales' : 'Farm sales'}
-        description={me?.role === 'FARMER' ? 'Pieces made with your pearls and how they sold.' : 'How much of each farm’s pearls sold. Each farm partner can sign in and see its own figures. Pick one farm for its individual report.'}
+        description={me?.role === 'FARMER' ? 'Pieces made with your pearls and how they sold, to retail and business buyers and by channel.' : 'How much of each farm’s pearls sold, to retail and business buyers and by channel. Each farm partner can sign in and see its own figures. Pick one farm for its individual report.'}
         actions={
           <a className="inline-flex min-h-9 items-center rounded-sm border border-line bg-surface px-3 text-sm hover:border-ink" href={`/api/v1/admin/farm-sales?${qsBase}&format=csv`}>
             Download for Excel
@@ -67,12 +110,18 @@ export default function FarmSalesPage() {
             <p className="text-sm text-muted">Sales in this period</p>
             <p className="text-2xl font-semibold">{inr(total)}</p>
           </Card>
+          <div className="mb-4 grid gap-4 md:grid-cols-2">
+            <Breakdown title="Retail and business buyers" info="Business (B2B): an approved business buyer, or an order with a GSTIN." rows={q.data.segments ?? []} label={(n) => SEGMENT_LABEL[n] ?? n} />
+            <Breakdown title="By channel" info="Where the sale came from." rows={q.data.channels ?? []} label={(n) => `${n}${CHANNEL_NOTE[n] ? ` · ${CHANNEL_NOTE[n]}` : ''}`} />
+          </div>
           <Card className="mb-4 overflow-x-auto p-0">
-            <table className="w-full min-w-[560px] text-sm">
+            <table className="w-full min-w-[720px] text-sm">
               <thead className="border-b border-line text-left text-muted">
                 <tr>
                   <th className="px-3 py-2 font-normal">Farm</th>
                   <th className="px-3 py-2 font-normal">Sales</th>
+                  <th className="px-3 py-2 text-right font-normal">Retail (B2C)</th>
+                  <th className="px-3 py-2 text-right font-normal">Business (B2B)</th>
                   <th className="px-3 py-2 text-right font-normal">Pieces sold</th>
                   <th className="px-3 py-2 text-right font-normal">Orders</th>
                   <th className="px-3 py-2 text-right font-normal">Pieces listed</th>
@@ -88,6 +137,8 @@ export default function FarmSalesPage() {
                         {inr(f.salesPaise)}
                       </div>
                     </td>
+                    <td className="px-3 py-2 text-right">{inr(f.b2cPaise ?? 0)}</td>
+                    <td className="px-3 py-2 text-right">{inr(f.b2bPaise ?? 0)}</td>
                     <td className="px-3 py-2 text-right">{f.pieces}</td>
                     <td className="px-3 py-2 text-right">{f.orders}</td>
                     <td className="px-3 py-2 text-right">{f.listedPieces}</td>

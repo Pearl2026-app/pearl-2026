@@ -84,6 +84,9 @@ const schema = z.object({
 
   PEARL_RATE_FEED_URL: z.string().optional(),
   PEARL_RATE_FEED_API_KEY: z.string().optional(),
+  /** Daily gold / silver rate feed (JSON); empty = rates are entered by hand on the Metal rates page */
+  METAL_RATE_FEED_URL: z.string().url().optional().or(z.literal('').transform(() => undefined)),
+  METAL_RATE_FEED_API_KEY: z.string().optional(),
 
   BACKUP_DIR: z.string().optional(),
 });

@@ -248,6 +248,17 @@ async function seedTemplates() {
       'New {{kind}}: {{name}}',
     ],
     [
+      'PARTNER_WELCOME',
+      'EMAIL',
+      'Dear {{name}},\n\nWelcome to Sahyadri Pearls! Your delivery partner application is approved.\n\nHow to sign in to the delivery app:\n1. Open {{loginUrl}} on your phone.\n2. Choose "Vendor / Franchise / Delivery".\n3. Enter your mobile number {{phone}}.\n4. Enter the one-time code we send you by SMS. There is no password.\n\nYour deliveries appear under "My deliveries". Keep location on while you deliver.\n\nSahyadri Pearls',
+      'Welcome, delivery partner: how to sign in',
+    ],
+    [
+      'PARTNER_WELCOME',
+      'SMS',
+      'Sahyadri Pearls: you are approved as a delivery partner. Sign in at {{loginUrl}} with your mobile number {{phone}} and the one-time code we send you.',
+    ],
+    [
       'REFERRAL_REWARD',
       'EMAIL',
       'Hi {{name}},\n\nYour referral reward is ready. Use code {{code}} for {{amount}} off your next order.\n\nSahyadri Pearls',

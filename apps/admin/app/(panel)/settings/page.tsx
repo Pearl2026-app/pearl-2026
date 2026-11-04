@@ -102,6 +102,15 @@ const GROUPS: Array<{ key: string; title: string; fields: FieldDef[] }> = [
       { name: 'minQty', label: 'Default minimum order quantity', type: 'number' },
     ],
   },
+  {
+    key: 'commission',
+    title: 'Commission split (Reports → Commission)',
+    fields: [
+      { name: 'farmerPercent', label: 'Farmer (% of the pearl value)', type: 'number' },
+      { name: 'traderPercent', label: 'Trader (% of the pearl value)', type: 'number', hint: 'The trader also gets the metal value and making charge in full.' },
+      { name: 'partnerPercent', label: 'Franchise / vendor (% of the pearl value)', type: 'number', hint: 'The three shares must add up to 100%.' },
+    ],
+  },
   { key: 'cart_reminder', title: 'Abandoned cart reminder', fields: [{ name: 'enabled', label: 'Send reminders', type: 'switch' }, { name: 'delayMinutes', label: 'Send after (minutes)', type: 'number' }] },
   { key: 'review_request', title: 'Review requests', fields: [{ name: 'enabled', label: 'Ask for reviews after delivery', type: 'switch' }, { name: 'delayDays', label: 'Days after delivery', type: 'number' }] },
   { key: 'delivery_proof', title: 'Proof of delivery', fields: [{ name: 'otpAbovePaise', label: 'Require customer OTP for orders at or above', type: 'money' }] },
@@ -128,6 +137,7 @@ const SECTIONS: Array<{ id: string; label: string; keys: string[] }> = [
   { id: 'delivery', label: 'Delivery', keys: ['delivery', 'delivery_proof'] },
   { id: 'stock', label: 'Stock & purchase orders', keys: ['stock_alert'] },
   { id: 'b2b', label: 'Business buyers', keys: ['b2b'] },
+  { id: 'commission', label: 'Commission', keys: ['commission'] },
   { id: 'marketing', label: 'Rewards & reminders', keys: ['wallet', 'loyalty', 'referral', 'cart_reminder', 'review_request'] },
   { id: 'service', label: 'Enquiries & returns', keys: ['enquiry', 'returns'] },
   { id: 'website', label: 'Website', keys: ['storefront', 'app_links', 'seo'] },

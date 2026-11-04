@@ -315,7 +315,10 @@ export class PublicCatalogueController {
       certification: p.certification,
       netWeight: p.netWeight ? Number(p.netWeight) : null,
       grossWeight: p.grossWeight ? Number(p.grossWeight) : null,
-      certificateCode: p.certificates[0]?.code ?? null,
+      certificateCode: p.certificates[0]?.code ?? p.certificateNumber ?? null,
+      /** Lab certificate entered with the piece (number and a PDF or photo of it) */
+      certificateNumber: p.certificateNumber,
+      certificateUrl: p.certificateUrl,
       videoUrl: p.videoUrl,
       images: p.images.map((i) => ({ url: i.url, variants: i.variants, alt: i.alt ?? p.name, kind: i.kind, width: i.width, height: i.height })),
       farm: p.farm,

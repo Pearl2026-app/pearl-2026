@@ -147,12 +147,12 @@ export const RESOURCES: Record<string, ResourceDef> = {
     key: 'delivery-partners',
     title: 'Delivery partners',
     singular: 'Delivery partner',
-    description: 'Riders can also apply on the website with their documents; approve them under Rider applications.',
+    description: 'Delivery partners can also apply on the website with their documents; approve them under Delivery partner applications.',
     api: '/admin/delivery-partners',
     module: 'DELIVERY_PARTNERS',
     headerLinks: (
       <Link href="/rider-applications" className="inline-flex min-h-9 items-center rounded-sm border border-line bg-surface px-3 text-sm hover:border-ink">
-        Rider applications
+        Delivery partner applications
       </Link>
     ),
     columns: [
@@ -174,8 +174,9 @@ export const RESOURCES: Record<string, ResourceDef> = {
     fields: [
       { name: 'name', label: 'Name', required: true },
       { name: 'phone', label: 'Mobile number', required: true, hint: 'They sign in to the delivery app with this number.' },
+      { name: 'email', label: 'Email', hint: 'Optional. The welcome with how to sign in goes here when an application is approved.' },
       { name: 'vehicleInfo', label: 'Vehicle' },
-      { name: 'vendorId', label: 'Works for vendor', type: 'ref', ref: { path: '/admin/vendors' }, hint: 'The vendor sees this rider when assigning its orders.' },
+      { name: 'vendorId', label: 'Works for vendor', type: 'ref', ref: { path: '/admin/vendors' }, hint: 'The vendor sees this delivery partner when assigning its orders.' },
       { name: 'isAvailable', label: 'Available for new deliveries', type: 'switch' },
       { name: 'cityIds', label: 'Cities', type: 'refMulti', ref: cityRef, read: cityIdsOf },
     ],

@@ -9,6 +9,7 @@ import { SettingsService } from '../../common/settings.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { MediaService, type IncomingFile } from '../media/media.service';
 import { assertActiveFranchise } from '../network/franchise-areas';
+import { MetalRatesService } from '../pricing/metal-rates';
 import { ADMIN_ONLY_FIELDS, COST_FIELDS, VENDOR_DIRECT_FIELDS, type ProductInput } from './catalogue.schemas';
 
 export const PRODUCT_DETAIL_INCLUDE = {
@@ -39,7 +40,13 @@ export class ProductsService {
     private readonly audit: AuditService,
     private readonly media: MediaService,
     private readonly settings: SettingsService,
+    private readonly metalRates: MetalRatesService,
   ) {}
+
+  /** The certificate file chosen on the product form (public, like the verify page it backs). */
+  saveCertificateFile(file: IncomingFile) {
+    return this.media.saveDocument(file, 'certificates', 'public', true);
+  }
 
   async find(user: AuthUser, id: string) {
     const p = await this.prisma.product.findFirst({ where: { AND: [{ id }, productScope(user)] }, include: PRODUCT_DETAIL_INCLUDE });
@@ -107,6 +114,8 @@ export class ProductsService {
     return this.prisma.$transaction(async (tx) => {
       const p = await tx.product.create({ data });
       await this.writeLinks(tx, p.id, input);
+      // A piece whose price follows the daily metal rate is priced from today's rate straight away.
+      if (!isVendor) await this.metalRates.repriceOne(tx, p.id, { strict: true });
       await this.audit.record('Product', p.id, 'CREATE', undefined, { ...p, cityIds: input.cityIds }, tx);
       return tx.product.findUniqueOrThrow({ where: { id: p.id }, include: PRODUCT_DETAIL_INCLUDE });
     });
@@ -125,6 +134,7 @@ export class ProductsService {
     return this.prisma.$transaction(async (tx) => {
       const p = await tx.product.update({ where: { id }, data });
       await this.writeLinks(tx, id, input);
+      await this.metalRates.repriceOne(tx, id, { strict: true });
       await this.audit.record('Product', id, 'UPDATE', before, { ...p, cityIds: input.cityIds, relatedIds: input.relatedIds }, tx);
       return tx.product.findUniqueOrThrow({ where: { id }, include: PRODUCT_DETAIL_INCLUDE });
     });
@@ -169,6 +179,7 @@ export class ProductsService {
       }
       if (pending) await this.writeLinks(tx, id, pending);
       const p = await tx.product.update({ where: { id }, data });
+      await this.metalRates.repriceOne(tx, id);
       await this.audit.record('Product', id, 'APPROVE', before, p, tx);
       return p;
     });

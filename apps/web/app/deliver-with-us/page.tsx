@@ -3,7 +3,7 @@ import { Breadcrumbs, Container, PageTitle } from '@/components/ui';
 import { meta } from '@/lib/seo';
 
 export const metadata = meta({
-  title: 'Deliver with us',
+  title: 'Become a Delivery Partner',
   description: 'Join Sahyadri Pearls as a delivery partner: apply with your driving licence, bike RC and address proof.',
   path: '/deliver-with-us',
 });
@@ -11,11 +11,11 @@ export const metadata = meta({
 export default function DeliverWithUsPage() {
   return (
     <Container className="max-w-4xl">
-      <Breadcrumbs items={[{ name: 'Home', href: '/' }, { name: 'Deliver with us' }]} />
+      <Breadcrumbs items={[{ name: 'Home', href: '/' }, { name: 'Become a Delivery Partner' }]} />
       <PageTitle
         eyebrow="Delivery partners"
-        title="Deliver with us"
-        intro="We deliver fine jewellery, so every rider is checked before their first delivery. Apply below; once our team approves your documents you can start with the vendor nearest you."
+        title="Become a Delivery Partner"
+        intro="We deliver fine jewellery, so every delivery partner is checked before their first delivery. Apply below; once our team approves your documents you can start with the vendor nearest you."
       />
       <div className="grid gap-12 lg:grid-cols-[1fr_1.3fr]">
         <ul className="flex flex-col gap-4 text-sm leading-relaxed text-muted">
@@ -23,7 +23,7 @@ export default function DeliverWithUsPage() {
             <strong className="block text-ink">1 · Apply</strong>Your details and three documents: driving licence, bike RC and an address proof.
           </li>
           <li>
-            <strong className="block text-ink">2 · We check</strong>Head office verifies the documents and calls you.
+            <strong className="block text-ink">2 · We check</strong>Head office verifies the documents and calls you. Once approved, we email and text you how to sign in.
           </li>
           <li>
             <strong className="block text-ink">3 · Start delivering</strong>Sign in to the delivery app with your mobile number and a one-time code.

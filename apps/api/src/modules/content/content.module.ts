@@ -127,6 +127,16 @@ class JobApplicationsController {
     return { url: await this.media.resolve(a.resumeUrl, 300) };
   }
 
+  /** The applicant's ID proof, like the resume: a short-lived private link, each view audited. */
+  @Get(':id/id-proof')
+  @Requires('CAREERS', 'view')
+  async idProof(@Param('id') id: string) {
+    const a = await this.prisma.jobApplication.findUnique({ where: { id } });
+    if (!a?.idProofUrl) throw notFound('ID proof');
+    await this.audit.record('JobApplication', id, 'VIEW_ID_PROOF');
+    return { url: await this.media.resolve(a.idProofUrl, 300) };
+  }
+
   @Patch(':id')
   @Requires('CAREERS', 'edit')
   async update(@Param('id') id: string, @Body(new ZodValidationPipe(z.object({ status: z.enum(['NEW', 'SHORTLISTED', 'REJECTED', 'HIRED']) }))) dto: { status: 'NEW' }) {

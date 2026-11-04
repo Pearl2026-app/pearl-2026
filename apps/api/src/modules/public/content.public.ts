@@ -1,6 +1,6 @@
 import { config, limit } from '../../config/config';
-import { Body, Controller, Get, Param, Post, Query, UploadedFile, UseInterceptors } from '@nestjs/common';
-import { FileInterceptor } from '@nestjs/platform-express';
+import { Body, Controller, Get, Param, Post, Query, UploadedFiles, UseInterceptors } from '@nestjs/common';
+import { FileFieldsInterceptor } from '@nestjs/platform-express';
 import { ApiConsumes, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { z } from 'zod';
@@ -209,15 +209,29 @@ export class PublicContentController {
   @Post('careers/:slug/apply')
   @Throttle({ default: { limit: limit(5), ttl: 60_000 } })
   @ApiConsumes('multipart/form-data')
-  @UseInterceptors(FileInterceptor('resume', { limits: { fileSize: 10 * 1024 * 1024, files: 1 } }))
-  async apply(@Param('slug') slug: string, @UploadedFile() resume: Express.Multer.File, @Body() body: Record<string, string>) {
+  @UseInterceptors(
+    FileFieldsInterceptor(
+      [
+        { name: 'resume', maxCount: 1 },
+        { name: 'idProof', maxCount: 1 },
+      ],
+      { limits: { fileSize: 10 * 1024 * 1024, files: 2 } },
+    ),
+  )
+  async apply(@Param('slug') slug: string, @UploadedFiles() files: { resume?: Express.Multer.File[]; idProof?: Express.Multer.File[] } | undefined, @Body() body: Record<string, string>) {
     const job = await this.prisma.jobOpening.findFirst({ where: { slug, isActive: true } });
     if (!job || (job.closesAt && job.closesAt < new Date())) throw notFound('Job opening');
     const parsed = applySchema.safeParse(body);
     if (!parsed.success) throw badRequest('VALIDATION_FAILED', 'Please check the highlighted fields.', Object.fromEntries(parsed.error.issues.map((i) => [i.path.join('.'), i.message])));
-    if (!resume) throw badRequest('VALIDATION_FAILED', 'Attach your resume.', { resume: 'Attach a PDF or Word file' });
-    const stored = await this.media.saveDocument(resume, 'resumes', 'private');
-    await this.prisma.jobApplication.create({ data: { jobOpeningId: job.id, ...parsed.data, resumeUrl: stored.url } });
+    const resume = files?.resume?.[0];
+    const idProof = files?.idProof?.[0];
+    if (!resume) throw badRequest('VALIDATION_FAILED', 'Attach your resume.', { resume: 'Attach a PDF, Word file or photo' });
+    // Resume: PDF, Word or a photo of it; ID proof: a photo or PDF. Both private, checked by their first bytes.
+    if (idProof && !(idProof.mimetype === 'application/pdf' || idProof.mimetype.startsWith('image/')))
+      throw badRequest('UNSUPPORTED_FILE', 'Upload the ID proof as a photo or PDF.', { idProof: 'A photo or PDF' });
+    const stored = await this.media.saveDocument(resume, 'resumes', 'private', true);
+    const idStored = idProof ? await this.media.saveDocument(idProof, 'job-documents', 'private', true) : null;
+    await this.prisma.jobApplication.create({ data: { jobOpeningId: job.id, ...parsed.data, resumeUrl: stored.url, idProofUrl: idStored?.url ?? null } });
     return { ok: true };
   }
 
@@ -225,19 +239,48 @@ export class PublicContentController {
   @Public()
   @Get('verify/:code')
   async verify(@Param('code') code: string) {
-    const c = await this.prisma.certificate.findUnique({
-      where: { code: code.toUpperCase() },
-      include: { product: { select: { name: true, slug: true, sku: true, status: true, images: { take: 1, orderBy: { sortOrder: 'asc' }, select: { url: true } }, farm: { select: { name: true, slug: true, location: true } } } } },
-    });
-    if (!c) throw notFound('Certificate');
+    const productSelect = {
+      name: true,
+      slug: true,
+      sku: true,
+      status: true,
+      certificateUrl: true,
+      grade: true,
+      caratWeight: true,
+      shape: true,
+      colour: true,
+      sizeMm: true,
+      metal: true,
+      images: { take: 1, orderBy: { sortOrder: 'asc' as const }, select: { url: true } },
+      farm: { select: { name: true, slug: true, location: true } },
+    };
+    const c = await this.prisma.certificate.findUnique({ where: { code: code.toUpperCase() }, include: { product: { select: productSelect } } });
+    if (c)
+      return {
+        code: c.code,
+        valid: !c.revokedAt,
+        issuedAt: c.issuedAt,
+        issuedBy: c.issuedBy,
+        details: c.details,
+        // The lab certificate uploaded with the piece (public); the issued certificate's own PDF is rendered in admin.
+        fileUrl: c.product.certificateUrl?.startsWith('private:') ? null : (c.product.certificateUrl ?? null),
+        product: { name: c.product.name, sku: c.product.sku, slug: c.product.status === 'PUBLISHED' ? c.product.slug : null, imageUrl: c.product.images[0]?.url ?? null },
+        farm: c.product.farm,
+      };
+    // A lab certificate number entered on the product when it was added (meeting of 4 Nov).
+    const number = code.trim();
+    if (number.length < 3) throw notFound('Certificate');
+    const p = await this.prisma.product.findFirst({ where: { certificateNumber: { equals: number, mode: 'insensitive' }, archivedAt: null }, select: productSelect });
+    if (!p) throw notFound('Certificate');
     return {
-      code: c.code,
-      valid: !c.revokedAt,
-      issuedAt: c.issuedAt,
-      issuedBy: c.issuedBy,
-      details: c.details,
-      product: { name: c.product.name, sku: c.product.sku, slug: c.product.status === 'PUBLISHED' ? c.product.slug : null, imageUrl: c.product.images[0]?.url ?? null },
-      farm: c.product.farm,
+      code: number.toUpperCase(),
+      valid: true,
+      issuedAt: null,
+      issuedBy: null,
+      details: { grade: p.grade, caratWeight: p.caratWeight?.toString() ?? null, shape: p.shape, colour: p.colour, sizeMm: p.sizeMm?.toString() ?? null, metal: p.metal },
+      fileUrl: p.certificateUrl?.startsWith('private:') ? null : (p.certificateUrl ?? null),
+      product: { name: p.name, sku: p.sku, slug: p.status === 'PUBLISHED' ? p.slug : null, imageUrl: p.images[0]?.url ?? null },
+      farm: p.farm,
     };
   }
 

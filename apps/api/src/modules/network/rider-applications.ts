@@ -3,17 +3,21 @@ import { FileFieldsInterceptor } from '@nestjs/platform-express';
 import { ApiConsumes, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { z } from 'zod';
-import { phoneE164 } from '@sahyadri/shared';
+import { email, phoneE164 } from '@sahyadri/shared';
 import { AuditService } from '../../common/audit.service';
 import type { AuthUser } from '../../common/context';
 import { CurrentUser, Public, Requires } from '../../common/decorators';
 import { badRequest, forbidden, notFound } from '../../common/errors';
+import { config } from '../../config/config';
 import { PrismaService } from '../../prisma/prisma.service';
 import { MediaService } from '../media/media.service';
+import { NotificationsService } from '../notifications/notifications.service';
 
 const applySchema = z.object({
   name: z.string().trim().min(2).max(120),
   phone: phoneE164,
+  /** Optional: where the welcome message with sign-in steps goes once approved */
+  email: z.preprocess((v) => (v === '' ? undefined : v), email.optional()),
   citySlug: z.string().trim().min(1),
   address: z.string().trim().min(10).max(400),
   vehicleNumber: z.string().trim().toUpperCase().min(4).max(20),
@@ -23,9 +27,9 @@ const applySchema = z.object({
 type Files = { licence?: Express.Multer.File[]; rc?: Express.Multer.File[]; addressProof?: Express.Multer.File[] };
 
 /**
- * Riders join on their own (meeting of 19 Oct): they fill a form with their driving licence, the bike's RC and an
- * address proof (no Aadhaar), and wait until head office checks the documents and approves them. Only then do they
- * get a login for the delivery app.
+ * Delivery partners join on their own (meeting of 19 Oct): they fill a form with their driving licence, the bike's
+ * RC and an address proof (no Aadhaar), and wait until head office checks the documents and approves them. Only then
+ * do they get a login for the delivery app, and a welcome message telling them how to sign in (meeting of 4 Nov).
  */
 @ApiTags('network')
 @Controller()
@@ -34,6 +38,7 @@ export class RiderApplicationsController {
     private readonly prisma: PrismaService,
     private readonly media: MediaService,
     private readonly audit: AuditService,
+    private readonly notifications: NotificationsService,
   ) {}
 
   @Public()
@@ -73,6 +78,7 @@ export class RiderApplicationsController {
     );
     const data = {
       name: d.name,
+      email: d.email?.toLowerCase() ?? null,
       address: d.address,
       vehicleNumber: d.vehicleNumber,
       licenceNumber: d.licenceNumber,
@@ -109,15 +115,32 @@ export class RiderApplicationsController {
     this.headOfficeOrCity(user);
     const dp = await this.find(user, id);
     const cityId = (await this.prisma.deliveryPartnerCity.findFirst({ where: { deliveryPartnerId: dp.id } }))?.cityId ?? null;
-    await this.prisma.$transaction(async (tx) => {
+    const wasApproved = dp.approvalStatus === 'APPROVED';
+    const userId = await this.prisma.$transaction(async (tx) => {
       await tx.deliveryPartner.update({ where: { id: dp.id }, data: { approvalStatus: 'APPROVED', isActive: true, isAvailable: true, rejectionReason: null } });
-      // The delivery app login: the rider signs in with this mobile number and a one-time code.
+      // The delivery app login: the partner signs in with this mobile number and a one-time code (no password).
       const login = await tx.user.findFirst({ where: { OR: [{ deliveryPartnerId: dp.id }, { phone: dp.phone }] } });
-      if (!login) await tx.user.create({ data: { role: 'DELIVERY_PARTNER', name: dp.name, phone: dp.phone, deliveryPartnerId: dp.id, cityId } });
-      else if (login.role === 'DELIVERY_PARTNER') await tx.user.update({ where: { id: login.id }, data: { isActive: true, deliveryPartnerId: dp.id } });
+      if (!login) return (await tx.user.create({ data: { role: 'DELIVERY_PARTNER', name: dp.name, phone: dp.phone, deliveryPartnerId: dp.id, cityId } })).id;
+      if (login.role === 'DELIVERY_PARTNER') await tx.user.update({ where: { id: login.id }, data: { isActive: true, deliveryPartnerId: dp.id } });
+      return login.id;
     });
     await this.audit.record('DeliveryPartner', dp.id, 'APPROVE', { approvalStatus: dp.approvalStatus }, { approvalStatus: 'APPROVED' });
-    return { ok: true };
+    // Welcome with how to sign in, by email (when given) and SMS. Sent once, on the first approval.
+    let welcomed = false;
+    if (!wasApproved) {
+      // The approval stands even if the message cannot be queued; it is in the message log either way.
+      const ids = await this.notifications
+        .send({
+          templateKey: 'PARTNER_WELCOME',
+          vars: { name: dp.name, phone: dp.phone, loginUrl: `${config().ADMIN_URL}/login` },
+          to: { email: dp.email, sms: dp.phone },
+          userId,
+          context: { deliveryPartnerId: dp.id },
+        })
+        .catch(() => [] as string[]);
+      welcomed = ids.length > 0;
+    }
+    return { ok: true, welcomed };
   }
 
   @Post('admin/delivery-partners/:id/reject')
@@ -133,7 +156,7 @@ export class RiderApplicationsController {
   }
 
   private headOfficeOrCity(user: AuthUser) {
-    if (!['SUPER_ADMIN', 'STAFF', 'CITY_MANAGER'].includes(user.role)) throw forbidden('Only head office or the city manager can approve riders.');
+    if (!['SUPER_ADMIN', 'STAFF', 'CITY_MANAGER'].includes(user.role)) throw forbidden('Only head office or the city manager can approve delivery partners.');
   }
 
   private async find(user: AuthUser, id: string) {

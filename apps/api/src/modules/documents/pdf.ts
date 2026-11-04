@@ -327,7 +327,7 @@ export async function packingSlipPdf(s: PackingSlipInput): Promise<Buffer> {
     y += 18;
   }
   if (s.codDuePaise > 0) {
-    doc.font('Helvetica-Bold').fillColor('#8C5A00').text(s.gift ? 'Cash on delivery: the rider collects payment.' : `Cash on delivery: collect ${rs(s.codDuePaise)}`, 50, y);
+    doc.font('Helvetica-Bold').fillColor('#8C5A00').text(s.gift ? 'Cash on delivery: the delivery partner collects payment.' : `Cash on delivery: collect ${rs(s.codDuePaise)}`, 50, y);
     y += 18;
   }
   doc.font('Helvetica').fillColor(MUTED).fontSize(9).text('Packed with care. Your certificate of authenticity is in the box; scan its QR code to verify it.', 50, y + 10, { width: 495 });

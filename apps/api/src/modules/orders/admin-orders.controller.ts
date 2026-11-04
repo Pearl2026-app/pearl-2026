@@ -278,7 +278,7 @@ export class AdminOrdersController {
     if (dto.status === 'DELIVERED') {
       if (!['SUPER_ADMIN', 'STAFF'].includes(user.role))
         throw forbidden(
-          'The rider marks the order delivered with proof. Ask head office if it was handed over another way.',
+          'The delivery partner marks the order delivered with proof. Ask head office if it was handed over another way.',
         );
       if (!dto.reason?.trim())
         throw badRequest('REASON_REQUIRED', 'Say how the order was handed over.', { reason: 'Required' });

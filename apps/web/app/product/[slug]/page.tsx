@@ -176,7 +176,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
             <li className="flex flex-col items-center gap-2 border-x border-line">
               <IconFor name="certificate" className="text-gold" />
               {p.certificateCode ? (
-                <Link href={`/verify/${p.certificateCode}`} className="underline-offset-4 hover:underline">
+                <Link href={`/verify/${encodeURIComponent(p.certificateCode)}`} className="underline-offset-4 hover:underline">
                   Certified
                 </Link>
               ) : (
@@ -253,6 +253,25 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
                       <dd>{v}</dd>
                     </div>
                   ))}
+                {p.certificateNumber && (
+                  <div className="contents">
+                    <dt className="text-muted">Certificate no.</dt>
+                    <dd>
+                      {p.certificateNumber}{' '}
+                      <Link href={`/verify/${encodeURIComponent(p.certificateNumber)}`} className="text-accent underline underline-offset-4">
+                        Verify
+                      </Link>
+                      {p.certificateUrl && (
+                        <>
+                          {' · '}
+                          <a href={p.certificateUrl} target="_blank" rel="noopener noreferrer" className="text-accent underline underline-offset-4">
+                            View certificate
+                          </a>
+                        </>
+                      )}
+                    </dd>
+                  </div>
+                )}
               </dl>
             </Fold>
             <Fold title="Delivery and returns">

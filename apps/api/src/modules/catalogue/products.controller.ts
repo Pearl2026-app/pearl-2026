@@ -133,6 +133,22 @@ export class ProductsController {
   }
 
   /**
+   * The certificate file (PDF or photo) picked on the product form, uploaded before the product is saved; the
+   * returned URL is saved with the product as certificateUrl. Checked by its first bytes like every document.
+   */
+  @Post('certificate-file')
+  @HttpCode(200)
+  @Requires('PRODUCTS', 'edit')
+  @ApiConsumes('multipart/form-data')
+  @UseInterceptors(FileInterceptor('file', memory(10, 1)))
+  certificateFile(@CurrentUser() user: AuthUser, @UploadedFile() file: Express.Multer.File) {
+    this.products.assertCanEdit(user);
+    if (!file) throw badRequest('NO_FILE', 'Choose the certificate file.');
+    if (!(file.mimetype === 'application/pdf' || file.mimetype.startsWith('image/'))) throw badRequest('UNSUPPORTED_FILE', 'Upload the certificate as a PDF or photo.');
+    return this.products.saveCertificateFile(file);
+  }
+
+  /**
    * Festival and clearance offers on chosen pieces: "X% off" sets the old price as the struck-through price and
    * lowers the selling price; "end offer" puts the old price back. Works on picked pieces or a whole category,
    * farm or collection. Head office only.
@@ -220,6 +236,9 @@ export class ProductsController {
         archivedAt: null,
         isFeatured: false,
         ...(opts.franchiseId !== undefined ? { franchiseId: opts.franchiseId } : {}),
+        // A certificate belongs to one physical piece, never to its copy.
+        certificateNumber: null,
+        certificateUrl: null,
         cities: { create: cities.map((c) => ({ cityId: c.cityId })) },
         images: { create: images.map((i, k) => ({ url: i.url, variants: i.variants as Prisma.InputJsonValue, alt: i.alt, kind: i.kind, width: i.width, height: i.height, sortOrder: k })) },
       },

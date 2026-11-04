@@ -18,6 +18,7 @@ import { config } from '../../config/config';
 import { PrismaService } from '../../prisma/prisma.service';
 import { certificatePdf } from '../documents/pdf';
 import { MediaService } from '../media/media.service';
+import { PearlPricingModule } from '../pricing/pricing.module';
 import { categoryCreate, categoryUpdate, collectionCreate, collectionUpdate, farmCreate, farmUpdate } from './catalogue.schemas';
 import { ProductImportService } from './product-import.service';
 import { ProductsController } from './products.controller';
@@ -246,6 +247,7 @@ class UploadsController {
 }
 
 @Module({
+  imports: [PearlPricingModule],
   controllers: [CategoriesController, CollectionsController, FarmsController, ProductsController, CertificatesController, ReviewsAdminController, UploadsController, RestockController],
   providers: [ProductsService, ProductImportService, LowStockAlerts],
   exports: [ProductsService],

@@ -40,6 +40,9 @@ export interface ProductDetail extends ProductCard {
   grossWeight: number | null;
   certification: string | null;
   certificateCode: string | null;
+  /** Lab certificate entered with the piece, verifiable at /verify/{number} */
+  certificateNumber: string | null;
+  certificateUrl: string | null;
   videoUrl: string | null;
   images: Array<ImageRef & { kind: string }>;
   farm: { name: string; slug: string; location: string; summary: string | null; story: string | null; heroImageUrl: string | null } | null;
