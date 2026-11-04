@@ -107,4 +107,24 @@ export class MediaService {
   putBuffer(key: string, body: Buffer, contentType: string, visibility: 'public' | 'private') {
     return this.storage.put(key, body, contentType, visibility);
   }
+
+  /** The bytes of a file we stored (to embed in a PDF). Null when it cannot be read. */
+  async read(url: string | null | undefined): Promise<Buffer | null> {
+    if (!url) return null;
+    try {
+      if (url.startsWith('private:')) return await this.storage.get(url.slice('private:'.length), 'private');
+      if (url.startsWith('/media/')) return await this.storage.get(decodeURIComponent(url.slice('/media/'.length)), 'public');
+      // Our own CDN only (public files on S3); other addresses are not fetched.
+      const cdn = config().CDN_BASE_URL?.replace(/\/$/, '');
+      if (cdn && url.startsWith(`${cdn}/`)) {
+        const res = await fetch(url, { signal: AbortSignal.timeout(5000) });
+        if (!res.ok) return null;
+        const buf = Buffer.from(await res.arrayBuffer());
+        return buf.length > 25 * 1024 * 1024 ? null : buf;
+      }
+    } catch {
+      return null;
+    }
+    return null;
+  }
 }
