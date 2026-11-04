@@ -8,7 +8,7 @@ import { qs } from '@/lib/api';
 import { date, inr } from '@/lib/format';
 import { useList, useListParams } from '@/lib/use-list';
 
-interface C { id: string; referralCode: string; isBlocked: boolean; createdAt: string; orderCount: number; totalSpendPaise: number; user: { name: string; phone: string; email: string | null }; city: { name: string } | null }
+interface C { id: string; referralCode: string; isBlocked: boolean; createdAt: string; orderCount: number; totalSpendPaise: number; pointsPaise: number; walletPaise: number; user: { name: string; phone: string; email: string | null }; city: { name: string } | null }
 
 function Customers() {
   const { params, set } = useListParams();
@@ -45,6 +45,8 @@ function Customers() {
           { key: 'city', label: 'City', render: (r) => r.city?.name ?? '—' },
           { key: 'orderCount', label: 'Orders' },
           { key: 'totalSpendPaise', label: 'Total spend', render: (r) => inr(r.totalSpendPaise) },
+          { key: 'pointsPaise', label: 'Points', render: (r) => (r.pointsPaise ? Math.round(r.pointsPaise / 100).toLocaleString('en-IN') : '—') },
+          { key: 'walletPaise', label: 'Wallet', render: (r) => (r.walletPaise ? inr(r.walletPaise) : '—') },
           { key: 'referralCode', label: 'Referral code' },
           { key: 'isBlocked', label: 'Status', render: (r) => <Badge tone={r.isBlocked ? 'danger' : 'success'}>{r.isBlocked ? 'Blocked' : 'Active'}</Badge> },
           { key: 'createdAt', label: 'Joined', render: (r) => date(r.createdAt) },

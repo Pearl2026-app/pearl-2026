@@ -125,6 +125,8 @@ const checkoutInput = z.object({
   saveAddress: z.boolean().optional(),
   /** Pay part of the order with credit points */
   usePoints: z.boolean().optional(),
+  /** Pay part of the order from the referral wallet */
+  useWallet: z.boolean().optional(),
   /** Optional, for a GST invoice in the business's name */
   gstin: z
     .string()
@@ -157,12 +159,12 @@ export class CheckoutController {
   @Post('checkout/quote')
   @HttpCode(200)
   @Throttle({ default: { limit: limit(20), ttl: 60_000 } })
-  async quote(@CurrentUser() user: AuthUser | null, @Req() req: Request, @Body(new ZodValidationPipe(z.object({ cityId: z.string().optional(), citySlug: z.string().optional(), phone: indianMobile.optional(), name: z.string().trim().min(2).max(120).optional() }))) dto: { cityId?: string; citySlug?: string; phone?: string; name?: string }) {
+  async quote(@CurrentUser() user: AuthUser | null, @Req() req: Request, @Body(new ZodValidationPipe(z.object({ cityId: z.string().optional(), citySlug: z.string().optional(), phone: indianMobile.optional(), name: z.string().trim().min(2).max(120).optional(), useWallet: z.boolean().optional() }))) dto: { cityId?: string; citySlug?: string; phone?: string; name?: string; useWallet?: boolean }) {
     const cart = await this.carts.resolve(user, cartToken(req), false);
     const cityId = await cityIdFrom(this.prisma, dto);
     if (cart && (dto.phone || cityId)) await this.carts.setContact(cart, { phone: dto.phone, name: dto.name, cityId });
     const fresh = cart ? await this.prisma.cart.findUnique({ where: { id: cart.id } }) : null;
-    const view = await this.carts.view(fresh, user, cityId);
+    const view = await this.carts.view(fresh, user, cityId, { redeemWallet: !!dto.useWallet });
     return { ...view, paymentMethods: { ...('paymentMethods' in view ? view.paymentMethods : {}), online: ('paymentMethods' in view && view.paymentMethods?.online && this.payments.onlineAvailable) || false, provider: this.payments.providerName } };
   }
 
@@ -174,7 +176,9 @@ export class CheckoutController {
     if (!cart) throw badRequest('EMPTY_CART', 'Your cart is empty.');
     const cityId = await cityIdFrom(this.prisma, dto);
     if (!cityId) throw badRequest('CITY_REQUIRED', 'Choose your city.', { cityId: 'Choose a city we deliver to' });
-    const view = await this.carts.view(cart, user, cityId);
+    const customerId = user?.role === 'CUSTOMER' ? user.customerId : null;
+    const useWallet = !!dto.useWallet && !!customerId;
+    const view = await this.carts.view(cart, user, cityId, { redeemWallet: useWallet });
     if (!view.items.length) throw badRequest('EMPTY_CART', 'Your cart is empty.');
     if (view.issues.length) throw badRequest('CART_ISSUES', `Please review your cart: ${view.issues.join('; ')}.`);
 
@@ -186,7 +190,6 @@ export class CheckoutController {
       throw badRequest('ONLINE_UNAVAILABLE', 'Online payment is not available right now. Please choose cash on delivery.', { paymentMethod: 'Choose cash on delivery' });
 
     // Address: a saved one (must be the customer's own) or a new one.
-    const customerId = user?.role === 'CUSTOMER' ? user.customerId : null;
     let address = dto.address;
     if (dto.addressId) {
       const saved = customerId ? await this.prisma.address.findFirst({ where: { id: dto.addressId, customerId, archivedAt: null } }) : null;
@@ -214,6 +217,7 @@ export class CheckoutController {
       giftWrap: !!dto.giftWrap && (await this.settings.get('storefront')).giftWrapEnabled,
       giftMessage: dto.giftMessage || null,
       redeemPoints: !!dto.usePoints && !!customerId,
+      redeemWallet: useWallet,
       buyerGstin: dto.gstin || null,
       buyerBusinessName: dto.businessName || null,
       convertStock: dto.paymentMethod === 'COD',

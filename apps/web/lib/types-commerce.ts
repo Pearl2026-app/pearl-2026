@@ -16,6 +16,8 @@ export interface CartView {
   couponCode: string | null;
   couponError: string | null;
   coupon?: { code: string; discountPaise: number } | null;
+  /** Referral wallet: what it pays of this order, already taken off the totals */
+  wallet?: { usedPaise: number; balancePaise: number } | null;
   totals: Totals | null;
   issues: string[];
   paymentMethods?: { online: boolean; cod: boolean; codMaxPaise: number; provider?: string };

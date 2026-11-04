@@ -352,9 +352,13 @@ export class AfterDeliveryService implements OnModuleInit {
       const code = `REF${(await this.auth.uniqueReferralCode(null)).slice(0, 7)}`;
       return this.prisma.coupon.create({ data: { code, customerId, description: label, discountType: 'FLAT', discountValue: amount, usageLimit: 1, perCustomerLimit: 1, endsAt, showOnOffersPage: false } });
     };
-    const claimed = await this.prisma.referral.updateMany({ where: { id: referral.id, rewardedAt: null }, data: { rewardedAt: new Date(), qualifyingOrderId: orderId, referrerRewardPaise: s.referrerRewardPaise, refereeRewardPaise: s.refereeRewardPaise } });
+    // While the referral wallet is on, the referrer is rewarded there on every order (WalletService), so they get no
+    // coupon as well; the new buyer's welcome coupon stays.
+    const wallet = await this.settings.get('wallet');
+    const walletPays = wallet.enabled && wallet.referralRewardPaise > 0;
+    const claimed = await this.prisma.referral.updateMany({ where: { id: referral.id, rewardedAt: null }, data: { rewardedAt: new Date(), qualifyingOrderId: orderId, referrerRewardPaise: walletPays ? null : s.referrerRewardPaise, refereeRewardPaise: s.refereeRewardPaise } });
     if (claimed.count !== 1) return;
-    const a = await make(referral.referrerId, s.referrerRewardPaise, `Referral reward: ${referral.referee.user.name.split(' ')[0]} made their first purchase`);
+    const a = walletPays ? null : await make(referral.referrerId, s.referrerRewardPaise, `Referral reward: ${referral.referee.user.name.split(' ')[0]} made their first purchase`);
     const b = await make(referral.refereeId, s.refereeRewardPaise, 'Welcome reward for joining through a referral');
     await this.audit.record('Referral', referral.id, 'REWARD', undefined, { referrerCoupon: a?.code, refereeCoupon: b?.code });
     for (const [c, who] of [[a, referral.referrer], [b, referral.referee]] as const) {

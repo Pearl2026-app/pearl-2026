@@ -143,6 +143,7 @@ export class AccountController {
   async referral(@CurrentUser() user: AuthUser) {
     const c = await this.prisma.customer.findUniqueOrThrow({ where: { id: this.cid(user) }, include: { referralsMade: { include: { referee: { include: { user: { select: { name: true } } } } }, orderBy: { createdAt: 'desc' } } } });
     const s = await this.settings.get('referral');
+    const w = await this.settings.get('wallet');
     const coupons = await this.prisma.coupon.findMany({ where: { customerId: c.id, isActive: true }, select: { code: true, discountValue: true, endsAt: true, description: true, _count: { select: { redemptions: true } } } });
     const link = `${config().WEB_URL}/login?ref=${c.referralCode}`;
     const text = `I shop for pearls at Sahyadri Pearls. Use my code ${c.referralCode} on your first order${s.refereeRewardPaise ? ` and get ${formatINR(s.refereeRewardPaise, { compact: true })} off` : ''}: ${link}`;
@@ -151,6 +152,8 @@ export class AccountController {
       enabled: s.enabled,
       referrerRewardPaise: s.referrerRewardPaise,
       refereeRewardPaise: s.refereeRewardPaise,
+      /** Referral wallet: the referrer earns this on every (or the first) confirmed order of a friend */
+      wallet: w.enabled && w.referralRewardPaise > 0 ? { rewardPaise: w.referralRewardPaise, rewardOn: w.rewardOn } : null,
       shareText: text,
       shareUrl: waMeUrl('', text).replace('https://wa.me/?', 'https://wa.me/?'),
       referrals: c.referralsMade.map((r) => ({ name: r.referee.user.name.split(' ')[0], joinedAt: r.createdAt, rewarded: !!r.rewardedAt })),

@@ -398,6 +398,12 @@ model Customer {
   businessGstin          String?
   b2bAppliedAt           DateTime?
   b2bNote                String?
+  /// The shop's trading name (businessName stays the registered name on the GST certificate)
+  shopName               String?
+  shopAddress            String?
+  /// Who head office calls and emails about the business account
+  b2bContactPhone        String?
+  b2bContactEmail        String?
 
   addresses         Address[]
   carts             Cart[]
@@ -411,6 +417,8 @@ model Customer {
   referralReceived  Referral?          @relation("ReferralReferee")
   customRequests    CustomRequest[]
   loyaltyEntries    LoyaltyLedger[]
+  walletEntries     WalletEntry[]
+  walletPayouts     WalletPayout[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1085,6 +1093,8 @@ model Order {
   couponCode   String?
   /// Part of the order settled with credit points (earned 1 point = Re 1 on delivered orders)
   pointsPaise  Int     @default(0)
+  /// Part of the order paid from the customer's wallet (referral rewards)
+  walletPaise  Int     @default(0)
   customerNote String?
   /// Gift packing chosen at checkout; the message is printed on a card, never on the invoice
   giftWrap     Boolean @default(false)
@@ -1815,6 +1825,73 @@ model LoyaltyLedger {
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
+  @@index([customerId])
+}
+
+enum WalletEntryKind {
+  REFERRAL_REWARD
+  SPENT
+  CASHOUT
+  ADJUSTMENT
+}
+
+enum WalletPayoutMethod {
+  UPI
+  BANK
+}
+
+enum WalletPayoutStatus {
+  REQUESTED
+  PAID
+  REJECTED
+}
+
+/// The referral wallet (client meeting, 4 Nov): rupees earned when someone orders with your code, spent at checkout or
+/// withdrawn as cash. Every movement is a signed row, so the balance is always the sum.
+model WalletEntry {
+  id          String          @id @default(cuid())
+  customerId  String
+  customer    Customer        @relation(fields: [customerId], references: [id])
+  /// Signed: positive credits, negative debits
+  amountPaise Int
+  kind        WalletEntryKind
+  orderId     String?
+  payoutId    String?
+  payout      WalletPayout?   @relation(fields: [payoutId], references: [id])
+  note        String?
+  /// Makes each automatic movement happen once (e.g. "referral:<orderId>", "spend:<orderId>")
+  idemKey     String?         @unique
+  createdById String?
+  createdAt   DateTime        @default(now())
+
+  @@index([customerId, createdAt])
+  @@index([orderId])
+}
+
+/// A cash-out request from the wallet. The amount leaves the balance when requested and comes back if rejected.
+model WalletPayout {
+  id                String             @id @default(cuid())
+  customerId        String
+  customer          Customer           @relation(fields: [customerId], references: [id])
+  amountPaise       Int
+  method            WalletPayoutMethod
+  upiId             String?
+  bankAccountName   String?
+  bankAccountNumber String?
+  bankIfsc          String?
+  bankName          String?
+  status            WalletPayoutStatus @default(REQUESTED)
+  paidAt            DateTime?
+  /// UTR / transaction reference when paid
+  reference         String?
+  /// Why it was rejected, or a note from head office
+  note              String?
+  decidedById       String?
+  entries           WalletEntry[]
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+
+  @@index([status, createdAt])
   @@index([customerId])
 }
 

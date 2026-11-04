@@ -1,10 +1,11 @@
 'use client';
+import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { formatINR } from '@sahyadri/shared';
 import { WhatsAppIcon } from '@/components/icons';
 import { api } from '@/lib/api';
 
-interface Ref { code: string; enabled: boolean; referrerRewardPaise: number; refereeRewardPaise: number; shareText: string; shareUrl: string; referrals: Array<{ name: string; joinedAt: string; rewarded: boolean }>; rewards: Array<{ code: string; amountPaise: number; endsAt: string | null; used: boolean; description: string | null }> }
+interface Ref { code: string; enabled: boolean; referrerRewardPaise: number; refereeRewardPaise: number; shareText: string; shareUrl: string; wallet: { rewardPaise: number; rewardOn: 'EVERY_ORDER' | 'FIRST_ORDER' } | null; referrals: Array<{ name: string; joinedAt: string; rewarded: boolean }>; rewards: Array<{ code: string; amountPaise: number; endsAt: string | null; used: boolean; description: string | null }> }
 
 export default function Referral() {
   const [r, setR] = useState<Ref | null>(null);
@@ -17,9 +18,17 @@ export default function Referral() {
     <div className="flex max-w-2xl flex-col gap-8">
       <div>
         <h2 className="font-serif text-2xl">Referral Code</h2>
-        <p className="mt-2 text-muted">
-          Share your code. When a friend’s first order is delivered, you get {formatINR(r.referrerRewardPaise, { compact: true })} off and they get {formatINR(r.refereeRewardPaise, { compact: true })} off.
-        </p>
+        {r.wallet ? (
+          <p className="mt-2 text-muted">
+            Share your code. You get {formatINR(r.wallet.rewardPaise, { compact: true })} in your <Link href="/account/wallet" className="text-accent underline">wallet</Link> on{' '}
+            {r.wallet.rewardOn === 'EVERY_ORDER' ? 'every order' : 'the first order'} a friend places with it — spend it here or withdraw it as cash.
+            {r.refereeRewardPaise ? ` Your friend gets ${formatINR(r.refereeRewardPaise, { compact: true })} off once their first order is delivered.` : ''}
+          </p>
+        ) : (
+          <p className="mt-2 text-muted">
+            Share your code. When a friend’s first order is delivered, you get {formatINR(r.referrerRewardPaise, { compact: true })} off and they get {formatINR(r.refereeRewardPaise, { compact: true })} off.
+          </p>
+        )}
       </div>
       <div className="flex flex-wrap items-center gap-3">
         <p className="border border-dashed border-ink px-6 py-3 font-mono text-2xl tracking-widest">{r.code}</p>
@@ -29,7 +38,7 @@ export default function Referral() {
       <section>
         <h3 className="eyebrow mb-2">Friends who joined</h3>
         {r.referrals.length === 0 ? <p className="text-sm text-muted">No one yet.</p> : (
-          <ul className="text-sm">{r.referrals.map((x, i) => <li key={i}>{x.name} · joined {new Date(x.joinedAt).toLocaleDateString('en-IN')} · {x.rewarded ? 'reward earned' : 'waiting for first delivery'}</li>)}</ul>
+          <ul className="text-sm">{r.referrals.map((x, i) => <li key={i}>{x.name} · joined {new Date(x.joinedAt).toLocaleDateString('en-IN')}{r.wallet ? '' : ` · ${x.rewarded ? 'reward earned' : 'waiting for first delivery'}`}</li>)}</ul>
         )}
       </section>
       <section>

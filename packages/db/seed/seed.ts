@@ -78,6 +78,17 @@ async function seedSettings() {
     'Referral rewards, issued as personal coupons after the first order is delivered.',
   );
   await upsertSetting(
+    'wallet',
+    {
+      enabled: true,
+      referralRewardPaise: rupees(200),
+      rewardOn: 'EVERY_ORDER',
+      minCashoutPaise: rupees(500),
+      payoutNote: 'Paid to your UPI ID or bank account within 3 working days.',
+    },
+    'Referral wallet: the reward for sharing a code, credited when an order placed with it is confirmed; spent at checkout or withdrawn.',
+  );
+  await upsertSetting(
     'cart_reminder',
     { enabled: true, delayMinutes: 120 },
     'Abandoned-cart WhatsApp reminder timing.',
@@ -241,6 +252,43 @@ async function seedTemplates() {
       'EMAIL',
       'Hi {{name}},\n\nYour referral reward is ready. Use code {{code}} for {{amount}} off your next order.\n\nSahyadri Pearls',
       'Your referral reward',
+    ],
+    [
+      'NEW_B2B_APPLICATION',
+      'EMAIL',
+      'New business buyer (B2B) application from {{name}}.\n\nRegistered business name: {{businessName}}\nGSTIN: {{gstin}}\nShop name: {{shopName}}\nShop address: {{shopAddress}}\nContact phone: {{contactPhone}}\nContact email: {{contactEmail}}\nWhat they buy: {{note}}\n\nVerify and approve it here: {{reviewUrl}}\n\nSahyadri Pearls',
+      'New B2B application: {{shopName}} ({{businessName}})',
+    ],
+    [
+      'B2B_APPLIED',
+      'EMAIL',
+      "Dear {{name}},\n\nThanks for applying for a business account for {{shopName}}. We're verifying your details — you'll get an email once approved.\n\nSahyadri Pearls",
+      'We have your business account application',
+    ],
+    [
+      'B2B_APPROVED',
+      'EMAIL',
+      "Dear {{name}},\n\nYou're registered as a business buyer with Sahyadri Pearls. Business prices for {{businessName}} are now live in your business catalogue: {{catalogueUrl}}\n\nSahyadri Pearls",
+      "You're registered as a business buyer with Sahyadri Pearls",
+    ],
+    [
+      'WALLET_CREDIT',
+      'EMAIL',
+      'Hi {{name}},\n\n{{friend}} just ordered with your referral code, so {{amount}} has been added to your Sahyadri Pearls wallet. Your balance is {{balance}}.\n\nSpend it on your next order or withdraw it as cash: {{walletUrl}}\n\nSahyadri Pearls',
+      '{{amount}} added to your wallet',
+    ],
+    ['WALLET_CREDIT', 'PUSH', '{{friend}} ordered with your code: {{amount}} added to your wallet.', 'Referral reward'],
+    [
+      'WALLET_PAYOUT_PAID',
+      'EMAIL',
+      'Hi {{name}},\n\nWe have paid your wallet withdrawal of {{amount}} to your {{method}}. Reference: {{reference}}.\n\nSahyadri Pearls',
+      'Your withdrawal of {{amount}} is paid',
+    ],
+    [
+      'WALLET_PAYOUT_REJECTED',
+      'EMAIL',
+      'Hi {{name}},\n\nWe could not pay your wallet withdrawal of {{amount}}: {{reason}}\nThe amount is back in your wallet: {{walletUrl}}\n\nSahyadri Pearls',
+      'About your withdrawal of {{amount}}',
     ],
   ];
   for (const [key, channel, body, subject] of templates) {
@@ -856,6 +904,10 @@ async function main() {
             b2bStatus: 'APPROVED',
             businessName: 'Shah Jewellers',
             businessGstin: '27AAAPS1234C1Z5',
+            shopName: 'Shah Jewellers',
+            shopAddress: '14 Sheikh Memon Street, Zaveri Bazaar, Mumbai 400002',
+            b2bContactPhone: '+919800000027',
+            b2bContactEmail: 'b2b@example.com',
             b2bAppliedAt: new Date(),
           },
         },

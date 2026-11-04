@@ -215,6 +215,12 @@ export default function OrderPage() {
                   <dd className="text-right">−{inr(o.pointsPaise)}</dd>
                 </>
               )}
+              {o.walletPaise > 0 && (
+                <>
+                  <dt className="text-muted">Wallet</dt>
+                  <dd className="text-right">−{inr(o.walletPaise)}</dd>
+                </>
+              )}
               <dt className="text-muted">Delivery</dt>
               <dd className="text-right">{inr(o.deliveryPaise)}</dd>
               <dt className="text-muted">Taxable value</dt>

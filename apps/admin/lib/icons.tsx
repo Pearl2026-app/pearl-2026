@@ -68,6 +68,7 @@ export const PAGE_ICONS: Record<string, LucideIcon> = {
   '/reviews': Star,
   '/customers': Users,
   '/business-buyers': Briefcase,
+  '/wallet-payouts': IndianRupee,
   '/coupons': Ticket,
   '/coupon-batches': Ticket,
   '/notifications': Bell,

@@ -3,6 +3,7 @@ import type { Prisma } from '@sahyadri/db';
 import { allocate, computeTotals, evaluateCoupon, type CouponResult, type PricingLine, type Totals } from '@sahyadri/shared';
 import { SettingsService } from '../../common/settings.service';
 import { pointsBalancePaise } from './loyalty';
+import { walletBalancePaise } from './wallet';
 import { PrismaService } from '../../prisma/prisma.service';
 
 type Db = PrismaService | Prisma.TransactionClient;
@@ -18,6 +19,8 @@ export interface PriceRequest {
   skipDelivery?: boolean;
   /** Pay part of the order with credit points (signed-in customers) */
   redeemPoints?: boolean;
+  /** Pay part of the order from the referral wallet (signed-in customers) */
+  redeemWallet?: boolean;
 }
 
 export interface PricedLine {
@@ -46,6 +49,8 @@ export interface Priced {
   couponError: string | null;
   /** Credit points: how much of this order they pay, and the customer's balance */
   points: { redeemedPaise: number; balancePaise: number } | null;
+  /** Referral wallet: how much of this order it pays, and the customer's balance */
+  wallet: { usedPaise: number; balancePaise: number } | null;
 }
 
 /** Rule 5: money is calculated here, from current prices and settings. Client totals are ignored. */
@@ -122,13 +127,40 @@ export class PricingService {
       }
     }
 
+    // The referral wallet pays after coupons and points, spread over the pieces the same way. At least ₹1 is left to
+    // pay so every order still goes through a payment (or cash on delivery) and gets an invoice for a real amount.
+    let wallet: Priced['wallet'] = null;
+    if (req.redeemWallet && req.customerId) {
+      const ws = await this.settings.get('wallet');
+      if (ws.enabled) {
+        const balancePaise = Math.max(0, await walletBalancePaise(db, req.customerId));
+        const nets = pricing.map((l, i) => l.unitPricePaise * l.quantity - (discounts?.[i] ?? 0));
+        const gross = nets.reduce((a, b) => a + b, 0);
+        const cap = Math.max(0, Math.floor((gross - 100) / 100) * 100); // whole rupees, leaving at least ₹1
+        const use = Math.max(0, Math.min(Math.floor(balancePaise / 100) * 100, cap));
+        if (use > 0) {
+          const spread = allocate(use, nets);
+          discounts = nets.map((_, i) => (discounts?.[i] ?? 0) + spread[i]!);
+        }
+        wallet = { usedPaise: use, balancePaise };
+      }
+    }
+
     const delivery = await this.settings.get('delivery');
     const city = req.cityId ? await db.city.findUnique({ where: { id: req.cityId }, select: { deliveryChargePaise: true } }) : null;
     const totals = computeTotals(pricing, {
       lineDiscountsPaise: discounts,
-      delivery: req.skipDelivery ? undefined : { chargePaise: delivery.chargePaise, freeAbovePaise: delivery.freeAbovePaise, cityChargePaise: city?.deliveryChargePaise ?? null },
+      // Wallet money is the customer's own: paying with it must not cost them free delivery, so the threshold is
+      // compared with the order before the wallet part.
+      delivery: req.skipDelivery
+        ? undefined
+        : {
+            chargePaise: delivery.chargePaise,
+            freeAbovePaise: delivery.freeAbovePaise == null ? null : Math.max(0, delivery.freeAbovePaise - (wallet?.usedPaise ?? 0)),
+            cityChargePaise: city?.deliveryChargePaise ?? null,
+          },
     });
-    return { lines, totals, coupon, couponError, points };
+    return { lines, totals, coupon, couponError, points, wallet };
   }
 
   private async evaluate(db: Db, rawCode: string, lines: PricingLine[], customerId: string | null, phone: string | null, cityId: string | null = null): Promise<{ code: string; id?: string; result: CouponResult }> {
