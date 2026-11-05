@@ -34,23 +34,25 @@ export function Footer({ site }: { site: Site }) {
     { href: '/business', label: 'Business buyers (B2B)' },
   ];
   return (
-    <footer className="glass mx-2 mt-24 mb-2 overflow-hidden rounded-3xl lg:mx-5 lg:mb-5">
-      <div className="border-b border-white/60">
+    <footer className="mt-16">
+      <div className="border-t border-line bg-surface">
         <div className="mx-auto flex max-w-7xl flex-col gap-6 px-4 py-12 md:flex-row md:items-center md:justify-between lg:px-8">
           <div>
-            <p className="font-serif text-3xl">The Sahyadri circle</p>
+            <p className="font-serif text-2xl text-ink lg:text-3xl">The Sahyadri circle</p>
             <p className="mt-2 text-sm text-muted">New pieces and private previews. A few emails a month.</p>
           </div>
           <NewsletterForm />
         </div>
       </div>
+      <div className="bg-ink text-white/85">
       <div className="mx-auto grid max-w-7xl gap-10 px-4 py-14 md:grid-cols-2 lg:grid-cols-[1.4fr_1fr_1fr_1fr] lg:px-8">
         <div>
-          <Link href="/about" className="font-serif text-2xl text-accent">About Us</Link>
-          <address className="mt-3 text-sm not-italic text-ink">{about.address ?? site.store.address}</address>
+          <img src="/brand/logo.png" alt="Sahyadri Pearls" width={84} height={54} className="mb-4 h-14 w-auto rounded bg-bg p-1.5" />
+          <Link href="/about" className="lux-track text-[13px] text-gold">About us</Link>
+          <address className="mt-3 text-sm not-italic text-white/85">{about.address ?? site.store.address}</address>
           <p className="mt-2 text-sm">
-            <a href={`tel:${site.store.phone}`} className="hover:text-accent">{site.store.phone}</a> ·{' '}
-            <a href={`mailto:${site.store.email}`} className="hover:text-accent">{site.store.email}</a>
+            <a href={`tel:${site.store.phone}`} className="hover:text-gold">{site.store.phone}</a> ·{' '}
+            <a href={`mailto:${site.store.email}`} className="hover:text-gold">{site.store.email}</a>
           </p>
           <ul className="mt-5 flex gap-2" aria-label="Follow us">
             {SOCIAL.map((x) => (
@@ -60,8 +62,7 @@ export function Footer({ site }: { site: Site }) {
                   target="_blank"
                   rel="noopener noreferrer"
                   aria-label={x.label}
-                  data-magnetic
-                  className="glass flex h-11 w-11 items-center justify-center rounded-full text-accent transition-colors hover:bg-accent hover:text-white"
+                  className="flex h-10 w-10 items-center justify-center rounded-full border border-white/25 text-white transition-colors hover:border-gold hover:text-gold"
                 >
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                     {x.icon}
@@ -72,51 +73,54 @@ export function Footer({ site }: { site: Site }) {
           </ul>
         </div>
         <nav aria-label="Footer">
+          <p className="lux-track mb-4 text-[13px] text-gold">Help</p>
           <ul className="grid gap-2 text-sm">
             {links.map((l) => (
               <li key={l.href}>
-                <Link href={l.href} className="text-ink hover:text-accent">{l.label}</Link>
+                <Link href={l.href} className="text-white/85 hover:text-gold">{l.label}</Link>
               </li>
             ))}
           </ul>
         </nav>
         <nav aria-label="Discover">
+          <p className="lux-track mb-4 text-[13px] text-gold">Discover</p>
           <ul className="grid gap-2 text-sm">
             {discover.map((l) => (
               <li key={l.href}>
-                <Link href={l.href} className="text-ink hover:text-accent">{l.label}</Link>
+                <Link href={l.href} className="text-white/85 hover:text-gold">{l.label}</Link>
               </li>
             ))}
           </ul>
         </nav>
         <div>
-          <p className="eyebrow mb-3">Download the app</p>
+          <p className="lux-track mb-4 text-[13px] text-gold">Download the app</p>
           <div className="flex flex-wrap gap-2">
             <StoreLink href={site.appLinks.android} label="Get it on Google Play" />
             <StoreLink href={site.appLinks.ios} label="Download on the App Store" />
           </div>
-          <p className="eyebrow mt-8 mb-2">Shop</p>
+          <p className="lux-track mt-8 mb-3 text-[13px] text-gold">Shop</p>
           <ul className="grid grid-cols-2 gap-1 text-sm">
             {site.categories.map((c) => (
-              <li key={c.slug}><Link href={`/jewellery/${c.slug}`} className="hover:text-accent">{c.name}</Link></li>
+              <li key={c.slug}><Link href={`/jewellery/${c.slug}`} className="hover:text-gold">{c.name}</Link></li>
             ))}
           </ul>
         </div>
       </div>
-      <div className="border-t border-white/60">
-        <div className="mx-auto flex max-w-7xl flex-col gap-1 px-4 py-5 text-xs text-muted sm:flex-row sm:justify-between lg:px-8">
+      <div className="border-t border-white/15">
+        <div className="mx-auto flex max-w-7xl flex-col gap-1 px-4 py-5 text-xs text-white/60 sm:flex-row sm:justify-between lg:px-8">
           <span>{footerCredit()}</span>
           <span>{footerCopyright()}</span>
         </div>
+      </div>
       </div>
     </footer>
   );
 }
 
 function StoreLink({ href, label }: { href: string; label: string }) {
-  const cls = 'inline-flex min-h-11 items-center rounded-full border border-ink/40 px-4 text-sm';
+  const cls = 'inline-flex min-h-11 items-center rounded border border-white/30 px-4 text-sm';
   return href ? (
-    <a href={href} className={`${cls} hover:bg-ink hover:text-white`} target="_blank" rel="noopener noreferrer">{label}</a>
+    <a href={href} className={`${cls} hover:border-gold hover:text-gold`} target="_blank" rel="noopener noreferrer">{label}</a>
   ) : (
     <span className={`${cls} cursor-default border-dashed`} title="Coming soon">{label} · soon</span>
   );

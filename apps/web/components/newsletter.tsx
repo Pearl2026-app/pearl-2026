@@ -29,8 +29,8 @@ export function NewsletterForm() {
     >
       <div className="flex">
         <label htmlFor="nl-email" className="sr-only">Email address</label>
-        <input id="nl-email" type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Your email address" className="min-h-12 flex-1 border border-line bg-surface px-3 focus:border-accent focus:outline-none" />
-        <button type="submit" disabled={state === 'busy'} className="min-h-12 bg-accent px-5 text-sm text-white hover:bg-accent-hover disabled:opacity-70">{state === 'busy' ? 'Joining…' : 'Join'}</button>
+        <input id="nl-email" type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Your email address" className="min-h-12 min-w-0 flex-1 border border-line bg-surface px-3 focus:border-accent focus:outline-none" />
+        <button type="submit" disabled={state === 'busy'} className="min-h-12 shrink-0 bg-accent px-5 text-sm text-white hover:bg-accent-hover disabled:opacity-70">{state === 'busy' ? 'Joining…' : 'Join'}</button>
       </div>
       <label className="flex items-start gap-2 text-xs text-muted">
         <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} className="mt-0.5 h-4 w-4 shrink-0" />

@@ -31,14 +31,14 @@ export function Gallery({ images, video, name }: { images: ImageRef[]; video: st
       <ul className="hidden flex-col gap-3 lg:flex" aria-label="Choose image">
         {slides.map((s, i) => (
           <li key={i}>
-            <button onClick={() => go(i)} aria-label={s.kind === 'video' ? 'Play video' : `Image ${i + 1}`} aria-current={i === index} className={cx('glass block w-full overflow-hidden rounded-xl p-0.5 transition-all', i === index ? 'ring-2 ring-gold' : 'opacity-70 hover:opacity-100')}>
+            <button onClick={() => go(i)} aria-label={s.kind === 'video' ? 'Play video' : `Image ${i + 1}`} aria-current={i === index} className={cx('block w-full overflow-hidden rounded-md border border-line bg-surface transition-all', i === index ? 'ring-2 ring-gold' : 'opacity-70 hover:opacity-100')}>
               {s.kind === 'image' ? <span className="nacre block rounded-lg"><PearlImage image={s.image} sizes="72px" className="aspect-square w-full object-contain mix-blend-multiply" alt="" /></span> : <span className="flex aspect-square items-center justify-center bg-surface-muted text-xs">▶ Video</span>}
             </button>
           </li>
         ))}
       </ul>
       <div className="relative">
-        <div ref={track} className="glass no-scrollbar -mx-4 flex snap-x snap-mandatory overflow-x-auto p-2 lg:mx-0 lg:rounded-3xl" aria-roledescription="carousel" aria-label={`${name} images`}>
+        <div ref={track} className="no-scrollbar -mx-4 flex snap-x snap-mandatory overflow-x-auto border-line lg:mx-0 lg:rounded-md lg:border" aria-roledescription="carousel" aria-label={`${name} images`}>
           {slides.map((s, i) => (
             <div key={i} className="w-full shrink-0 snap-center" aria-roledescription="slide" aria-label={`${i + 1} of ${slides.length}`}>
               {s.kind === 'image' ? (

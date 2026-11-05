@@ -75,7 +75,6 @@ export function CinematicHero({ piece, floats = [] }: { piece: ProductCard | nul
             {piece?.videoUrl && !reduce ? (
               <video src={piece.videoUrl} poster={still ?? undefined} autoPlay muted loop playsInline preload="metadata" className="h-full w-full object-contain mix-blend-multiply" style={{ transform: `scale(${1 + y * 0.12})` }} />
             ) : still ? (
-              // eslint-disable-next-line @next/next/no-img-element
               <img src={still} alt={piece?.name ?? ''} className="h-full w-full object-contain mix-blend-multiply" />
             ) : null}
           </Link>

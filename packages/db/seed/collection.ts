@@ -73,6 +73,11 @@ export async function importClientCollection(prisma: PrismaClient, storageDir: s
         imageUrl: manifest[0]?.images[0] ? `/media/collection/${manifest[0].images[0]}` : null,
       },
     });
+    // Pieces imported by the first version of this seed were single pieces; the designs are made to order.
+    await prisma.product.updateMany({
+      where: { collectionId: collection.id, stockType: 'UNIQUE', quantity: 1, soldAt: null, sku: { startsWith: 'SP-JRP-' } },
+      data: { stockType: 'QUANTITY', quantity: 10 },
+    });
     const now = new Date();
     let made = 0;
     for (const [i, v] of manifest.entries()) {

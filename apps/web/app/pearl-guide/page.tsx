@@ -38,7 +38,7 @@ export default function PearlGuidePage() {
       <Breadcrumbs items={[{ name: 'Home', href: '/' }, { name: 'Pearl Guide' }]} />
       <PageTitle eyebrow="Pearl Guide" title="How to choose a pearl" intro="Everything we look at when we grade a pearl, in plain words, so you can choose with confidence." />
       <div className="grid gap-12 lg:grid-cols-[220px_1fr] lg:gap-16">
-        <nav aria-label="On this page" className="lg:sticky lg:top-28 lg:self-start">
+        <nav aria-label="On this page" className="lg:sticky lg:top-36 lg:self-start">
           <ul className="no-scrollbar flex gap-2 overflow-x-auto text-sm lg:flex-col lg:gap-1">
             {SECTIONS.map(([id, label]) => (
               <li key={id} className="shrink-0">

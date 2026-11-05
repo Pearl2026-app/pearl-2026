@@ -1,13 +1,12 @@
 import Link from 'next/link';
 import { HeroCarousel } from '@/components/hero-carousel';
-import { CinematicHero, HangingLine, ScrollShowcase } from '@/components/home-motion';
+import { CategoryTiles, CenterHeading, FinishTabs, OutlineLink, ProductRail, StoreHero, type StoreSlide } from '@/components/home-store';
 import { LocationGate } from '@/components/location-gate';
 import { IconFor } from '@/components/icons';
-import { ProductCard as Card, ProductGrid } from '@/components/product-card';
-import { ButtonLink, Container, SectionHeading } from '@/components/ui';
+import { Container } from '@/components/ui';
 import { JsonLd, meta, SITE_URL } from '@/lib/seo';
 import { cityFromCookie, get, pinFromCookie } from '@/lib/server-api';
-import type { ProductCard, Site } from '@/lib/types';
+import type { ProductCard } from '@/lib/types';
 
 interface Banner {
   id: string;
@@ -42,122 +41,160 @@ export const metadata = meta({
   path: '/',
 });
 
-/** A banner's button, drawn as a span because the whole banner is the link. */
-const BannerButton = ({ label, light }: { label: string; light?: boolean }) => (
-  <span
-    data-magnetic
-    className={`mt-8 inline-flex min-h-12 items-center rounded-full px-8 text-[15px] tracking-wide transition-colors ${light ? 'bg-gold text-ink group-hover:bg-white' : 'bg-ink text-white group-hover:bg-accent-hover'}`}
-  >
-    {label}
-  </span>
-);
-
 export default async function HomePage() {
-  const [h, site] = await Promise.all([
-    Promise.all([cityFromCookie(), pinFromCookie()]).then(([city, pin]) =>
-      get<Home>(`/content/home${city || pin ? `?${new URLSearchParams({ ...(city ? { city } : {}), ...(pin ? { pin } : {}) })}` : ''}`, { revalidate: 60 }),
-    ),
-    get<Site>('/site', { revalidate: 300 }),
+  const [city, pin] = await Promise.all([cityFromCookie(), pinFromCookie()]);
+  const where = new URLSearchParams({ ...(city ? { city } : {}), ...(pin ? { pin } : {}) });
+  const [h, sig] = await Promise.all([
+    get<Home>(`/content/home${where.size ? `?${where}` : ''}`, { revalidate: 60 }),
+    // The whole signature collection (51 pieces), for the banner, the tiles and the finish tabs.
+    get<{ items: ProductCard[] }>(`/catalogue/products?${new URLSearchParams({ collection: 'signature', pageSize: '60', ...Object.fromEntries(where) })}`, { revalidate: 60 }),
   ]);
   if (!h) return null;
   const heroes = h.banners.filter((b) => b.placement === 'HOME_HERO');
-  const [wide, ...tiles] = h.banners.filter((b) => b.placement === 'HOME_SECONDARY');
   const trust = h.blocks['home.trust'];
   const cta = h.blocks['home.custom_cta'];
-  const categories = site?.categories ?? [];
   // The client's own signature collection leads the page; the older stock-list photos stay in the catalogue.
-  const pool = [...(h.exclusive ?? []), ...h.featured, ...h.newest].filter((p, i, a) => a.findIndex((x) => x.id === p.id) === i);
+  const pool = [...(sig?.items ?? []), ...(h.exclusive ?? []), ...h.featured, ...h.newest].filter((p, i, a) => a.findIndex((x) => x.id === p.id) === i);
   const signature = pool.filter((p) => p.collection?.slug === 'signature' && p.images.length);
   const lead = signature.length ? signature : pool.filter((p) => p.images.length);
   const designOf = (p: { sku: string }) => p.sku.replace(/-\d+$/, '');
   const oneEach = lead.filter((p, i, a) => a.findIndex((x) => designOf(x) === designOf(p)) === i);
-  const heroPiece = lead.find((p) => p.videoUrl) ?? lead[0] ?? null;
-  const floats = oneEach.filter((p) => p.id !== heroPiece?.id).slice(0, 2);
-  const showcase = oneEach.filter((p) => p.images.length > 1 && p.id !== heroPiece?.id).slice(2, 5);
-  const line = oneEach.slice(0, 7);
-  const featuredGrid = (signature.length ? lead : h.featured).slice(0, 8);
+  const isEarring = (p: ProductCard) => p.category.slug === 'earrings';
+  const isMens = (p: ProductCard) => /^men'?s /i.test(p.name);
+  const img = (p?: ProductCard, n = 0) => p?.images[n]?.url ?? p?.images[0]?.url ?? null;
+  const ring = oneEach.find((p) => !isEarring(p) && !isMens(p));
+  const mens = oneEach.find(isMens);
+  const earring = oneEach.find(isEarring);
+  const ring2 = oneEach.filter((p) => !isEarring(p) && !isMens(p))[1];
+
+  const slides: StoreSlide[] = [
+    ring && {
+      eyebrow: 'The Signature Collection',
+      title: 'Pearls, grown in the Sahyadris.',
+      text: 'Our own designs in cultured pearl, hand-set in yellow, rose or white gold, and traced to the farm that grew them.',
+      href: signature.length ? '/collections/signature' : '/jewellery',
+      cta: 'Shop the collection',
+      image: img(ring)!,
+      dark: true,
+    },
+    earring && {
+      eyebrow: 'Earrings',
+      title: 'Studs and drops for every day.',
+      text: 'Classic studs, halos and teardrops, each with a pearl chosen by hand.',
+      href: '/jewellery/earrings',
+      cta: 'Shop earrings',
+      image: img(earring)!,
+    },
+    mens && {
+      eyebrow: 'For him',
+      title: "Men's pearl rings.",
+      text: 'Bold settings with a single pearl, made to his ring size.',
+      href: '/search?q=men',
+      cta: "Shop men's rings",
+      image: img(mens)!,
+    },
+  ].filter(Boolean) as StoreSlide[];
+
+  const categoryTiles = [
+    { label: 'Rings', href: '/jewellery/rings', image: img(ring2 ?? ring) },
+    { label: 'Earrings', href: '/jewellery/earrings', image: img(oneEach.filter(isEarring)[1] ?? earring) },
+    { label: "Men's Rings", href: '/search?q=men', image: img(oneEach.filter(isMens)[1] ?? mens) },
+    { label: 'Custom Design', href: '/customized-jewellery', image: img(oneEach[oneEach.length - 1]) },
+  ].filter((t) => t.image);
+
+  const loved = oneEach.slice(0, 10);
+  const trustItems = (trust?.data.items as Array<{ icon: string; title: string }> | undefined) ?? [
+    { icon: 'farm', title: 'Farm-traced pearls' },
+    { icon: 'certificate', title: 'Certified & verifiable' },
+    { icon: 'truck', title: 'Insured delivery' },
+    { icon: 'check', title: 'Easy returns' },
+  ];
 
   return (
     <>
       {/* The first thing a new visitor meets: where should we deliver? */}
       <LocationGate />
-      <CinematicHero piece={heroPiece} floats={floats} />
-      {featuredGrid.length > 0 && (
-        <Container className="pt-16 lg:pt-24">
-          <SectionHeading
-            eyebrow="Yellow, rose and white gold"
-            title={signature.length ? 'The Signature Collection' : 'Bestsellers'}
-            action={
-              <ButtonLink href={signature.length ? '/collections/signature' : '/jewellery'} variant="text">
-                View all
-              </ButtonLink>
-            }
-          />
-          <ProductGrid products={featuredGrid} priorityCount={2} />
-        </Container>
-      )}
-      <ScrollShowcase pieces={showcase} />
+      {slides.length > 0 ? <StoreHero slides={slides} /> : <h1 className="sr-only">Sahyadri Pearls · farm-traced pearl jewellery</h1>}
+      {slides.length === 0 && heroes.length > 0 && <HeroCarousel slides={heroes} />}
 
-      {/* Shop by category: the quickest way in. */}
-      {categories.length > 0 && (
+      {/* Why buy here, in four lines. */}
+      <div className="border-b border-line bg-surface">
+        <ul className="mx-auto grid max-w-7xl grid-cols-2 gap-y-5 px-4 py-6 lg:grid-cols-4 lg:px-8">
+          {trustItems.slice(0, 4).map((t) => (
+            <li key={t.title} className="flex items-center justify-center gap-3 text-center">
+              <IconFor name={t.icon} className="shrink-0 text-gold" width={26} height={26} />
+              <span className="text-[13px] text-ink lg:text-[14px]">{t.title}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      {categoryTiles.length > 0 && (
         <Container className="pt-14 lg:pt-20">
-          <SectionHeading eyebrow="Find your piece" title="Shop by category" />
-          <ul data-reveal className="no-scrollbar -mx-4 flex gap-4 overflow-x-auto px-4 pb-2 sm:gap-6 lg:mx-0 lg:grid lg:grid-cols-6 lg:gap-8 lg:overflow-visible lg:px-0">
-            {categories.map((c) => ({ ...c, imageUrl: oneEach.find((p) => p.category.slug === c.slug)?.images[0]?.url ?? c.imageUrl })).map((c) => (
-              <li key={c.slug} className="w-[92px] shrink-0 sm:w-28 lg:w-auto">
-                <Link
-                  href={`/jewellery/${c.slug}`}
-                  className="group flex flex-col items-center gap-3 text-center"
-                >
-                  <span data-tilt="12" className="glass block aspect-square w-full overflow-hidden rounded-full p-1.5 transition-shadow duration-500 group-hover:shadow-[0_18px_40px_-14px_rgb(184_144_66/0.6)]">
-                    {c.imageUrl && (
-                      <img
-                        src={c.imageUrl}
-                        alt=""
-                        loading="lazy"
-                        width={200}
-                        height={200}
-                        className="img-zoom h-full w-full rounded-full object-cover mix-blend-multiply"
-                      />
-                    )}
-                  </span>
-                  <span className="text-sm text-ink lg:text-[15px]">{c.name}</span>
-                </Link>
-              </li>
-            ))}
-          </ul>
+          <CenterHeading title="Shop by category" sub="Find the piece you have in mind" />
+          <CategoryTiles tiles={categoryTiles} />
         </Container>
       )}
 
-      <HangingLine pieces={line} />
-      {heroes.length > 0 && (
-        <div data-reveal className="mx-2 overflow-hidden rounded-3xl lg:mx-5">
-          <HeroCarousel slides={heroes} />
+      {loved.length > 0 && (
+        <Container className="pt-14 lg:pt-20">
+          <CenterHeading title="Most loved" sub="Our customers' favourite designs" />
+          <ProductRail products={loved} />
+          <div className="mt-9 text-center">
+            <OutlineLink href={signature.length ? '/collections/signature' : '/jewellery'}>Discover more</OutlineLink>
+          </div>
+        </Container>
+      )}
+
+      {/* Craft and origin, picture and words side by side. */}
+      <Container className="pt-16 lg:pt-24">
+        <div className="grid overflow-hidden rounded-md border border-line md:grid-cols-2">
+          <div className="nacre flex items-center justify-center">
+            {img(earring ?? ring, 1) && (
+              <img src={img(earring ?? ring, 1)!} alt="" loading="lazy" width={700} height={700} className="aspect-square w-full object-contain p-10 mix-blend-multiply md:aspect-[5/4]" />
+            )}
+          </div>
+          <div className="flex flex-col justify-center bg-ink px-6 py-12 text-white md:px-12 lg:px-20">
+            <p className="lux-track text-[12px] text-gold">Our craft</p>
+            <h2 className="mt-3 font-serif text-[30px] leading-tight lg:text-[42px]">From our pearl farms to your hands.</h2>
+            <p className="mt-4 max-w-md text-[15px] leading-relaxed text-white/80">
+              Every pearl is grown on a named farm in the Sahyadri hills and the Konkan coast, chosen by hand and set by
+              our craftsmen. Each piece comes with its certificate.
+            </p>
+            <div className="mt-7 flex flex-wrap gap-3">
+              <Link href="/our-farm" className="lux-track inline-flex min-h-11 items-center bg-gold px-8 text-ink transition-colors hover:bg-white">
+                Meet the farms
+              </Link>
+              <Link href="/pearl-guide" className="lux-track inline-flex min-h-11 items-center border border-white/60 px-8 transition-colors hover:border-gold hover:text-gold">
+                Pearl guide
+              </Link>
+            </div>
+          </div>
         </div>
+      </Container>
+
+      {signature.length > 0 && (
+        <Container className="pt-16 lg:pt-24">
+          <CenterHeading title="Shop by finish" sub="Every design comes in yellow, rose and white gold" />
+          <FinishTabs products={signature} />
+        </Container>
       )}
 
       {/* Shop by farm: every pearl comes from a named farm, so customers can start from the farm they trust. */}
       {(h.farms?.length ?? 0) > 0 && (
         <Container className="pt-16 lg:pt-24">
-          <SectionHeading
-            title="Shop by farm"
-            action={
-              <ButtonLink href="/our-farm" variant="text">
-                Meet the farms
-              </ButtonLink>
-            }
-          />
-          <ul className="no-scrollbar -mx-4 flex snap-x gap-4 overflow-x-auto px-4 pb-2 lg:mx-0 lg:grid lg:grid-cols-4 lg:gap-6 lg:overflow-visible lg:px-0">
+          <CenterHeading title="Shop by farm" sub="Start from the farm you trust" />
+          <ul className="no-scrollbar -mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-1 lg:mx-0 lg:grid lg:grid-cols-4 lg:gap-6 lg:overflow-visible lg:px-0">
             {h.farms!.map((f) => (
-              <li key={f.slug} className="w-[70%] shrink-0 snap-start sm:w-[45%] lg:w-auto">
-                <Link href={`/jewellery?farm=${encodeURIComponent(f.slug)}`} data-cursor="Explore" className="glass group block rounded-2xl p-2">
-                  <span className="nacre block aspect-[4/5] overflow-hidden rounded-xl">
+              <li key={f.slug} className="w-[62%] shrink-0 snap-start sm:w-[40%] lg:w-auto">
+                <Link href={`/jewellery?farm=${encodeURIComponent(f.slug)}`} className="group block">
+                  <span className="nacre block aspect-[4/3] overflow-hidden rounded-md">
                     {f.heroImageUrl && (
-                      <img src={f.heroImageUrl} alt="" loading="lazy" width={480} height={600} className="img-zoom h-full w-full object-cover" />
+                      <img src={f.heroImageUrl} alt="" loading="lazy" width={480} height={360} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
                     )}
                   </span>
-                  <span className="mt-3 block px-2 font-serif text-xl">{f.name}</span>
-                  <span className="block px-2 pb-2 text-sm text-muted">
+                  <span className="mt-3 block font-serif text-lg text-ink group-hover:text-gold">{f.name}</span>
+                  <span className="block text-[13px] text-muted">
                     {f.location} · {f.productCount} {f.productCount === 1 ? 'piece' : 'pieces'}
                   </span>
                 </Link>
@@ -167,149 +204,52 @@ export default async function HomePage() {
         </Container>
       )}
 
-
-      {/* Mid-page banner: picture and words side by side, the whole panel is the link. */}
-      {wide && (
-        <Container className="pt-20 lg:pt-28">
-          <Link
-            href={wide.linkUrl ?? '/jewellery'}
-            data-reveal
-            data-cursor="Shop"
-            className="glass group grid overflow-hidden rounded-3xl md:grid-cols-2"
-          >
-            <div className="nacre overflow-hidden">
-              <img
-                src={wide.imageUrl}
-                alt=""
-                loading="lazy"
-                width={800}
-                height={800}
-                className="img-zoom aspect-square h-full w-full object-cover md:aspect-auto"
-              />
-            </div>
-            <div className="flex flex-col justify-center px-6 py-12 md:px-12 lg:px-20">
-              {wide.title && <h2 className="font-serif text-4xl lg:text-6xl">{wide.title}</h2>}
-              {wide.subtitle && <p className="mt-4 text-lg text-muted">{wide.subtitle}</p>}
-              <div>
-                <BannerButton label={wide.ctaLabel ?? 'Shop now'} />
-              </div>
-            </div>
-          </Link>
-        </Container>
-      )}
-
-      {tiles.length > 0 && (
-        <Container className="pt-6">
-          <ul className="grid gap-6 md:grid-cols-2">
-            {tiles.slice(0, 2).map((b) => (
-              <li key={b.id}>
-                <Link href={b.linkUrl ?? '/jewellery'} data-reveal data-tilt="4" className="glass group block overflow-hidden rounded-3xl">
-                  <div className="nacre overflow-hidden">
-                    <img
-                      src={b.imageUrl}
-                      alt=""
-                      loading="lazy"
-                      width={800}
-                      height={600}
-                      className="img-zoom aspect-[4/3] w-full object-cover"
-                    />
-                  </div>
-                  <div className="flex items-end justify-between gap-4 px-6 py-6">
-                    <div>
-                      {b.title && <h2 className="font-serif text-3xl">{b.title}</h2>}
-                      {b.subtitle && <p className="mt-1 text-muted">{b.subtitle}</p>}
-                    </div>
-                    <span className="shrink-0 border-b border-ink pb-0.5 text-[15px] transition-colors group-hover:border-gold group-hover:text-gold">
-                      {b.ctaLabel ?? 'Shop now'}
-                    </span>
-                  </div>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </Container>
-      )}
-
-      {/* Exclusive and designer pieces: limited, premium work shown on its own. */}
-      {(h.exclusive?.length ?? 0) > 0 && (
-        <Container className="pt-16 lg:pt-24">
-          <SectionHeading
-            title="Exclusive designer pieces"
-            action={
-              <ButtonLink href="/jewellery?exclusive=1" variant="text">
-                View all
-              </ButtonLink>
-            }
-          />
-          <ProductGrid products={h.exclusive!.slice(0, 4)} />
-        </Container>
-      )}
-
-      {/* New arrivals: one row that scrolls sideways. */}
       {h.newest.length > 0 && (
-        <Container className="pt-20 lg:pt-28">
-          <SectionHeading
-            title="New arrivals"
-            action={
-              <ButtonLink href="/jewellery?sort=newest" variant="text">
-                View all
-              </ButtonLink>
-            }
-          />
-          <ul className="no-scrollbar -mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-2 lg:mx-0 lg:gap-6 lg:px-0">
-            {h.newest.map((p) => (
-              <li key={p.id} className="w-[46%] shrink-0 snap-start md:w-[31%] lg:w-[23%]">
-                <Card p={p} />
-              </li>
-            ))}
-          </ul>
+        <Container className="pt-16 lg:pt-24">
+          <CenterHeading title="New arrivals" />
+          <ProductRail products={h.newest} />
+          <div className="mt-9 text-center">
+            <OutlineLink href="/jewellery?sort=newest">View all</OutlineLink>
+          </div>
         </Container>
       )}
 
-      {/* Business buyers (B2B): their own entrance, with fixed bulk prices from a minimum order quantity. */}
-      <Container className="pt-20 lg:pt-28">
-        <Link
-          href="/business"
-          className="group flex flex-col items-start justify-between gap-6 border border-ink px-6 py-10 sm:flex-row sm:items-center lg:px-12"
-        >
-          <div>
-            <p className="eyebrow">For jewellers, resellers & corporate buyers</p>
-            <h2 className="mt-2 font-serif text-3xl lg:text-4xl">Buying in bulk? Business prices.</h2>
-            <p className="mt-2 max-w-lg text-muted">Fixed business prices from a minimum order quantity, with GST invoices in your business name.</p>
-          </div>
-          <span className="lux-track inline-flex min-h-12 shrink-0 items-center bg-ink px-8 text-white transition-colors group-hover:bg-accent-hover">
-            B2B portal →
-          </span>
-        </Link>
+      {/* Two doors: design your own, and business buying (B2B). */}
+      <Container className="pt-16 lg:pt-24">
+        <div className="grid gap-4 md:grid-cols-2 lg:gap-6">
+          <Link
+            href={cta?.data.linkUrl ?? '/customized-jewellery'}
+            className="group flex flex-col justify-center rounded-md bg-[linear-gradient(135deg,#070e4d,#47628a)] px-8 py-12 text-white lg:px-12"
+          >
+            <p className="lux-track text-[12px] text-gold">Made for you</p>
+            <h2 className="mt-2 font-serif text-[28px] leading-tight lg:text-[34px]">{cta?.title ?? 'Design your own piece'}</h2>
+            <p className="mt-2 max-w-sm text-[14px] text-white/80">Tell us what you have in mind. We design it with you.</p>
+            <span className="lux-track mt-6 inline-flex min-h-11 w-fit items-center bg-gold px-8 text-ink transition-colors group-hover:bg-white">
+              {cta?.data.linkLabel ?? 'Start a design'}
+            </span>
+          </Link>
+          <Link href="/business" className="group flex flex-col justify-center rounded-md border border-ink bg-surface px-8 py-12 lg:px-12">
+            <p className="lux-track text-[12px] text-gold">Jewellers, resellers & corporate buyers</p>
+            <h2 className="mt-2 font-serif text-[28px] leading-tight text-ink lg:text-[34px]">Buying in bulk? Business prices.</h2>
+            <p className="mt-2 max-w-sm text-[14px] text-muted">Fixed prices from a minimum order quantity, with GST invoices in your business name.</p>
+            <span className="lux-track mt-6 inline-flex min-h-11 w-fit items-center bg-ink px-8 text-white transition-colors group-hover:bg-gold group-hover:text-ink">
+              B2B portal
+            </span>
+          </Link>
+        </div>
       </Container>
 
-      {cta && (
-        <Container className="pt-20 lg:pt-28">
-          <Link
-            href={cta.data.linkUrl ?? '/customized-jewellery'}
-            data-reveal
-            className="glass-dark shine group flex flex-col items-center rounded-3xl bg-[radial-gradient(120%_120%_at_50%_0%,#47628a,#070e4d)] px-6 py-16 text-center text-white lg:py-24"
-          >
-            <h2 className="font-serif text-4xl lg:text-6xl">{cta.title}</h2>
-            <p className="mt-4 max-w-md text-white/80">
-              Tell us what you have in mind. We design it with you.
-            </p>
-            <BannerButton label={cta.data.linkLabel ?? 'Start a design'} light />
-          </Link>
-        </Container>
-      )}
-
       {h.testimonials.length > 0 && (
-        <Container className="pt-20 lg:pt-28">
-          <SectionHeading title="Loved by our customers" />
-          <ul className="grid gap-10 md:grid-cols-3">
+        <Container className="pt-16 lg:pt-24">
+          <CenterHeading title="Loved by our customers" />
+          <ul className="grid gap-4 md:grid-cols-3 lg:gap-6">
             {h.testimonials.slice(0, 3).map((t) => (
-              <li key={t.id} data-reveal data-tilt="5" className="glass rounded-2xl border-t-2 !border-t-gold p-6">
+              <li key={t.id} className="rounded-md border border-line bg-surface p-6 text-center">
                 <p aria-label={`${t.rating ?? 5} out of 5 stars`} className="text-gold">
                   {'★'.repeat(t.rating ?? 5)}
                 </p>
-                <blockquote className="mt-3 font-serif text-xl leading-relaxed">“{t.quote}”</blockquote>
-                <p className="mt-4 text-sm text-muted">
+                <blockquote className="mt-3 font-serif text-lg leading-relaxed text-ink">“{t.quote}”</blockquote>
+                <p className="mt-4 text-[13px] text-muted">
                   {t.name}
                   {t.city ? `, ${t.city}` : ''}
                 </p>
@@ -318,19 +258,7 @@ export default async function HomePage() {
           </ul>
         </Container>
       )}
-
-      {trust && (
-        <Container className="pt-20 lg:pt-28">
-          <ul data-reveal className="glass grid grid-cols-2 gap-6 rounded-3xl py-10 lg:grid-cols-4">
-            {(trust.data.items as Array<{ icon: string; title: string }>).map((t) => (
-              <li key={t.title} className="flex flex-col items-center gap-3 text-center">
-                <IconFor name={t.icon} className="text-gold" width={28} height={28} />
-                <p className="text-[15px]">{t.title}</p>
-              </li>
-            ))}
-          </ul>
-        </Container>
-      )}
+      <div className="pt-16 lg:pt-24" />
       <JsonLd
         data={{
           '@context': 'https://schema.org',

@@ -93,10 +93,10 @@ function MegaMenu({ onClose }: { onClose: () => void }) {
     );
   return (
     <div
-      className="fade-in absolute inset-x-2 top-full mt-2 hidden lg:inset-x-5 lg:block"
+      className="fade-in absolute inset-x-0 top-full hidden border-t border-line bg-bg shadow-[0_24px_40px_-24px_rgb(7_14_77/0.18)] lg:block"
       onMouseLeave={onClose}
     >
-      <div className="glass mx-auto grid max-w-7xl grid-cols-5 gap-8 rounded-2xl px-8 py-10">
+      <div className="mx-auto grid max-w-7xl grid-cols-5 gap-8 px-8 py-10">
         {col('Shop by farm', [
           ...site.farms.map((f) => ({ href: `/jewellery?farm=${encodeURIComponent(f.slug)}`, label: f.name })),
           { href: '/our-farm', label: 'Meet the farms' },
@@ -171,80 +171,66 @@ export function Header() {
       {site.demo && <DemoRibbon />}
       <Announcement />
       <header
-        className="sticky top-0 z-40 px-2 pt-2 lg:px-5 lg:pt-3"
+        className="sticky top-0 z-40 border-b border-line bg-bg/95 backdrop-blur-md"
         onKeyDown={(e) => e.key === 'Escape' && setMega(false)}
       >
-        <div className="glass mx-auto flex h-16 max-w-7xl items-center gap-2 rounded-2xl px-3 lg:h-[72px] lg:px-6">
-          <button
-            className="-ml-2 flex h-11 w-11 items-center justify-center lg:hidden"
-            onClick={() => setMenu(true)}
-            aria-label="Open menu"
-            aria-expanded={menu}
-          >
-            <MenuIcon />
-          </button>
-          <Link
-            href="/"
-            data-magnetic
-            className="flex items-center gap-2.5 font-serif text-xl tracking-wide whitespace-nowrap text-accent lg:text-[24px]"
-            aria-label="Sahyadri Pearls home"
-          >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/brand/logo.png" alt="Sahyadri Pearls" width={84} height={54} className="h-11 w-auto object-contain drop-shadow-sm lg:h-[52px]" />
-          </Link>
-          <nav aria-label="Main" className="ml-10 hidden items-center gap-7 lg:flex">
-            {NAV.map((n) =>
-              n.mega ? (
-                <div key={n.href} className="flex items-center" onMouseEnter={() => setMega(true)}>
-                  <Link
-                    href={n.href}
-                    aria-current={active(n.href) ? 'page' : undefined}
-                    className={cx(
-                      'text-[15px] transition-colors hover:text-accent',
-                      active(n.href) || mega ? 'text-accent' : 'text-ink',
-                    )}
-                  >
-                    {n.label}
-                  </Link>
-                  <button
-                    className="ml-1 flex h-8 w-6 items-center justify-center text-muted"
-                    aria-label="Show jewellery menu"
-                    aria-expanded={mega}
-                    onClick={() => setMega((m) => !m)}
-                  >
-                    <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true">
-                      <path d="M1 3l4 4 4-4" fill="none" stroke="currentColor" strokeWidth="1.3" />
-                    </svg>
-                  </button>
-                </div>
-              ) : (
-                <Link
-                  key={n.href}
-                  href={n.href}
-                  onMouseEnter={() => setMega(false)}
-                  aria-current={active(n.href) ? 'page' : undefined}
-                  className={cx(
-                    'lux-track transition-colors hover:text-accent',
-                    active(n.href) ? 'text-accent' : 'text-ink',
-                  )}
-                >
-                  {n.label}
-                </Link>
-              ),
-            )}
-          </nav>
-          <div className="ml-auto flex items-center">
-            <div className="hidden md:block">
-              <LocationPicker />
-            </div>
+        {/* Row 1: phone · logo (centred) · search and icons — the classic jewellery-store bar. */}
+        <div className="mx-auto grid h-16 max-w-7xl grid-cols-[1fr_auto_1fr] items-center px-3 lg:h-[76px] lg:px-8">
+          <div className="flex items-center">
             <button
-              className="flex h-11 w-11 items-center justify-center hover:text-accent"
-              onClick={() => setSearch((s) => !s)}
+              className="-ml-1 flex h-11 w-11 items-center justify-center lg:hidden"
+              onClick={() => setMenu(true)}
+              aria-label="Open menu"
+              aria-expanded={menu}
+            >
+              <MenuIcon />
+            </button>
+            <a href={`tel:${site.store.phone}`} className="hidden items-center gap-2 text-[13px] text-muted hover:text-accent lg:flex">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true">
+                <path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2" />
+              </svg>
+              {site.store.phone}
+            </a>
+          </div>
+          <Link href="/" className="flex items-center justify-center" aria-label="Sahyadri Pearls home">
+            <img src="/brand/logo.png" alt="Sahyadri Pearls" width={84} height={54} className="h-11 w-auto object-contain lg:h-[54px]" />
+          </Link>
+          <div className="flex items-center justify-end gap-1">
+            <form
+              role="search"
+              className="mr-2 hidden h-10 w-56 items-center gap-2 rounded-full border border-line bg-white/70 px-4 focus-within:border-gold xl:flex"
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (q.trim()) router.push(`/search?q=${encodeURIComponent(q.trim())}`);
+              }}
+            >
+              <SearchIcon className="h-4 w-4 text-muted" />
+              <input
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                placeholder="Search rings, earrings…"
+                aria-label="Search"
+                className="min-w-0 flex-1 bg-transparent text-[13px] focus:outline-none"
+              />
+            </form>
+            <button
+              className="flex h-11 w-11 items-center justify-center hover:text-accent xl:hidden"
+              onClick={() => setSearch((x) => !x)}
               aria-label="Search"
               aria-expanded={search}
             >
               <SearchIcon />
             </button>
+            <div className="hidden md:block">
+              <LocationPicker />
+            </div>
+            <Link
+              href={me ? '/account' : '/login'}
+              aria-label={me ? 'My account' : 'Sign in or sign up'}
+              className="flex h-11 w-11 items-center justify-center hover:text-accent"
+            >
+              <UserIcon />
+            </Link>
             <button
               type="button"
               onClick={openCart}
@@ -256,27 +242,40 @@ export function Header() {
               {cartCount > 0 && (
                 <span
                   key={cartCount}
-                  className="pop absolute top-1.5 right-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-accent px-1 text-[11px] text-white"
+                  className="pop absolute top-1.5 right-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-gold px-1 text-[11px] text-ink"
                 >
                   {cartCount}
                 </span>
               )}
             </button>
-            <Link
-              href={me ? '/account' : '/login'}
-              aria-label={me ? 'My account' : 'Sign in or sign up'}
-              className="ml-1 flex h-11 items-center gap-2 px-2 text-sm hover:text-accent"
-            >
-              <UserIcon />
-              <span className="hidden whitespace-nowrap sm:inline">{me ? 'Account' : 'Sign in'}</span>
-            </Link>
           </div>
         </div>
+        {/* Row 2: the categories, centred. */}
+        <nav aria-label="Main" className="hidden border-t border-line/70 lg:block">
+          <ul className="mx-auto flex h-12 max-w-7xl items-center justify-center gap-9 px-8">
+            {NAV.map((n) => (
+              <li key={n.href} className="flex h-full items-center" onMouseEnter={() => setMega(!!n.mega)}>
+                <Link
+                  href={n.href}
+                  aria-current={active(n.href) ? 'page' : undefined}
+                  aria-expanded={n.mega ? mega : undefined}
+                  className={cx(
+                    'lux-track relative flex h-full items-center transition-colors hover:text-gold',
+                    'after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 after:origin-left after:scale-x-0 after:bg-gold after:transition-transform after:duration-300 hover:after:scale-x-100',
+                    active(n.href) || (n.mega && mega) ? 'text-gold after:scale-x-100' : 'text-ink',
+                  )}
+                >
+                  {n.label}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </nav>
         {mega && <MegaMenu onClose={() => setMega(false)} />}
         {search && (
           <form
             role="search"
-            className="glass mx-auto mt-2 max-w-3xl rounded-2xl"
+            className="border-t border-line bg-bg xl:hidden"
             onSubmit={(e) => {
               e.preventDefault();
               if (q.trim()) router.push(`/search?q=${encodeURIComponent(q.trim())}`);
@@ -305,9 +304,8 @@ export function Header() {
               onClick={() => setMenu(false)}
               aria-label="Close menu"
             />
-            <div className="fade-in glass relative flex h-full w-[86%] max-w-sm flex-col overflow-y-auto rounded-r-3xl p-6">
+            <div className="fade-in relative flex h-full w-[86%] max-w-sm flex-col overflow-y-auto bg-bg p-6">
               <div className="mb-6 flex items-center justify-between">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src="/brand/logo.png" alt="Sahyadri Pearls" width={84} height={54} className="h-12 w-auto object-contain" />
                 <button
                   className="flex h-11 w-11 items-center justify-center"

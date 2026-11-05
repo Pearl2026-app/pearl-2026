@@ -183,7 +183,7 @@ export default function CartPage() {
               ))}
             </ul>
           </div>
-          <aside className="h-fit bg-surface p-6 lg:sticky lg:top-28">
+          <aside className="h-fit bg-surface p-6 lg:sticky lg:top-36">
             <h2 className="mb-4 font-serif text-2xl">Order summary</h2>
             <div className="mb-5">
               <FreeDeliveryBar subtotalPaise={cart.totals?.subtotalPaise ?? 0} />

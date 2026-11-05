@@ -171,7 +171,7 @@ export function FilterPanel({ filters, hide }: { filters: Filters; hide: string[
         {pending && <span className="text-xs text-muted">Updating…</span>}
       </div>
       <aside className="hidden lg:block" aria-label="Filters">
-        <div className="sticky top-28">
+        <div className="sticky top-36">
           <div className="flex items-center justify-between">
             <p className="font-serif text-2xl">Filter</p>
             {active.length > 0 && <button onClick={clear} className="text-sm text-accent underline">Clear all</button>}

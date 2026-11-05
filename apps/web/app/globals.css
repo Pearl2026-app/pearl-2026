@@ -158,6 +158,8 @@ body {
   background: var(--color-bg);
 }
 body::before {
+  /* The clean store look (5 Nov): no ambient colour behind the page. */
+  display: none;
   content: '';
   position: fixed;
   inset: -20vmax;
