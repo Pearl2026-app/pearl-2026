@@ -446,7 +446,7 @@ export const RESOURCES: Record<string, ResourceDef> = {
     ],
     filters: [activeFilter],
     fields: [
-      { name: 'code', label: 'Code', required: true, hint: '3–20 letters and digits, e.g. DIWALI10' },
+      { name: 'code', label: 'Code', required: true, hint: '3–20 letters and digits, no spaces, e.g. DIWALI10' },
       { name: 'description', label: 'Description shown to customers', wide: true },
       { name: 'discountType', label: 'Discount type', type: 'select', required: true, options: [{ value: 'PERCENT', label: 'Percentage' }, { value: 'FLAT', label: 'Flat amount' }] },
       { name: 'percentValue', label: 'Percentage off', type: 'percent', showIf: (v) => v.discountType === 'PERCENT', read: (r) => (r.discountType === 'PERCENT' ? r.discountValue : null) },
@@ -594,7 +594,7 @@ export const RESOURCES: Record<string, ResourceDef> = {
       { key: 'isActive', label: 'Status', render: active },
     ],
     fields: [
-      { name: 'key', label: 'Key', required: true, hint: 'e.g. ORDER_STATUS' },
+      { name: 'key', label: 'Key', required: true, hint: 'Capital letters and _ only, e.g. ORDER_STATUS.' },
       { name: 'channel', label: 'Channel', type: 'select', required: true, options: ['WHATSAPP', 'EMAIL', 'SMS', 'PUSH'].map((v) => ({ value: v, label: v })) },
       { name: 'subject', label: 'Subject (email / push title)' },
       { name: 'body', label: 'Text', type: 'textarea', required: true },

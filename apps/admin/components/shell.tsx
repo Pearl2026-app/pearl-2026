@@ -8,7 +8,7 @@ import { Button, cx, Spinner } from '@sahyadri/ui';
 import { adminPath } from '@/lib/base-path';
 import { api } from '@/lib/api';
 import { iconFor } from '@/lib/icons';
-import { infoFor, NAV } from '@/lib/nav';
+import { infoFor, NAV, pageItem } from '@/lib/nav';
 import { InfoTip } from './info-tip';
 
 /** A colour per menu section, so related pages share a colour and a page is recognised at a glance. */
@@ -97,6 +97,9 @@ export function Shell({ children }: { children: ReactNode }) {
     .map((g) => ({ ...g, items: g.items.filter((i) => !i.primary) }))
     .filter((g) => g.items.length);
   const inMore = more.some((g) => g.items.some((i) => active(i.href)));
+  // A page outside this login's menu (typed in or followed from a link) explains itself instead of failing quietly.
+  const page = pageItem(pathname);
+  const blocked = !!page && page.href !== '/' && !allowed(page);
   const link = (i: (typeof items)[number], main?: boolean) => {
     const Icon = iconFor(i.href);
     const c = colourFor(i.href);
@@ -221,7 +224,23 @@ export function Shell({ children }: { children: ReactNode }) {
               </Button>
             </div>
           </header>
-          <main className="min-w-0 flex-1 p-4 lg:p-6">{children}</main>
+          <main className="min-w-0 flex-1 p-4 lg:p-6">
+            {blocked ? (
+              <div className="max-w-xl rounded-md border border-line bg-surface p-6">
+                <h1 className="text-xl font-semibold text-ink">{page.label} is not part of your login</h1>
+                <p className="mt-2 text-sm text-muted">
+                  Your role ({ROLE_LABEL[me.role]}) does not include this page. If you need it, ask the Super Admin to add it under Staff &amp; partner logins.
+                </p>
+                {items[0] && (
+                  <Link href={items[0].href} className="mt-4 inline-flex min-h-9 items-center rounded-sm bg-accent px-3 text-sm font-medium text-white">
+                    Go to {items[0].label}
+                  </Link>
+                )}
+              </div>
+            ) : (
+              children
+            )}
+          </main>
           <footer className="border-t border-line px-6 py-3 text-xs text-muted">
             Developed by Sahyadri Pearls · © {new Date().getFullYear()} Sahyadri Pearls. All Rights Reserved.
           </footer>

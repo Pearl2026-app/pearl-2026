@@ -1,6 +1,6 @@
 'use client';
 import { useQuery } from '@tanstack/react-query';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Button, Field, Input, Select, Switch, Textarea } from '@sahyadri/ui';
 import { api, errorText } from '@/lib/api';
 import { toPaise, toRupees } from '@/lib/format';
@@ -310,6 +310,17 @@ function toLocalInput(iso: string) {
 function JsonInput({ value, onChange, ...rest }: { value: unknown; onChange: (v: unknown) => void; id: string; invalid?: boolean }) {
   const [text, setText] = useState(() => JSON.stringify(value ?? {}, null, 2));
   const [bad, setBad] = useState(false);
+  // The saved record arrives after the first render: show it, unless the text already says the same thing.
+  useEffect(() => {
+    let same = false;
+    try {
+      same = JSON.stringify(JSON.parse(text)) === JSON.stringify(value ?? {});
+    } catch {
+      same = false;
+    }
+    if (!same && !bad) setText(JSON.stringify(value ?? {}, null, 2));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value]);
   return (
     <Textarea
       {...rest}

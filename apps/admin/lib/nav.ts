@@ -143,13 +143,18 @@ export const NAV: NavGroup[] = [
   },
 ];
 
-/** The purpose of the page at this path: the closest menu entry above it. */
-export function infoFor(pathname: string): string | undefined {
+/** The menu entry a path belongs to: the closest one above it. */
+export function pageItem(pathname: string): NavItem | undefined {
   let best: NavItem | undefined;
   for (const g of NAV)
     for (const i of g.items) {
       const hit = i.href === '/' ? pathname === '/' : pathname === i.href || pathname.startsWith(i.href + '/');
       if (hit && (!best || i.href.length > best.href.length)) best = i;
     }
-  return best?.info;
+  return best;
+}
+
+/** The purpose of the page at this path: the closest menu entry above it. */
+export function infoFor(pathname: string): string | undefined {
+  return pageItem(pathname)?.info;
 }
