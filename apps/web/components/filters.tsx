@@ -6,6 +6,7 @@ import type { Filters } from '@/lib/types';
 import { CloseIcon } from './icons';
 
 const SORTS = [
+  { value: 'recommended', label: 'Recommended' },
   { value: 'newest', label: 'Newest' },
   { value: 'price_asc', label: 'Price: low to high' },
   { value: 'price_desc', label: 'Price: high to low' },
@@ -35,7 +36,7 @@ export function SortSelect() {
   return (
     <label className="flex items-center gap-2 text-sm">
       <span className="text-muted">Sort</span>
-      <select value={sp.get('sort') ?? 'newest'} onChange={(e) => update({ sort: e.target.value === 'newest' ? null : e.target.value })} className="min-h-11 border border-line bg-surface px-3">
+      <select value={sp.get('sort') ?? 'recommended'} onChange={(e) => update({ sort: e.target.value === 'recommended' ? null : e.target.value })} className="min-h-11 border border-line bg-surface px-3">
         {SORTS.map((s) => (
           <option key={s.value} value={s.value}>{s.label}</option>
         ))}

@@ -24,8 +24,8 @@ export function PageTitle({ eyebrow, title, intro }: { eyebrow?: string; title: 
   return (
     <div className="fade-in max-w-3xl py-6 lg:py-10">
       {eyebrow && <p className="eyebrow mb-3">{eyebrow}</p>}
-      <h1 className="font-serif text-4xl leading-tight text-ink lg:text-[56px]">{title}</h1>
-      <span aria-hidden className="mt-5 block h-px w-24 bg-gradient-to-r from-gold to-transparent" />
+      <h1 className="font-serif text-[32px] leading-tight text-ink lg:text-[44px]">{title}</h1>
+      <span aria-hidden className="mt-5 block h-px w-14 bg-gold" />
       {intro && <div className="mt-4 text-lg leading-relaxed text-muted">{intro}</div>}
     </div>
   );
@@ -48,12 +48,12 @@ export function SectionHeading({ eyebrow, title, action }: { eyebrow?: string; t
 export function ButtonLink({ href, children, variant = 'solid', className = '' }: { href: string; children: ReactNode; variant?: 'solid' | 'outline' | 'text'; className?: string }) {
   const cls =
     variant === 'solid'
-      ? 'rounded-full bg-accent text-white hover:bg-accent-hover shine'
+      ? 'bg-accent text-white hover:bg-gold hover:text-ink'
       : variant === 'outline'
-        ? 'rounded-full border border-ink/40 text-ink hover:bg-ink hover:text-white'
+        ? 'border border-ink text-ink hover:bg-ink hover:text-white'
         : 'text-accent underline-offset-4 hover:underline';
   return (
-    <Link href={href} data-magnetic={variant === 'text' ? undefined : ''} className={`lux-track inline-flex min-h-12 items-center justify-center px-7 transition-colors ${variant === 'text' ? 'px-0 no-underline hover:text-ink' : ''} ${cls} ${className}`}>
+    <Link href={href} className={`lux-track inline-flex min-h-12 items-center justify-center px-7 transition-colors ${variant === 'text' ? 'px-0 no-underline hover:text-ink' : ''} ${cls} ${className}`}>
       {children}
     </Link>
   );

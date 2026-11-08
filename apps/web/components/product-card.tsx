@@ -42,12 +42,12 @@ export function ProductCard({ p, priority }: { p: Card; priority?: boolean }) {
               className="absolute inset-0 aspect-square h-full w-full object-contain p-4 opacity-0 mix-blend-multiply transition-opacity duration-500 group-hover:opacity-100"
             />
           )}
-          {p.isSold && <span className="absolute top-2.5 left-2.5 rounded-sm bg-ink px-2 py-0.5 text-[11px] text-white">Sold</span>}
+          {p.isSold && <span className="lux-track absolute top-3 left-3 text-[10px] text-ink">Sold</span>}
           {!p.isSold && p.isExclusive && (
             <span className="lux-track absolute top-3 left-3 text-[10px] text-gold">Exclusive</span>
           )}
           {!p.isSold && !p.isExclusive && p.isUnique && (
-            <span className="absolute top-2.5 left-2.5 rounded-sm bg-gold px-2 py-0.5 text-[11px] text-ink">One of a kind</span>
+            <span className="lux-track absolute top-3 left-3 text-[10px] text-muted">One of a kind</span>
           )}
         </div>
         <div className="flex flex-col gap-1 px-0.5">

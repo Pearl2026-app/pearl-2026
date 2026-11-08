@@ -77,7 +77,7 @@ export function LocationGate() {
   if (!open) return null;
   return (
     <div role="dialog" aria-modal="true" aria-label="Where should we deliver?" className="fixed inset-0 z-50 flex items-end justify-center bg-ink/40 p-4 backdrop-blur-sm sm:items-center">
-      <div className="fade-in glass w-full max-w-md rounded-3xl p-7 text-center sm:p-9">
+      <div className="fade-in w-full max-w-md rounded-md border border-line bg-surface p-7 text-center shadow-[0_30px_60px_-30px_rgb(7_14_77/0.4)] sm:p-9">
         <img src="/brand/logo.png" alt="" width={110} height={70} className="mx-auto mb-4 h-16 w-auto object-contain" />
         <h2 className="font-serif text-2xl">Where should we deliver?</h2>
         <p className="mt-2 text-sm text-muted">We show only the pieces available at your address.</p>
@@ -92,7 +92,7 @@ export function LocationGate() {
             onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))}
             className="min-h-12 w-full rounded-full border border-white/70 bg-white/60 px-4 text-center text-lg tracking-[0.2em] focus:border-gold focus:outline-none"
           />
-          <button type="submit" disabled={busy} data-magnetic className="lux-track min-h-12 shrink-0 rounded-full bg-accent px-6 text-white hover:bg-accent-hover disabled:opacity-60">
+          <button type="submit" disabled={busy} className="lux-track min-h-12 shrink-0 bg-accent px-6 text-white hover:bg-accent-hover disabled:opacity-60">
             {busy ? '…' : 'Show'}
           </button>
         </form>

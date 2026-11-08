@@ -29,7 +29,7 @@ export const productQuery = z.object({
   inStock: z.enum(['true']).optional(),
   exclusive: z.enum(['true']).optional(),
   ids: csvList,
-  sort: z.enum(['newest', 'price_asc', 'price_desc', 'carat_asc', 'carat_desc', 'featured']).default('newest'),
+  sort: z.enum(['recommended', 'newest', 'price_asc', 'price_desc', 'carat_asc', 'carat_desc', 'featured']).default('recommended'),
   page: z.coerce.number().int().min(1).default(1),
   pageSize: z.coerce.number().int().min(1).max(60).default(24),
 });
@@ -198,11 +198,14 @@ export class PublicCatalogueController {
               ? [{ caratWeight: { sort: 'desc', nulls: 'last' } }]
               : q.sort === 'featured'
                 ? [{ isFeatured: 'desc' }, { sortOrder: 'asc' }]
-                : [{ publishedAt: 'desc' }];
+                : q.sort === 'newest'
+                  ? [{ publishedAt: 'desc' }]
+                  : // Recommended (the default): the house collections first, in their admin order, then featured, then new.
+                    [{ collection: { sortOrder: 'asc' } }, { isFeatured: 'desc' }, { publishedAt: 'desc' }];
     // Sold pieces go last so the grid leads with what can be bought.
     const total = await this.prisma.product.count({ where });
     let rows: CardRow[];
-    if (ranked && q.sort === 'newest') {
+    if (ranked && q.sort === 'recommended') {
       const all = await this.prisma.product.findMany({ where, select: CARD_SELECT });
       const pos = new Map(ranked.map((id, i) => [id, i]));
       all.sort((a, b) => (pos.get(a.id) ?? 0) - (pos.get(b.id) ?? 0));

@@ -107,7 +107,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
               </Link>
             )}
             {p.isExclusive && (
-              <Link href="/jewellery?exclusive=1" className="mt-2 inline-block rounded-full bg-ink px-3 py-1 text-xs tracking-wide text-white">
+              <Link href="/jewellery?exclusive=1" className="lux-track mt-2 inline-block border border-gold px-3 py-1 text-[11px] text-gold">
                 Exclusive designer piece
               </Link>
             )}
