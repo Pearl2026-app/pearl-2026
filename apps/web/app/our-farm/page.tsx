@@ -1,14 +1,17 @@
 import Link from 'next/link';
 import { Breadcrumbs, Container, PageTitle } from '@/components/ui';
 import { meta } from '@/lib/seo';
-import { get } from '@/lib/server-api';
+import { cityFromCookie, get, pinFromCookie } from '@/lib/server-api';
 
 export const metadata = meta({ title: 'Our Farms', description: 'Where our pearls grow: farms in the Sahyadri hills and on the Konkan coast.', path: '/our-farm' });
 
 interface Farm { id: string; name: string; slug: string; location: string; summary: string | null; heroImageUrl: string | null; _count: { products: number } }
 
 export default async function FarmsPage() {
-  const farms = (await get<Farm[]>('/catalogue/farms', { revalidate: 300 })) ?? [];
+  // Counts follow the shopper's city and PIN code, like the catalogue.
+  const [city, pin] = await Promise.all([cityFromCookie(), pinFromCookie()]);
+  const where = new URLSearchParams({ ...(city ? { city } : {}), ...(pin ? { pin } : {}) }).toString();
+  const farms = (await get<Farm[]>(`/catalogue/farms${where ? `?${where}` : ''}`, { revalidate: 300 })) ?? [];
   return (
     <Container>
       <Breadcrumbs items={[{ name: 'Home', href: '/' }, { name: 'Our Farm' }]} />
