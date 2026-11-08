@@ -44,6 +44,11 @@ describe('catalogue', () => {
     await http().get(api('/catalogue/products?q=near-round')).expect(200);
   });
 
+  it('a bad list query is a 400, not a server error', async () => {
+    const r = await http().get(api('/catalogue/products?pageSize=5000&sort=nonsense')).expect(400);
+    expect(r.body.code).toBe('VALIDATION_FAILED');
+  });
+
   it('banner links must be a page on this site or an https address', async () => {
     const admin = bearer(await tokenFor('superAdmin'));
     const base = { placement: 'HOME_HERO', imageUrl: '/media/x.svg', title: 'T' };

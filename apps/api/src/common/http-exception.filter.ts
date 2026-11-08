@@ -2,7 +2,7 @@ import { ArgumentsHost, Catch, ExceptionFilter, HttpException, HttpStatus, Logge
 import { Prisma } from '@sahyadri/db';
 import type { Response } from 'express';
 import { ZodValidationException } from 'nestjs-zod';
-import type { ZodError } from 'zod';
+import { ZodError } from 'zod';
 
 /** One error shape everywhere: { code, message, fields? }. */
 @Catch()
@@ -13,8 +13,9 @@ export class AllExceptionsFilter implements ExceptionFilter {
     const res = host.switchToHttp().getResponse<Response>();
     if (res.headersSent) return;
 
-    if (exception instanceof ZodValidationException) {
-      const err = exception.getZodError() as ZodError;
+    // A body checked by the validation pipe, or a query/body parsed by hand in a controller (e.g. ?pageSize=500).
+    if (exception instanceof ZodValidationException || exception instanceof ZodError) {
+      const err = (exception instanceof ZodError ? exception : exception.getZodError()) as ZodError;
       const fields: Record<string, string> = {};
       for (const i of err.issues) fields[i.path.join('.') || '_'] ??= i.message;
       res.status(400).json({ code: 'VALIDATION_FAILED', message: 'Please check the highlighted fields.', fields });
