@@ -2,6 +2,7 @@
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useState, useTransition } from 'react';
 import { cx } from '@sahyadri/ui';
+import type { ReactNode } from 'react';
 import type { Filters } from '@/lib/types';
 import { CloseIcon } from './icons';
 
@@ -77,7 +78,7 @@ function Chips({ name, options, label }: { name: string; options: Array<{ value:
   );
 }
 
-function Range({ label, minKey, maxKey, unit, bounds }: { label: string; minKey: string; maxKey: string; unit: string; bounds: { min: number; max: number } }) {
+function Range({ label, minKey, maxKey, unit, bounds, children }: { label: string; minKey: string; maxKey: string; unit: string; bounds: { min: number; max: number }; children?: ReactNode }) {
   const { sp, update } = useParamsUpdate();
   const [min, setMin] = useState(sp.get(minKey) ?? '');
   const [max, setMax] = useState(sp.get(maxKey) ?? '');
@@ -88,6 +89,7 @@ function Range({ label, minKey, maxKey, unit, bounds }: { label: string; minKey:
   return (
     <fieldset className="border-b border-line py-5">
       <legend className="eyebrow mb-3">{label}</legend>
+      {children}
       <form className="flex items-center gap-2" onSubmit={(e) => (e.preventDefault(), update({ [minKey]: min || null, [maxKey]: max || null }))}>
         <input aria-label={`Minimum ${label}`} inputMode="decimal" placeholder={`${unit}${Math.floor(bounds.min)}`} value={min} onChange={(e) => setMin(e.target.value)} className="min-h-11 w-full border border-line bg-surface px-2 text-sm" />
         <span className="text-muted">–</span>
@@ -112,7 +114,7 @@ function CaratBands() {
   const min = sp.get('carat_min');
   const max = sp.get('carat_max');
   return (
-    <div className="flex flex-wrap gap-2 pb-1 pt-5">
+    <div className="mb-3 flex flex-wrap gap-2">
       {CARAT_BANDS.map((b) => {
         const on = min === b.min && max === b.max;
         return (
@@ -136,8 +138,9 @@ function Panel({ filters, hide }: { filters: Filters; hide: string[] }) {
   return (
     <div>
       {!hide.includes('farm') && <Chips name="farm" label="Farm" options={filters.farms.map((c) => ({ value: c.slug, label: c.name, count: c.count }))} />}
-      <CaratBands />
-      <Range label="Carat" minKey="carat_min" maxKey="carat_max" unit="" bounds={filters.carat} />
+      <Range label="Carat" minKey="carat_min" maxKey="carat_max" unit="" bounds={filters.carat}>
+        <CaratBands />
+      </Range>
       {!hide.includes('category') && <Chips name="category" label="Category" options={filters.categories.map((c) => ({ value: c.slug, label: c.name, count: c.count }))} />}
       {!hide.includes('collection') && <Chips name="collection" label="Collection" options={filters.collections.map((c) => ({ value: c.slug, label: c.name, count: c.count }))} />}
       <Chips name="shape" label="Shape" options={filters.shapes} />

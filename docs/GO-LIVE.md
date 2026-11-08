@@ -94,7 +94,7 @@ Then open **Deployments**, click **⋯** on the top one and choose **Redeploy**.
 | What | Why | Where |
 |---|---|---|
 | Razorpay live keys | Card/UPI payments. Without them, customers can still enquire on WhatsApp. | Vercel variables `PAYMENT_PROVIDER=razorpay`, `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, `RAZORPAY_WEBHOOK_SECRET`; webhook URL `https://<site>/api/v1/webhooks/payment` |
-| SMS provider (DLT registered) | Customers sign in with a code sent to their phone. | `SMS_PROVIDER=http` and the `SMS_*` variables. Tell Claude which provider you choose (MSG91, Fast2SMS…) to connect it. |
+| SMS provider (DLT registered) | Customer accounts sign in with a code sent to their phone. Guest checkout works without it. | `SMS_PROVIDER=http` and the `SMS_*` variables. Tell Claude which provider you choose (MSG91, Fast2SMS…) to connect it. |
 | Domain | The real address. | Vercel → Settings → Domains (the site picks up the new address by itself on the next deploy) |
 
 ### Optional extras
