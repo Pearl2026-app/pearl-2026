@@ -164,6 +164,57 @@ function SortableImage({ img, onMain, onRemove, disabled }: { img: Img; onMain: 
   );
 }
 
+/** Copy a piece as a draft, for the same franchise, head office stock or another franchise. */
+function DuplicateButton({ product }: { product: Product }) {
+  const router = useRouter();
+  const toast = useToast();
+  const [open, setOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const current = (product.franchiseId as string | null) ?? '';
+  const [target, setTarget] = useState(current);
+  const franchises = useQuery({
+    queryKey: ['ref', '/admin/franchises', { isActive: 'true' }, 'dup'],
+    queryFn: () => api<{ items: Array<{ id: string; name: string }> }>('/admin/franchises?pageSize=200&isActive=true'),
+    enabled: open,
+    staleTime: 60_000,
+  });
+  if (!open)
+    return (
+      <Button size="sm" variant="secondary" onClick={() => { setTarget(current); setOpen(true); }}>
+        Duplicate
+      </Button>
+    );
+  const copy = async () => {
+    setBusy(true);
+    try {
+      const c = await api<{ id: string; sku: string }>(`/admin/products/${product.id}/duplicate`, { method: 'POST', json: { franchiseId: target || null } });
+      toast(`Copied as ${c.sku} (draft).`);
+      setOpen(false);
+      router.push(`/products/${c.id}`);
+    } catch (e) {
+      toast(errorText(e), 'danger');
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <span className="flex flex-wrap items-center gap-2 rounded-sm border border-line bg-surface px-2 py-1">
+      <label className="text-xs text-muted" htmlFor="dup-franchise">Copy for</label>
+      <select id="dup-franchise" className="min-h-8 rounded-sm border border-line bg-surface px-2 text-sm" value={target} onChange={(e) => setTarget(e.target.value)}>
+        <option value="">Head office (shown everywhere)</option>
+        {(franchises.data?.items ?? []).map((f) => (
+          <option key={f.id} value={f.id}>
+            {f.name}
+            {f.id === current ? ' (same as this piece)' : ''}
+          </option>
+        ))}
+      </select>
+      <Button size="sm" loading={busy} onClick={copy}>Make copy</Button>
+      <button type="button" className="text-xs text-muted underline" onClick={() => setOpen(false)}>cancel</button>
+    </span>
+  );
+}
+
 export default function ProductEditPage() {
   const { id } = useParams<{ id: string }>();
   const isNew = id === 'new';
@@ -336,23 +387,7 @@ export default function ProductEditPage() {
               {p.status !== 'PUBLISHED' && !p.archivedAt && p.status !== 'PENDING_APPROVAL' && <Button size="sm" onClick={() => action.mutate({ path: '/publish' })}>Publish</Button>}
               {p.status === 'PUBLISHED' && <Button size="sm" variant="secondary" onClick={() => action.mutate({ path: '/unpublish' })}>Unpublish</Button>}
               {p.soldAt && <Button size="sm" variant="secondary" onClick={() => window.confirm('Put this piece back on sale?') && action.mutate({ path: '/restock' })}>Restock</Button>}
-              {me?.role !== 'VENDOR' && !isNew && (
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  onClick={async () => {
-                    try {
-                      const copy = await api<{ id: string; sku: string }>(`/admin/products/${id}/duplicate`, { method: 'POST', json: {} });
-                      toast(`Copied as ${copy.sku} (draft).`);
-                      router.push(`/products/${copy.id}`);
-                    } catch (e) {
-                      toast(errorText(e), 'danger');
-                    }
-                  }}
-                >
-                  Duplicate
-                </Button>
-              )}
+              {me?.role !== 'VENDOR' && !isNew && <DuplicateButton product={p} />}
               {p.archivedAt ? (
                 <Button size="sm" variant="secondary" onClick={() => action.mutate({ path: '/restore' })}>Restore</Button>
               ) : (

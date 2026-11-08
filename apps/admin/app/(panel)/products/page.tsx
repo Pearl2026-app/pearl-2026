@@ -38,6 +38,8 @@ function Products() {
   const { data: farms } = useRefOptions({ path: '/admin/farms' });
   const can = useCan();
   const { data: me } = useMe();
+  const headOffice = me?.role === 'SUPER_ADMIN' || me?.role === 'STAFF';
+  const { data: franchises } = useRefOptions(headOffice ? { path: '/admin/franchises' } : undefined);
   const [q, setQ] = useState(params.q ?? '');
   useEffect(() => setQ(params.q ?? ''), [params.q]);
   const bulk = useRef<HTMLInputElement>(null);
@@ -123,6 +125,17 @@ function Products() {
             </option>
           ))}
         </Select>
+        {headOffice && !!franchises?.items.length && (
+          <Select aria-label="Franchise" className="max-w-48" value={params.franchiseId ?? ''} onChange={(e) => set({ franchiseId: e.target.value || undefined })}>
+            <option value="">Any franchise</option>
+            <option value="none">Head office stock</option>
+            {franchises.items.map((f) => (
+              <option key={String(f.id)} value={String(f.id)}>
+                {String(f.name)}
+              </option>
+            ))}
+          </Select>
+        )}
         <Select aria-label="Stock" className="max-w-40" value={params.outOfStock ?? ''} onChange={(e) => set({ outOfStock: e.target.value || undefined })}>
           <option value="">Any stock</option>
           <option value="true">Out of stock</option>
