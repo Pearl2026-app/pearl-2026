@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
 import { Button, Field, Input, Select, Switch, Textarea } from '@sahyadri/ui';
 import { api, errorText } from '@/lib/api';
-import { toPaise, toRupees } from '@/lib/format';
+import { humanize, toPaise, toRupees } from '@/lib/format';
 import { useCan } from '@/lib/session';
 
 export type FieldType =
@@ -22,6 +22,7 @@ export type FieldType =
   | 'date'
   | 'datetime'
   | 'json'
+  | 'content'
   | 'list'
   | 'pincodes';
 
@@ -271,6 +272,8 @@ export function FieldInput({ def, value, onChange, error }: { def: FieldDef; val
             );
           case 'json':
             return <JsonInput {...common} value={value} onChange={onChange} />;
+          case 'content':
+            return <ContentInput id={id} value={value} onChange={onChange} />;
           case 'pincodes':
             return <PincodesInput {...common} value={value} onChange={onChange} />;
           default:
@@ -338,5 +341,91 @@ function JsonInput({ value, onChange, ...rest }: { value: unknown; onChange: (v:
         }
       }}
     />
+  );
+}
+
+const isRecord = (x: unknown): x is Record<string, unknown> => !!x && typeof x === 'object' && !Array.isArray(x);
+/** linkUrl → "Link", linkLabel → "Link label", openingHours → "Opening hours". */
+const fieldLabel = (k: string) => humanize((k.replace(/Url$/, '') || k).replace(/([a-z])([A-Z])/g, '$1 $2'));
+
+/** One text value: a box sized to the text (long text and "body" get a paragraph box). */
+function TextValue({ k, value, onChange }: { k: string; value: string; onChange: (v: string) => void }) {
+  return value.length > 70 || k === 'body' || k === 'text' ? <Textarea rows={k === 'body' ? 5 : 3} value={value} onChange={(e) => onChange(e.target.value)} /> : <Input value={value} onChange={(e) => onChange(e.target.value)} />;
+}
+
+/** A list of similar entries (trust points, links…): each entry's text fields, with add and remove. */
+function ItemsValue({ items, onChange }: { items: Array<Record<string, unknown>>; onChange: (v: Array<Record<string, unknown>>) => void }) {
+  const keys = [...new Set(items.flatMap((i) => Object.keys(i)))];
+  const setItem = (n: number, k: string, v: unknown) => onChange(items.map((it, j) => (j === n ? { ...it, [k]: v } : it)));
+  return (
+    <div className="flex flex-col gap-2">
+      {items.map((it, n) => (
+        <div key={n} className="grid gap-2 rounded-sm border border-line bg-surface-muted/40 p-2 md:grid-cols-2">
+          {keys.map((k) => (
+            <label key={k} className="text-xs text-muted">
+              {fieldLabel(k)}
+              {typeof (it[k] ?? '') === 'string' ? <TextValue k={k} value={String(it[k] ?? '')} onChange={(v) => setItem(n, k, v)} /> : <Input value={JSON.stringify(it[k])} disabled />}
+            </label>
+          ))}
+          <div className="flex gap-3 text-xs md:col-span-2">
+            {n > 0 && <button type="button" className="text-accent underline" onClick={() => onChange(items.map((x, j) => (j === n - 1 ? items[n]! : j === n ? items[n - 1]! : x)))}>Move up</button>}
+            <button type="button" className="text-danger underline" onClick={() => onChange(items.filter((_, j) => j !== n))}>Remove</button>
+          </div>
+        </div>
+      ))}
+      <div>
+        <Button type="button" size="sm" variant="secondary" onClick={() => onChange([...items, Object.fromEntries(keys.map((k) => [k, '']))])}>Add an entry</Button>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * The text of a home or page block as a plain form: each text becomes a box, each list a set of entries. Anything
+ * unusual (and adding new fields) stays possible under "Edit as JSON".
+ */
+function ContentInput({ id, value, onChange }: { id: string; value: unknown; onChange: (v: unknown) => void }) {
+  const [raw, setRaw] = useState(false);
+  const [newKey, setNewKey] = useState('');
+  const data = isRecord(value) ? value : {};
+  const keys = Object.keys(data);
+  const set = (k: string, v: unknown) => onChange({ ...data, [k]: v });
+  if (raw)
+    return (
+      <div className="flex flex-col gap-2">
+        <JsonInput id={id} value={value} onChange={onChange} />
+        <button type="button" className="self-start text-xs text-accent underline" onClick={() => setRaw(false)}>Back to the simple editor</button>
+      </div>
+    );
+  return (
+    <div id={id} className="flex flex-col gap-3 rounded-sm border border-line p-3">
+      {keys.length === 0 && <p className="text-sm text-muted">No text yet. Add a field below.</p>}
+      {keys.map((k) => {
+        const v = data[k];
+        return (
+          <div key={k} className="text-sm">
+            <p className="mb-1 font-medium">{fieldLabel(k)}</p>
+            {typeof v === 'string' ? (
+              <TextValue k={k} value={v} onChange={(x) => set(k, x)} />
+            ) : typeof v === 'number' ? (
+              <Input type="number" value={String(v)} onChange={(e) => set(k, e.target.value === '' ? 0 : Number(e.target.value))} className="max-w-32" />
+            ) : typeof v === 'boolean' ? (
+              <Switch checked={v} onChange={(x) => set(k, x)} label={v ? 'Yes' : 'No'} />
+            ) : Array.isArray(v) && v.every((x) => typeof x === 'string') ? (
+              <Textarea rows={3} value={(v as string[]).join('\n')} onChange={(e) => set(k, e.target.value.split('\n'))} />
+            ) : Array.isArray(v) && v.every(isRecord) ? (
+              <ItemsValue items={v as Array<Record<string, unknown>>} onChange={(x) => set(k, x)} />
+            ) : (
+              <p className="text-xs text-muted">Edit this one under “Edit as JSON”.</p>
+            )}
+          </div>
+        );
+      })}
+      <div className="flex flex-wrap items-center gap-2 border-t border-line pt-3">
+        <Input aria-label="New field name" placeholder="New text field, e.g. subtitle" value={newKey} onChange={(e) => setNewKey(e.target.value.replace(/[^A-Za-z0-9_]/g, ''))} className="max-w-56" />
+        <Button type="button" size="sm" variant="secondary" disabled={!newKey || newKey in data} onClick={() => { set(newKey, ''); setNewKey(''); }}>Add field</Button>
+        <button type="button" className="ml-auto text-xs text-muted underline" onClick={() => setRaw(true)}>Edit as JSON (advanced)</button>
+      </div>
+    </div>
   );
 }

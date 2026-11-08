@@ -318,7 +318,7 @@ export const RESOURCES: Record<string, ResourceDef> = {
       { name: 'key', label: 'Key', required: true, hint: 'Where it appears, e.g. home.story' },
       { name: 'kind', label: 'Kind', type: 'select', required: true, options: ['HERO', 'RICH_TEXT', 'TRUST_POINTS', 'FEATURED_PRODUCTS', 'FEATURED_COLLECTIONS', 'STORY', 'CTA'].map((k) => ({ value: k, label: k })) },
       { name: 'title', label: 'Title' },
-      { name: 'data', label: 'Content', type: 'json', hint: 'Text, links and items for this block.' },
+      { name: 'data', label: 'Content', type: 'content', wide: true, hint: 'The text, links and entries this block shows. Changes appear on the website when saved.' },
       { name: 'sortOrder', label: 'Sort order', type: 'number' },
       { name: 'isActive', label: 'Active', type: 'switch' },
     ],
