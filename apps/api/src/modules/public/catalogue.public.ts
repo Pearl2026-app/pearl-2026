@@ -103,6 +103,21 @@ export function toCard(p: CardRow) {
  * code is one allotted to it, or, when they have not given a PIN code, their city is one the franchise serves.
  */
 export function publicWhere(cityId?: string | null, pin?: string | null): Prisma.ProductWhereInput {
+  return {
+    status: 'PUBLISHED',
+    archivedAt: null,
+    // Business-only pieces are shown to approved business buyers in their account, not in the public store.
+    b2bOnly: false,
+    category: { isActive: true, archivedAt: null },
+    ...deliverableWhere(cityId, pin),
+  };
+}
+
+/**
+ * Where a piece may go: the location half of publicWhere, also used by the cart and checkout so a piece seen in one
+ * place (or added before the shopper changed city or PIN code) is not sold to an address outside its area.
+ */
+export function deliverableWhere(cityId?: string | null, pin?: string | null): Prisma.ProductWhereInput {
   const code = cleanPin(pin);
   const cityRule: Prisma.ProductWhereInput = cityId
     ? {
@@ -114,14 +129,7 @@ export function publicWhere(cityId?: string | null, pin?: string | null): Prisma
       }
     : {};
   const area: Prisma.FranchiseWhereInput = code ? { pincodes: { has: code } } : cityId ? { OR: [{ cityId }, { cities: { some: { cityId } } }] } : {};
-  return {
-    status: 'PUBLISHED',
-    archivedAt: null,
-    // Business-only pieces are shown to approved business buyers in their account, not in the public store.
-    b2bOnly: false,
-    category: { isActive: true, archivedAt: null },
-    OR: [{ franchiseId: null, ...cityRule }, { franchise: { isActive: true, ...area } }],
-  };
+  return { OR: [{ franchiseId: null, ...cityRule }, { franchise: { isActive: true, ...area } }] };
 }
 
 /** Whether a franchise's piece is for this shopper: same rule as publicWhere, for one product already loaded. */

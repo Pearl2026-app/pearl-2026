@@ -18,6 +18,8 @@ import { OrdersService } from './orders.service';
 import { PaymentsService } from './payments.service';
 import { StockService } from './stock.service';
 
+/** The shopper's chosen PIN code: the website keeps it in the sp_pin cookie; apps may send it in the body or query. */
+const shopperPin = (req: Request, given?: string | null) => given ?? (req as Request & { cookies?: Record<string, string> }).cookies?.sp_pin ?? null;
 const cartToken = (req: Request) => ((req.headers['x-cart-token'] as string | undefined) ?? (req as Request & { cookies?: Record<string, string> }).cookies?.[CART_COOKIE] ?? null);
 
 function setCartCookie(res: Response, token: string | null) {
@@ -41,10 +43,10 @@ export class CartController {
 
   @Public()
   @Get()
-  async get(@CurrentUser() user: AuthUser | null, @Req() req: Request, @Res({ passthrough: true }) res: Response, @Query('city') citySlug?: string) {
+  async get(@CurrentUser() user: AuthUser | null, @Req() req: Request, @Res({ passthrough: true }) res: Response, @Query('city') citySlug?: string, @Query('pin') pin?: string) {
     const cart = await this.carts.resolve(user, cartToken(req), false);
     setCartCookie(res, cart?.guestToken ?? null);
-    return this.carts.view(cart, user, await cityIdFrom(this.prisma, { citySlug }));
+    return this.carts.view(cart, user, await cityIdFrom(this.prisma, { citySlug }), { pin: shopperPin(req, pin) });
   }
 
   @Public()
@@ -159,12 +161,12 @@ export class CheckoutController {
   @Post('checkout/quote')
   @HttpCode(200)
   @Throttle({ default: { limit: limit(20), ttl: 60_000 } })
-  async quote(@CurrentUser() user: AuthUser | null, @Req() req: Request, @Body(new ZodValidationPipe(z.object({ cityId: z.string().optional(), citySlug: z.string().optional(), phone: indianMobile.optional(), name: z.string().trim().min(2).max(120).optional(), useWallet: z.boolean().optional() }))) dto: { cityId?: string; citySlug?: string; phone?: string; name?: string; useWallet?: boolean }) {
+  async quote(@CurrentUser() user: AuthUser | null, @Req() req: Request, @Body(new ZodValidationPipe(z.object({ cityId: z.string().optional(), citySlug: z.string().optional(), pincode: z.string().trim().max(10).optional(), phone: indianMobile.optional(), name: z.string().trim().min(2).max(120).optional(), useWallet: z.boolean().optional() }))) dto: { cityId?: string; citySlug?: string; pincode?: string; phone?: string; name?: string; useWallet?: boolean }) {
     const cart = await this.carts.resolve(user, cartToken(req), false);
     const cityId = await cityIdFrom(this.prisma, dto);
     if (cart && (dto.phone || cityId)) await this.carts.setContact(cart, { phone: dto.phone, name: dto.name, cityId });
     const fresh = cart ? await this.prisma.cart.findUnique({ where: { id: cart.id } }) : null;
-    const view = await this.carts.view(fresh, user, cityId, { redeemWallet: !!dto.useWallet });
+    const view = await this.carts.view(fresh, user, cityId, { redeemWallet: !!dto.useWallet, pin: shopperPin(req, dto.pincode) });
     return { ...view, paymentMethods: { ...('paymentMethods' in view ? view.paymentMethods : {}), online: ('paymentMethods' in view && view.paymentMethods?.online && this.payments.onlineAvailable) || false, provider: this.payments.providerName } };
   }
 
@@ -178,16 +180,6 @@ export class CheckoutController {
     if (!cityId) throw badRequest('CITY_REQUIRED', 'Choose your city.', { cityId: 'Choose a city we deliver to' });
     const customerId = user?.role === 'CUSTOMER' ? user.customerId : null;
     const useWallet = !!dto.useWallet && !!customerId;
-    const view = await this.carts.view(cart, user, cityId, { redeemWallet: useWallet });
-    if (!view.items.length) throw badRequest('EMPTY_CART', 'Your cart is empty.');
-    if (view.issues.length) throw badRequest('CART_ISSUES', `Please review your cart: ${view.issues.join('; ')}.`);
-
-    const payments = await this.settings.get('payments');
-    const total = view.totals!.totalPaise;
-    if (dto.paymentMethod === 'COD' && (!payments.codEnabled || total > payments.codMaxPaise))
-      throw badRequest('COD_UNAVAILABLE', 'Cash on delivery is not available for this order.', { paymentMethod: 'Choose online payment' });
-    if (dto.paymentMethod === 'ONLINE' && (!payments.onlineEnabled || !this.payments.onlineAvailable))
-      throw badRequest('ONLINE_UNAVAILABLE', 'Online payment is not available right now. Please choose cash on delivery.', { paymentMethod: 'Choose cash on delivery' });
 
     // Address: a saved one (must be the customer's own) or a new one.
     let address = dto.address;
@@ -197,6 +189,21 @@ export class CheckoutController {
       address = { ...saved, label: saved.label ?? undefined };
     }
     if (!address) throw badRequest('ADDRESS_REQUIRED', 'Add a delivery address.', { address: 'Required' });
+
+    // Rechecked against the delivery address's PIN code: a franchise's piece goes only to its own area.
+    const view = await this.carts.view(cart, user, cityId, { redeemWallet: useWallet, pin: address.pincode });
+    if (!view.items.length) throw badRequest('EMPTY_CART', 'Your cart is empty.');
+    const outside = view.items.filter((i) => i.problem?.startsWith('Not delivered'));
+    if (outside.length)
+      throw badRequest('NOT_DELIVERABLE', `We cannot deliver ${outside.map((i) => i.product.name).join(', ')} to PIN code ${address.pincode}. Remove ${outside.length === 1 ? 'it' : 'them'} from the cart or use another address.`, { pincode: 'Not delivered here' });
+    if (view.issues.length) throw badRequest('CART_ISSUES', `Please review your cart: ${view.issues.join('; ')}.`);
+
+    const payments = await this.settings.get('payments');
+    const total = view.totals!.totalPaise;
+    if (dto.paymentMethod === 'COD' && (!payments.codEnabled || total > payments.codMaxPaise))
+      throw badRequest('COD_UNAVAILABLE', 'Cash on delivery is not available for this order.', { paymentMethod: 'Choose online payment' });
+    if (dto.paymentMethod === 'ONLINE' && (!payments.onlineEnabled || !this.payments.onlineAvailable))
+      throw badRequest('ONLINE_UNAVAILABLE', 'Online payment is not available right now. Please choose cash on delivery.', { paymentMethod: 'Choose cash on delivery' });
 
     const earlier = await this.prisma.order.findMany({ where: { source: 'CHECKOUT', status: 'PLACED', paymentStatus: 'PENDING', paymentMethod: 'ONLINE', attribution: { path: ['cartId'], equals: cart.id } }, select: { id: true } });
     for (const o of earlier) await this.stock.supersede(o.id);

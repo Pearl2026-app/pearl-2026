@@ -5,7 +5,8 @@ import type { AuthUser } from '../../common/context';
 import { badRequest, conflict } from '../../common/errors';
 import { SettingsService } from '../../common/settings.service';
 import { PrismaService } from '../../prisma/prisma.service';
-import { CARD_SELECT, toCard } from '../public/catalogue.public';
+import { CARD_SELECT, deliverableWhere, toCard } from '../public/catalogue.public';
+import { cleanPin } from '../network/franchise-areas';
 import { PricingService } from './pricing.service';
 
 export const CART_COOKIE = 'sp_cart';
@@ -130,20 +131,29 @@ export class CartService {
   }
 
   /** Full cart view with server-computed totals (GST and delivery included). */
-  async view(cart: Cart | null, user: AuthUser | null, cityId?: string | null, opts: { redeemWallet?: boolean } = {}) {
+  /**
+   * Full cart view with server-computed totals. `pin` is the delivery PIN code (the address at checkout, else the
+   * shopper's chosen one): a franchise's own piece is sold only inside its PIN codes, a vendor's only in its cities.
+   */
+  async view(cart: Cart | null, user: AuthUser | null, cityId?: string | null, opts: { redeemWallet?: boolean; pin?: string | null } = {}) {
     const empty = { token: cart?.guestToken ?? null, items: [], count: 0, couponCode: null, couponError: null, totals: null, issues: [] as string[] };
     if (!cart) return empty;
     const items = await this.prisma.cartItem.findMany({ where: { cartId: cart.id }, orderBy: { createdAt: 'asc' }, include: { product: { select: { ...CARD_SELECT, status: true, archivedAt: true, cities: { select: { cityId: true } } } } } });
     const city = cityId ?? cart.cityId ?? null;
+    const pin = cleanPin(opts.pin);
+    // The same area rule as the catalogue, so nothing outside the shopper's city or PIN code can be bought.
+    const reach = items.length
+      ? new Set((await this.prisma.product.findMany({ where: { id: { in: items.map((i) => i.productId) }, ...deliverableWhere(city, pin) }, select: { id: true } })).map((r) => r.id))
+      : new Set<string>();
     const lines = items.map((i) => {
       const card = toCard(i.product);
       const live = i.product.status === 'PUBLISHED' && !i.product.archivedAt;
-      const inCity = !city || i.product.cities.length === 0 || i.product.cities.some((c) => c.cityId === city);
+      const inCity = reach.has(i.productId);
       const sizes = this.sizesOf(i.product);
       const sizeStock = sizes?.length && i.size ? (sizes.find((x) => x.label === i.size)?.quantity ?? 0) : null;
       const stockLeft = sizeStock ?? i.product.quantity;
-      const problem = !live || !card.available ? 'No longer available' : card.priceOnRequest ? 'Price on request' : !inCity ? 'Not delivered to your city' : !card.isUnique && stockLeft < i.quantity ? (stockLeft > 0 ? `Only ${stockLeft} left${i.size ? ` in size ${i.size}` : ''}` : `Out of stock${i.size ? ` in size ${i.size}` : ''}`) : null;
-      return { productId: i.productId, quantity: i.quantity, size: i.size || null, product: card, problem };
+      const problem = !live || !card.available ? 'No longer available' : card.priceOnRequest ? 'Price on request' : !inCity ? (pin ? `Not delivered to PIN code ${pin}` : 'Not delivered to your city') : !card.isUnique && stockLeft < i.quantity ? (stockLeft > 0 ? `Only ${stockLeft} left${i.size ? ` in size ${i.size}` : ''}` : `Out of stock${i.size ? ` in size ${i.size}` : ''}`) : null;
+      return { productId: i.productId, quantity: i.quantity, size: i.size || null, product: card, problem, deliverable: inCity };
     });
     const buyable = lines.filter((l) => !l.problem);
     const customerId = user?.role === 'CUSTOMER' ? user.customerId : null;

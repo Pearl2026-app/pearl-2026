@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { api, bearer, db, getApp, http, tokenFor } from './helpers';
+import { ADDRESS, api, bearer, db, getApp, http, tokenFor } from './helpers';
 
 // Franchise areas (client meeting, 4 Nov): each franchise is allotted PIN codes, and a franchise's own pieces are
 // shown only to shoppers in its area. Head office stock stays visible everywhere.
@@ -60,6 +60,34 @@ describe('franchise areas', () => {
     const own = await db.product.findFirstOrThrow({ where: { status: 'PUBLISHED', archivedAt: null, franchiseId: null, vendorId: null, b2bOnly: false, cities: { none: {} }, category: { isActive: true, archivedAt: null } } });
     const r = await http().get(api(`/catalogue/products?ids=${own.id}&pin=400050`)).expect(200);
     expect(r.body.items.map((p: { id: string }) => p.id)).toEqual([own.id]);
+  });
+
+  it('rechecks the PIN code in the cart and refuses checkout outside the franchise area', async () => {
+    const pune = await db.city.findFirstOrThrow({ where: { slug: 'pune' } });
+    const added = await http().post(api('/cart/items')).send({ productId, quantity: 1 }).expect(200);
+    const token: string = added.body.token;
+    const cart = (q: string, cookie?: string) => {
+      const r = http().get(api(`/cart${q}`)).set('X-Cart-Token', token);
+      return (cookie ? r.set('Cookie', cookie) : r).expect(200).then((x) => x.body);
+    };
+    // The website's chosen PIN code (sp_pin cookie) or ?pin= decides; outside the area the line is flagged.
+    expect((await cart('?city=pune', 'sp_pin=400050')).items[0].problem).toBe('Not delivered to PIN code 400050');
+    expect((await cart('?city=pune&pin=411004')).issues).toHaveLength(1);
+    expect((await cart('?city=pune', 'sp_pin=411036')).items[0].problem).toBeNull();
+
+    // Checkout goes by the delivery address's PIN code, whatever the shopper picked earlier.
+    const buy = (pincode: string) =>
+      http()
+        .post(api('/checkout'))
+        .set('X-Cart-Token', token)
+        .set('Cookie', 'sp_pin=411036')
+        .send({ contact: { name: 'Area Buyer', phone: '9811100071' }, address: { ...ADDRESS, phone: '9811100071', pincode }, cityId: pune.id, paymentMethod: 'COD' });
+    const refused = await buy('411004');
+    expect(refused.status).toBe(400);
+    expect(refused.body.code).toBe('NOT_DELIVERABLE');
+    expect(refused.body.message).toContain('Koregaon Park pearl ring');
+    const placed = await buy('411036');
+    expect(placed.status).toBe(201);
   });
 
   it('names the allotted franchise for a PIN code, before the nearest store', async () => {
