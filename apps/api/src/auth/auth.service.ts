@@ -21,7 +21,8 @@ export function newReferralCode(name?: string | null): string {
   return s;
 }
 
-const PARTNER_ROLES: Role[] = ['VENDOR', 'FRANCHISE', 'DELIVERY_PARTNER'];
+/** Sign in with email or phone + a one-time code (no password): partners, workshops and farms. */
+const PARTNER_ROLES: Role[] = ['VENDOR', 'FRANCHISE', 'DELIVERY_PARTNER', 'MANUFACTURER', 'FARMER'];
 
 @Injectable()
 export class AuthService {

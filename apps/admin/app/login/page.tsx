@@ -112,7 +112,7 @@ function LoginForm() {
             </>
           )}
           {step.kind === 'credentials' && mode === 'partner' && (
-            <Field label="Email or mobile number" error={fields.identifier} hint="We will send you a one-time code.">
+            <Field label="Email or mobile number" error={fields.identifier} hint="Vendors, franchises, delivery partners, manufacturers and farms. We will send you a one-time code.">
               {(id, d) => <Input id={id} aria-describedby={d} autoComplete="username" value={identifier} onChange={(e) => setIdentifier(e.target.value)} required />}
             </Field>
           )}

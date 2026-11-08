@@ -86,6 +86,21 @@ describe('customer login (phone + OTP)', () => {
     await http().post(api('/auth/partner/otp/verify')).send({ challengeId: unknown.body.challengeId, code: '123456' }).expect(400);
   });
 
+  it('lets manufacturer and farm logins sign in with a one-time code', async () => {
+    const maker = await db.manufacturer.create({ data: { name: 'OTP Test Workshop' } });
+    const farm = await db.farm.findFirstOrThrow();
+    for (const [role, phone, link] of [
+      ['MANUFACTURER', '+919844400071', { manufacturerId: maker.id }],
+      ['FARMER', '+919844400072', { farmId: farm.id }],
+    ] as const) {
+      await db.user.create({ data: { role, name: `OTP ${role}`, phone, ...link } });
+      const r = await http().post(api('/auth/partner/otp/request')).send({ identifier: phone }).expect(200);
+      await drain();
+      const v = await http().post(api('/auth/partner/otp/verify')).send({ challengeId: r.body.challengeId, code: lastCode(phone) }).expect(200);
+      expect(v.body.user.role).toBe(role);
+    }
+  });
+
   it('counts parallel guesses: no more than the allowed attempts per code', async () => {
     const r = await http().post(api('/auth/otp/request')).send({ phone: '+919811111188' }).expect(200);
     const guesses = await Promise.all(Array.from({ length: 12 }, (_, i) => http().post(api('/auth/otp/verify')).send({ challengeId: r.body.challengeId, code: String(100000 + i) })));
