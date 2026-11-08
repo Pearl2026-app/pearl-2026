@@ -124,13 +124,14 @@ export class PearlPricingService implements OnModuleInit {
         grade,
         isActive: true,
         effectiveFrom: { lte: new Date() },
-        OR: [{ farmId: farmId ?? undefined }, { farmId: null }],
+        // A chosen farm uses its own rows or "any farm" rows; no farm chosen uses any row (scored below).
+        ...(farmId ? { OR: [{ farmId }, { farmId: null }] } : {}),
         ...(sizeMm != null ? { sizeMinMm: { lte: new Prisma.Decimal(sizeMm) }, sizeMaxMm: { gte: new Prisma.Decimal(sizeMm) } } : {}),
       },
       include: { farm: { select: { name: true } } },
       orderBy: { effectiveFrom: 'desc' },
     });
-    const score = (r: (typeof rows)[number]) => (farmId && r.farmId === farmId ? 2 : 0) + (r.source === 'MANUAL' ? 1 : 0);
+    const score = (r: (typeof rows)[number]) => ((farmId ? r.farmId === farmId : r.farmId === null) ? 2 : 0) + (r.source === 'MANUAL' ? 1 : 0);
     return rows.sort((a, b) => score(b) - score(a))[0] ?? null;
   }
 

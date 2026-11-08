@@ -16,6 +16,8 @@ import { PrismaService } from '../../prisma/prisma.service';
 const OPEN: Prisma.EnumOrderStatusFilter['in'] = ['PLACED', 'CONFIRMED', 'PACKED', 'ASSIGNED', 'PICKED_UP', 'OUT_FOR_DELIVERY'];
 const CLOSED_BAD: Prisma.EnumOrderStatusFilter['in'] = ['CANCELLED', 'FAILED', 'RETURNED', 'REFUNDED'];
 const PAID: Prisma.EnumPaymentStatusFilter['in'] = ['PAID', 'COD_COLLECTED'];
+/** Orders that were paid, including those refunded since: their refunds are taken off separately, so a refund is not counted twice. */
+const PAID_EVER: Prisma.EnumPaymentStatusFilter['in'] = [...PAID!, 'REFUNDED'];
 const ENQ_OPEN: Prisma.EnumEnquiryStageFilter['in'] = ['NEW', 'IN_PROGRESS', 'QUOTED'];
 
 const rangeQuery = z.object({
@@ -84,7 +86,7 @@ export class ReportsController {
     const [customers, orders, sales, refunds, franchises, products, outOfStock, pending, completed, cancelled, enqOpen, enqConverted, monthly, recentOrders, recentEnquiries] = await Promise.all([
       canCustomers ? this.prisma.customer.count({ where: customerScope(user) }) : Promise.resolve(null),
       this.prisma.order.count({ where: { AND: [o, inRange] } }),
-      this.prisma.order.aggregate({ where: { AND: [o, inRange, { paymentStatus: { in: PAID } }] }, _sum: { totalPaise: true } }),
+      this.prisma.order.aggregate({ where: { AND: [o, inRange, { paymentStatus: { in: PAID_EVER } }] }, _sum: { totalPaise: true } }),
       this.prisma.refund.aggregate({ where: { status: 'COMPLETED', createdAt: { gte: from, lte: to }, order: o }, _sum: { amountPaise: true } }),
       this.prisma.franchise.count({ where: { AND: [franchiseScope(user), { isActive: true }] } }),
       this.prisma.product.count({ where: { AND: [productScope(user), { archivedAt: null }] } }),
@@ -187,7 +189,7 @@ export class ReportsController {
   /** Paid sales by day: orders, gross, discounts, GST, refunds and net. */
   private async sales(user: AuthUser, from: Date, to: Date) {
     const orders = await this.prisma.order.findMany({
-      where: { AND: [orderScope(user), { placedAt: { gte: from, lte: to }, paymentStatus: { in: [...PAID!, 'REFUNDED'] } }] },
+      where: { AND: [orderScope(user), { placedAt: { gte: from, lte: to }, paymentStatus: { in: PAID_EVER } }] },
       select: { placedAt: true, totalPaise: true, discountPaise: true, gstPaise: true, deliveryPaise: true },
     });
     const refunds = await this.prisma.refund.findMany({ where: { status: 'COMPLETED', createdAt: { gte: from, lte: to }, order: orderScope(user) }, select: { createdAt: true, amountPaise: true } });
