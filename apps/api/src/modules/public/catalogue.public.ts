@@ -127,7 +127,8 @@ export function deliverableWhere(cityId?: string | null, pin?: string | null): P
           { cities: { none: {} }, vendor: { isActive: true, OR: [{ cities: { none: {} } }, { cities: { some: { cityId } } }] } },
         ],
       }
-    : {};
+    : // No city yet (sitemap, farm and collection counts): anywhere it could be sold — not a stopped vendor's stock.
+      { OR: [{ vendorId: null }, { vendor: { isActive: true } }, { cities: { some: {} } }] };
   const area: Prisma.FranchiseWhereInput = code ? { pincodes: { has: code } } : cityId ? { OR: [{ cityId }, { cities: { some: { cityId } } }] } : {};
   return { OR: [{ franchiseId: null, ...cityRule }, { franchise: { isActive: true, ...area } }] };
 }
@@ -388,11 +389,13 @@ export class PublicCatalogueController {
 
   @Public()
   @Get('farms')
-  farms() {
+  async farms(@Query('city') citySlug?: string, @Query('pin') pin?: string) {
+    // Counts what this shopper can actually buy: their city and PIN code decide vendor and franchise pieces.
+    const where = publicWhere(await this.cityId(citySlug), pin);
     return this.prisma.farm.findMany({
       where: { isActive: true, archivedAt: null },
       orderBy: { sortOrder: 'asc' },
-      select: { id: true, name: true, slug: true, location: true, summary: true, heroImageUrl: true, _count: { select: { products: { where: publicWhere() } } } },
+      select: { id: true, name: true, slug: true, location: true, summary: true, heroImageUrl: true, _count: { select: { products: { where } } } },
     });
   }
 

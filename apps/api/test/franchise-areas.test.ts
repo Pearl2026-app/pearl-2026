@@ -90,6 +90,22 @@ describe('franchise areas', () => {
     expect(placed.status).toBe(201);
   });
 
+  it('counts farm pieces for the shopper’s area, and leaves a stopped vendor’s pieces out of the sitemap', async () => {
+    const farm = await db.farm.findFirstOrThrow({ where: { isActive: true, archivedAt: null } });
+    await db.product.update({ where: { id: productId }, data: { farmId: farm.id } });
+    const countAt = async (q: string) => ((await http().get(api(`/catalogue/farms${q}`)).expect(200)).body as Array<{ id: string; _count: { products: number } }>).find((f) => f.id === farm.id)!._count.products;
+    expect((await countAt('?city=pune&pin=411036')) - (await countAt('?city=pune&pin=411004'))).toBe(1);
+
+    const cat = await db.category.findFirstOrThrow({ where: { slug: 'rings' } });
+    const vendor = await db.vendor.create({ data: { name: 'Stopped Vendor', phone: '+919844400090', isActive: false } });
+    const sku = `TST-SV-${Date.now() % 1_000_000}`;
+    const piece = await db.product.create({ data: { sku, name: 'Stopped vendor ring', slug: sku.toLowerCase(), categoryId: cat.id, pricePaise: 100_000, status: 'PUBLISHED', vendorId: vendor.id } });
+    const map = (await http().get(api('/seo/sitemap')).expect(200)).body as { products: Array<{ slug: string }> };
+    expect(map.products.some((p) => p.slug === piece.slug)).toBe(false);
+    expect(map.products.some((p) => p.slug === slug)).toBe(true);
+    await db.product.update({ where: { id: piece.id }, data: { status: 'ARCHIVED', archivedAt: new Date() } });
+  });
+
   it('names the allotted franchise for a PIN code, before the nearest store', async () => {
     const r = await http().get(api('/geo/pincode/411036')).expect(200);
     expect(r.body.nearestStore).toMatchObject({ name: 'Sahyadri Pearls Koregaon Park', allotted: true });
