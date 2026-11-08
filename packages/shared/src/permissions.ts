@@ -162,6 +162,8 @@ export const ROLE_GRANTS: Record<Exclude<Role, 'SUPER_ADMIN' | 'STAFF'>, Grants>
   FRANCHISE: {
     DASHBOARD: V,
     CATEGORIES: V,
+    // Read-only reference lists, so a product page shows its category, collection and farm
+    COLLECTIONS: V,
     FARMS: V,
     PRODUCTS: V,
     ORDERS: VCE,
@@ -184,6 +186,10 @@ export const ROLE_GRANTS: Record<Exclude<Role, 'SUPER_ADMIN' | 'STAFF'>, Grants>
   },
   // A partner farm sees the pieces made with its pearls and how they sell.
   FARMER: {
+    // Read-only reference lists, so its pieces show their category, collection and farm
+    CATEGORIES: V,
+    COLLECTIONS: V,
+    FARMS: V,
     PRODUCTS: V,
     REPORTS: V,
   },
