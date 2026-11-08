@@ -19,6 +19,8 @@ beforeAll(async () => {
 });
 afterAll(() => db.$disconnect());
 
+/** A date some weeks ahead, as YYYY-MM-DD (deadlines in the past are refused). */
+const ahead = (days: number) => new Date(Date.now() + days * 86_400_000).toISOString().slice(0, 10);
 const po = (id: string, path = '') => api(`/admin/purchase-orders/${id}${path}`);
 
 describe('purchase orders (meeting of 31 Oct)', () => {
@@ -68,9 +70,13 @@ describe('purchase orders (meeting of 31 Oct)', () => {
     const received = await http().post(po(id, '/pearls')).set(bearer(maker)).send({ step: 'RECEIVED' }).expect(200);
     expect(received.body.stage).toBe('Pearls received');
     expect(received.body.pearlsReceivedAt).toBeTruthy();
-    const accepted = await http().post(po(id, '/status')).set(bearer(maker)).send({ status: 'ACCEPTED', dueDate: '2026-12-20' }).expect(200);
+    // A deadline that is not a real date, or is already past, is refused.
+    expect((await http().post(po(id, '/status')).set(bearer(maker)).send({ status: 'ACCEPTED', dueDate: 'Test reason 123' })).status).toBe(400);
+    expect((await http().post(po(id, '/status')).set(bearer(maker)).send({ status: 'ACCEPTED', dueDate: '2020-01-02' })).body.code).toBe('DUE_IN_PAST');
+    const due = ahead(40);
+    const accepted = await http().post(po(id, '/status')).set(bearer(maker)).send({ status: 'ACCEPTED', dueDate: due }).expect(200);
     expect(accepted.body.status).toBe('ACCEPTED');
-    expect(String(accepted.body.dueDate).slice(0, 10)).toBe('2026-12-20');
+    expect(String(accepted.body.dueDate).slice(0, 10)).toBe(due);
 
     // Work stages: the flow's own stages and head office's pickup check are not the manufacturer's to tap.
     expect((await http().post(po(id, '/stage')).set(bearer(maker)).send({ stage: 'Received PO' })).body.code).toBe('USE_FLOW');
@@ -90,6 +96,20 @@ describe('purchase orders (meeting of 31 Oct)', () => {
     expect(billed.body.bill.amountPaise).toBe(107_300);
     expect(billed.body.bill.mismatch).toBe(true);
 
+    // Paying the manufacturer: head office only, in parts, with the balance against the bill.
+    await http().post(po(id, '/payments')).set(bearer(maker)).send({ amountPaise: 50_000 }).expect(403);
+    const part = await http().post(po(id, '/payments')).set(bearer(admin)).send({ amountPaise: 50_000, method: 'UPI', reference: 'UTR001' }).expect(200);
+    expect(part.body.paidPaise).toBe(50_000);
+    expect(part.body.balancePaise).toBe(107_300 - 50_000);
+    const full = await http().post(po(id, '/payments')).set(bearer(admin)).send({ amountPaise: 57_300, method: 'BANK_TRANSFER', reference: 'UTR002', paidOn: ahead(0) }).expect(200);
+    expect(full.body.balancePaise).toBe(0);
+    expect(full.body.payments).toHaveLength(2);
+    const seen = await http().get(po(id)).set(bearer(maker)).expect(200);
+    expect(seen.body.paidPaise).toBe(107_300);
+    const undone = await http().post(po(id, `/payments/${full.body.payments[1].id}/remove`)).set(bearer(admin)).send({ reason: 'Entered twice' }).expect(200);
+    expect(undone.body.paidPaise).toBe(50_000);
+    expect((await http().post(po(id, '/payments')).set(bearer(admin)).send({ amountPaise: 0 })).status).toBe(400);
+
     // Earnings summary: work completed once the piece is ready for pickup.
     const before = (await http().get(api(`/admin/purchase-orders/summary`)).set(bearer(maker)).expect(200)).body;
     await http().post(po(id, '/stage')).set(bearer(maker)).send({ stage: 'Ready for pickup' }).expect(200);
@@ -98,13 +118,14 @@ describe('purchase orders (meeting of 31 Oct)', () => {
     expect(after.amountDuePaise - before.amountDuePaise).toBe(107_100);
     expect(after.bills.count).toBeGreaterThanOrEqual(1);
     expect(after.bills.mismatches).toBeGreaterThanOrEqual(1);
+    expect(after.outstandingPaise - before.outstandingPaise).toBe(107_300 - 50_000);
 
     // Head office checks at pickup and receives the pieces.
     const qc = await http().post(po(id, '/stage')).set(bearer(admin)).send({ stage: 'Quality check at pickup', note: 'All good' }).expect(200);
     expect(qc.body.stage).toBe('Quality check at pickup');
     await http().post(po(id, '/status')).set(bearer(admin)).send({ status: 'RECEIVED' }).expect(200);
     const history = (await db.purchaseOrder.findUniqueOrThrow({ where: { id } })).stageHistory as Array<{ stage: string }>;
-    expect(history.map((h) => h.stage)).toEqual(['Received PO', 'Pearls sent', 'Pearls received', 'Accepted', 'Casting', 'Polishing', 'Bill uploaded', 'Ready for pickup', 'Quality check at pickup']);
+    expect(history.map((h) => h.stage)).toEqual(['Received PO', 'Pearls sent', 'Pearls received', 'Accepted', 'Casting', 'Polishing', 'Bill uploaded', 'Payment made', 'Payment made', 'Payment removed', 'Ready for pickup', 'Quality check at pickup']);
   });
 
   it('prefills a new PO from the catalogue piece, and a manufacturer sees only its own POs', async () => {

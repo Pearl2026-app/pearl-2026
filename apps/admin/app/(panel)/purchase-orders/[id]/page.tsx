@@ -297,8 +297,10 @@ function PurchaseOrder({ id }: { id: string }) {
   const nextSteps: string[] = isNew ? [] : (PO_NEXT[p.status] ?? []).filter((s) => (isHeadOffice ? true : isMaker && ['ACCEPTED', 'IN_PRODUCTION'].includes(s)));
   const act = (s: string) => {
     if (s === 'ACCEPTED') {
-      const nd = window.prompt('Accept with this deadline — confirm or change it (YYYY-MM-DD):', String(p.dueDate).slice(0, 10));
-      if (nd) status.mutate({ s, dueDate: nd });
+      const nd = window.prompt('Accept with this deadline — confirm or change it (YYYY-MM-DD):', String(p.dueDate).slice(0, 10))?.trim();
+      if (!nd) return;
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(nd) || Number.isNaN(new Date(nd).getTime())) return toast('Write the deadline as year-month-day, e.g. 2026-12-31.', 'danger');
+      status.mutate({ s, dueDate: nd });
       return;
     }
     if (window.confirm(`Mark ${p.number} ${humanize(s).toLowerCase()}?${s === 'SENT' && p.manufacturer.email ? ` The PDF is emailed to ${p.manufacturer.email}.` : ''}`)) status.mutate({ s });
@@ -571,6 +573,8 @@ function PurchaseOrder({ id }: { id: string }) {
         </Card>
       )}
 
+      {!isNew && p.status !== 'DRAFT' && <ManufacturerPayments po={p} canPay={isHeadOffice && canEdit && !!me?.permissions.PAYMENTS?.includes('edit')} onDone={refresh} />}
+
       {!isNew && p.status !== 'DRAFT' && (
         <Card className="mt-4">
           <h2 className="mb-1 font-semibold">Work status</h2>
@@ -619,6 +623,79 @@ function PurchaseOrder({ id }: { id: string }) {
         </Card>
       )}
     </div>
+  );
+}
+
+const PAY_METHODS: Array<[string, string]> = [['BANK_TRANSFER', 'Bank transfer'], ['UPI', 'UPI'], ['CASH', 'Cash'], ['CHEQUE', 'Cheque'], ['OTHER', 'Other']];
+const payMethodLabel = (m: string) => PAY_METHODS.find((x) => x[0] === m)?.[1] ?? humanize(m);
+
+/** Money paid to the manufacturer against this PO, in one go or in parts, with the balance left on the bill. */
+function ManufacturerPayments({ po, canPay, onDone }: { po: any; canPay: boolean; onDone: () => Promise<unknown> }) {
+  const toast = useToast();
+  // Today on the user's own calendar (toISOString would give yesterday's date in India before 5:30 am).
+  const now = new Date();
+  const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  const blank = { amount: '', method: 'BANK_TRANSFER', reference: '', paidOn: today, note: '' };
+  const [v, setV] = useState(blank);
+  const payments: Array<{ id: string; amountPaise: number; method: string; reference: string | null; paidOn: string; note: string | null; by: string }> = po.payments ?? [];
+  const add = useMutation({
+    mutationFn: () => api(`/admin/purchase-orders/${po.id}/payments`, { method: 'POST', json: { amountPaise: toPaise(v.amount), method: v.method, reference: v.reference.trim() || null, paidOn: v.paidOn || undefined, note: v.note.trim() || null } }),
+    onSuccess: async () => {
+      await onDone();
+      setV(blank);
+      toast('Payment recorded');
+    },
+    onError: (e) => toast(errorText(e), 'danger'),
+  });
+  const remove = useMutation({
+    mutationFn: ({ id, reason }: { id: string; reason: string }) => api(`/admin/purchase-orders/${po.id}/payments/${id}/remove`, { method: 'POST', json: { reason } }),
+    onSuccess: async () => {
+      await onDone();
+      toast('Payment removed');
+    },
+    onError: (e) => toast(errorText(e), 'danger'),
+  });
+  const f = (k: keyof typeof v) => ({ value: v[k], onChange: (e: { target: { value: string } }) => setV({ ...v, [k]: e.target.value }) });
+  const amountPaise = toPaise(v.amount || 'x');
+  return (
+    <Card className="mt-4">
+      <h2 className="mb-1 font-semibold">Payments to the manufacturer</h2>
+      <p className="mb-3 text-xs text-muted">Record each payment made to {po.manufacturer.name} for this PO. The balance is worked out against {po.bill ? 'their bill' : 'the expected making charge, until their bill is uploaded'}.</p>
+      <Row k={po.bill ? 'Bill amount' : 'Expected amount'}>{inr(po.owedPaise, false)}</Row>
+      <Row k="Paid so far">{inr(po.paidPaise ?? 0, false)}</Row>
+      <Row k="Balance">{po.balancePaise < 0 ? <span className="text-danger">{inr(-po.balancePaise, false)} paid more than owed</span> : po.balancePaise === 0 ? <Badge tone="success">Fully paid</Badge> : inr(po.balancePaise, false)}</Row>
+      {payments.length > 0 && (
+        <ul className="mt-3 flex flex-col gap-1 text-sm">
+          {payments.map((x) => (
+            <li key={x.id} className="flex flex-wrap items-baseline gap-2 border-b border-line py-1 last:border-0">
+              <strong>{inr(x.amountPaise, false)}</strong>
+              <span>{payMethodLabel(x.method)}{x.reference ? ` · ${x.reference}` : ''}</span>
+              <span className="text-xs text-muted">paid {date(x.paidOn)} · entered by {x.by}{x.note ? ` · ${x.note}` : ''}</span>
+              {canPay && (
+                <button type="button" className="ml-auto text-xs text-danger underline" onClick={() => { const reason = window.prompt('Why remove this payment? (kept in the audit log)'); if (reason && reason.trim().length >= 3) remove.mutate({ id: x.id, reason: reason.trim() }); }}>
+                  Remove
+                </button>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+      {canPay && (
+        <form className="mt-4 grid gap-2 md:grid-cols-3" onSubmit={(e) => { e.preventDefault(); if (!amountPaise) return toast('Enter the amount paid.', 'danger'); add.mutate(); }}>
+          <label className="text-sm">Amount paid (₹)<Input inputMode="decimal" placeholder={po.balancePaise > 0 ? toRupees(po.balancePaise) : ''} required {...f('amount')} /></label>
+          <label className="text-sm">Paid by
+            <Select {...f('method')}>{PAY_METHODS.map(([k, l]) => <option key={k} value={k}>{l}</option>)}</Select>
+          </label>
+          <label className="text-sm">Paid on<Input type="date" max={today} {...f('paidOn')} /></label>
+          <label className="text-sm">UTR / cheque no.<Input placeholder="Bank or UPI reference" {...f('reference')} /></label>
+          <label className="text-sm md:col-span-2">Note (optional)<Input placeholder="e.g. advance for casting" {...f('note')} /></label>
+          <div className="flex flex-wrap items-center gap-2 md:col-span-3">
+            <Button type="submit" size="sm" loading={add.isPending}>Record payment</Button>
+            {po.balancePaise > 0 && <button type="button" className="text-xs text-accent underline" onClick={() => setV({ ...v, amount: toRupees(po.balancePaise) })}>Fill the balance ({inr(po.balancePaise, false)})</button>}
+          </div>
+        </form>
+      )}
+    </Card>
   );
 }
 

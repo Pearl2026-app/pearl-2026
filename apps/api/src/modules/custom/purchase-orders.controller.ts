@@ -7,7 +7,7 @@ import sharp from 'sharp';
 import { ZodValidationPipe } from 'nestjs-zod';
 import { z } from 'zod';
 import type { Prisma } from '@sahyadri/db';
-import { formatINR, normalisePoStage, paise, PO_DEFAULT_GST_PERCENT, PO_DONE_STAGES, PO_HEAD_OFFICE_STAGES, PO_WORK_STAGES, poBillMismatch, poCost, type PoStage } from '@sahyadri/shared';
+import { can, formatINR, normalisePoStage, paise, PO_DEFAULT_GST_PERCENT, PO_DONE_STAGES, PO_HEAD_OFFICE_STAGES, PO_WORK_STAGES, poBillMismatch, poCost, type PoStage } from '@sahyadri/shared';
 import { AuditService } from '../../common/audit.service';
 import type { AuthUser } from '../../common/context';
 import { CurrentUser, Requires } from '../../common/decorators';
@@ -34,6 +34,42 @@ const headOffice = (u: AuthUser) => u.role === 'SUPER_ADMIN' || u.role === 'STAF
 const CAD_EXTENSIONS = ['3dm', 'stl', 'obj', 'step', 'stp', 'igs', 'iges', 'dxf', 'dwg', 'jcd', 'mgx', 'zip', 'pdf', 'jpg', 'jpeg', 'png', 'webp'];
 const MAX_IMAGES = 10;
 
+/** A real calendar date (typing slips like "15/11" or "123" are refused), this century. */
+const poDate = z.coerce
+  .date({ errorMap: () => ({ message: 'Enter a date like 2026-12-31' }) })
+  .refine((d) => d.getUTCFullYear() >= 2020 && d.getUTCFullYear() <= 2100, 'Enter a date like 2026-12-31');
+const startOfToday = () => {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  return d;
+};
+/** How head office paid the manufacturer. */
+const PO_PAY_METHODS = ['BANK_TRANSFER', 'UPI', 'CASH', 'CHEQUE', 'OTHER'] as const;
+const poPaymentInput = z.object({
+  amountPaise: paise.min(1, 'Enter the amount paid'),
+  method: z.enum(PO_PAY_METHODS).default('BANK_TRANSFER'),
+  reference: z.string().trim().max(80).optional().nullable(),
+  paidOn: poDate.optional(),
+  note: z.string().trim().max(300).optional().nullable(),
+});
+interface PoPayment {
+  id: string;
+  amountPaise: number;
+  method: (typeof PO_PAY_METHODS)[number];
+  reference: string | null;
+  paidOn: string;
+  note: string | null;
+  at: string;
+  by: string;
+}
+const paymentsOf = (p: { manufacturerPayments?: Prisma.JsonValue | null }): PoPayment[] => (Array.isArray(p.manufacturerPayments) ? (p.manufacturerPayments as unknown as PoPayment[]) : []);
+const paidOf = (p: { manufacturerPayments?: Prisma.JsonValue | null }) => paymentsOf(p).reduce((sum, x) => sum + (x.amountPaise ?? 0), 0);
+/** What is owed for a PO: the bill once uploaded, otherwise the expected making charge (or the agreed cost). */
+const owedOf = (p: Parameters<typeof costOf>[0] & { agreedCostPaise: number; billAmountPaise: number | null }) => p.billAmountPaise ?? costOf(p)?.totalPaise ?? p.agreedCostPaise;
+/** Paying a manufacturer is money going out: head office with the Payments edit right (D63). */
+function assertMayPay(user: AuthUser) {
+  if (!headOffice(user) || !can({ role: user.role, staffGrants: user.grants }, 'PAYMENTS', 'edit')) throw forbidden('Only head office with the Payments right records payments to a manufacturer.');
+}
 const decimal = (max: number) => z.number().positive().max(max).nullable().optional();
 /** The exact numbers for this piece; the same SR-coded design differs piece to piece (meeting of 31 Oct). */
 const specInput = {
@@ -57,7 +93,7 @@ const poInput = z.object({
   quantity: z.number().int().min(1).max(10_000).default(1),
   /** Defaults to the computed making charge (weight × rate × quantity + GST). */
   agreedCostPaise: paise.min(1).optional(),
-  dueDate: z.coerce.date(),
+  dueDate: poDate,
   notes: z.string().trim().max(2000).optional().nullable(),
   ...specInput,
 });
@@ -111,6 +147,10 @@ export class PurchaseOrdersController {
       images,
       cad: p.cadUrl ? { name: fileNameOf(p.cadUrl), url: cadLink } : null,
       bill: p.billUrl ? { url: billLink, amountPaise: p.billAmountPaise, uploadedAt: p.billUploadedAt, mismatch: poBillMismatch(p.billAmountPaise, expected), expectedPaise: expected } : null,
+      payments: paymentsOf(p),
+      paidPaise: paidOf(p),
+      owedPaise: owedOf(p),
+      balancePaise: owedOf(p) - paidOf(p),
     };
   }
 
@@ -209,6 +249,8 @@ export class PurchaseOrdersController {
         { header: 'Making + GST (₹)', value: (r) => (costOf(r)?.totalPaise ?? 0) / 100 || '' },
         { header: 'Agreed cost (₹)', value: (r) => r.agreedCostPaise / 100 },
         { header: 'Bill (₹)', value: (r) => (r.billAmountPaise == null ? '' : r.billAmountPaise / 100) },
+        { header: 'Paid to manufacturer (₹)', value: (r) => paidOf(r) / 100 },
+        { header: 'Balance (₹)', value: (r) => (r.status === 'DRAFT' ? '' : (owedOf(r) - paidOf(r)) / 100) },
         { header: 'Due', value: (r) => r.dueDate },
         { header: 'Status', value: (r) => r.status },
         { header: 'Stage', value: (r) => normalisePoStage(r.stage) },
@@ -220,7 +262,7 @@ export class PurchaseOrdersController {
       ...page,
       items: page.items.map((r) => {
         const cost = costOf(r);
-        return { ...r, stage: normalisePoStage(r.stage), cost, billMismatch: poBillMismatch(r.billAmountPaise, cost?.totalPaise ?? r.agreedCostPaise) };
+        return { ...r, stage: normalisePoStage(r.stage), cost, billMismatch: poBillMismatch(r.billAmountPaise, cost?.totalPaise ?? r.agreedCostPaise), paidPaise: paidOf(r), balancePaise: owedOf(r) - paidOf(r) };
       }),
     };
   }
@@ -234,7 +276,7 @@ export class PurchaseOrdersController {
   async summary(@CurrentUser() user: AuthUser, @Query('manufacturerId') manufacturerId?: string) {
     const rows = await this.prisma.purchaseOrder.findMany({
       where: { AND: [purchaseOrderScope(user), manufacturerId ? { manufacturerId } : {}, { status: { not: 'DRAFT' } }] },
-      select: { status: true, stage: true, quantity: true, agreedCostPaise: true, metalWeightG: true, makingRatePerGramPaise: true, gstPercent: true, billAmountPaise: true, billUploadedAt: true },
+      select: { status: true, stage: true, quantity: true, agreedCostPaise: true, metalWeightG: true, makingRatePerGramPaise: true, gstPercent: true, billAmountPaise: true, billUploadedAt: true, manufacturerPayments: true },
     });
     const done = (r: (typeof rows)[number]) => r.status === 'RECEIVED' || PO_DONE_STAGES.includes(normalisePoStage(r.stage) as PoStage) || (r.status === 'CLOSED' && r.billUploadedAt != null);
     const completed = rows.filter(done);
@@ -246,6 +288,9 @@ export class PurchaseOrdersController {
       amountDuePaise: completed.reduce((s, r) => s + due(r), 0),
       bills: { count: bills.length, amountPaise: bills.reduce((s, r) => s + (r.billAmountPaise ?? 0), 0), mismatches: bills.filter((r) => poBillMismatch(r.billAmountPaise, due(r))).length },
       awaitingBill: completed.filter((r) => !r.billUploadedAt).length,
+      paidPaise: rows.reduce((sum, r) => sum + paidOf(r), 0),
+      /** Still to pay on completed work: the bill (or expected amount) less what has been paid. */
+      outstandingPaise: completed.reduce((sum, r) => sum + Math.max(0, owedOf(r) - paidOf(r)), 0),
     };
   }
 
@@ -377,7 +422,7 @@ export class PurchaseOrdersController {
   async status(
     @CurrentUser() user: AuthUser,
     @Param('id') id: string,
-    @Body(new ZodValidationPipe(z.object({ status: z.enum(PO_STATUSES), note: z.string().trim().max(500).optional(), dueDate: z.coerce.date().optional() })))
+    @Body(new ZodValidationPipe(z.object({ status: z.enum(PO_STATUSES), note: z.string().trim().max(500).optional(), dueDate: poDate.optional() })))
     dto: { status: (typeof PO_STATUSES)[number]; note?: string; dueDate?: Date },
   ) {
     const p = await this.load(user, id);
@@ -385,6 +430,7 @@ export class PurchaseOrdersController {
     if (!PO_NEXT[p.status]!.includes(dto.status)) throw badRequest('INVALID_STEP', `A ${p.status.toLowerCase().replace('_', ' ')} PO cannot move to ${dto.status.toLowerCase().replace('_', ' ')}.`);
     // Pearls first (meeting of 31 Oct): the manufacturer accepts only after confirming the pearls arrived.
     if (dto.status === 'ACCEPTED' && !p.pearlsReceivedAt) throw badRequest('PEARLS_FIRST', 'Confirm “Pearls received” before accepting the purchase order.');
+    if (dto.status === 'ACCEPTED' && dto.dueDate && dto.dueDate < startOfToday()) throw badRequest('DUE_IN_PAST', 'The deadline cannot be in the past.', { dueDate: 'In the past' });
     const dueDate = dto.status === 'ACCEPTED' && dto.dueDate ? dto.dueDate : p.dueDate;
     let stamp: Prisma.PurchaseOrderUpdateInput = {};
     if (dto.status === 'SENT' && !p.stage) stamp = { stage: 'Received PO', stageHistory: this.history(p, { stage: 'Received PO', note: dto.note ?? `Sent to ${p.manufacturer.name}` }, user) };
@@ -519,6 +565,49 @@ export class PurchaseOrdersController {
     else await this.prisma.purchaseOrder.update({ where: { id }, data: { imageUrls: p.imageUrls.filter((u) => u !== dto.url) } });
     await this.audit.record('PurchaseOrder', id, 'REMOVE_FILE', { cadUrl: p.cadUrl, imageUrls: p.imageUrls }, dto);
     await this.renderPdf(id);
+    return this.present(user, id);
+  }
+
+  /**
+   * Record money paid to the manufacturer for this PO (bank transfer, UPI, cash, cheque), in parts if needed.
+   * The PO shows what was paid and the balance against the bill (or the expected making charge).
+   */
+  @Post(':id/payments')
+  @HttpCode(200)
+  @Requires('PURCHASE_ORDERS', 'edit')
+  async addPayment(@CurrentUser() user: AuthUser, @Param('id') id: string, @Body(new ZodValidationPipe(poPaymentInput)) dto: z.infer<typeof poPaymentInput>) {
+    assertMayPay(user);
+    const p = await this.load(user, id);
+    if (p.status === 'DRAFT') throw badRequest('NOT_SENT', 'Send the purchase order before paying the manufacturer.');
+    const paidOn = dto.paidOn ?? new Date();
+    if (paidOn > new Date(Date.now() + 86_400_000)) throw badRequest('PAID_IN_FUTURE', 'The payment date cannot be in the future.', { paidOn: 'In the future' });
+    const entry: PoPayment = { id: randomUUID(), amountPaise: dto.amountPaise, method: dto.method, reference: dto.reference || null, paidOn: paidOn.toISOString(), note: dto.note || null, at: new Date().toISOString(), by: user.name };
+    const list = [...paymentsOf(p), entry];
+    await this.prisma.purchaseOrder.update({
+      where: { id },
+      data: { manufacturerPayments: list as unknown as Prisma.InputJsonValue, stageHistory: this.history(p, { stage: 'Payment made', note: `${formatINR(dto.amountPaise)} by ${dto.method.toLowerCase().replace('_', ' ')}${dto.reference ? ` (${dto.reference})` : ''}` }, user) },
+    });
+    await this.audit.record('PurchaseOrder', id, 'MANUFACTURER_PAYMENT', { paidPaise: paidOf(p) }, entry);
+    if (p.manufacturer.email)
+      await this.notifications.send({ templateKey: 'PO_STAGE', vars: { number: p.number, manufacturer: p.manufacturer.name, stage: `payment of ${formatINR(dto.amountPaise)} made${dto.reference ? ` (reference ${dto.reference})` : ''}`, poUrl: `${config().ADMIN_URL}/purchase-orders/${id}` }, to: { email: p.manufacturer.email }, context: { purchaseOrderId: id } });
+    return this.present(user, id);
+  }
+
+  /** Take back a payment entered by mistake (kept in the audit log). */
+  @Post(':id/payments/:paymentId/remove')
+  @HttpCode(200)
+  @Requires('PURCHASE_ORDERS', 'edit')
+  async removePayment(@CurrentUser() user: AuthUser, @Param('id') id: string, @Param('paymentId') paymentId: string, @Body(new ZodValidationPipe(z.object({ reason: z.string().trim().min(3, 'Say why').max(300) }))) dto: { reason: string }) {
+    assertMayPay(user);
+    const p = await this.load(user, id);
+    const list = paymentsOf(p);
+    const gone = list.find((x) => x.id === paymentId);
+    if (!gone) throw notFound('Payment');
+    await this.prisma.purchaseOrder.update({
+      where: { id },
+      data: { manufacturerPayments: list.filter((x) => x.id !== paymentId) as unknown as Prisma.InputJsonValue, stageHistory: this.history(p, { stage: 'Payment removed', note: `${formatINR(gone.amountPaise)} — ${dto.reason}` }, user) },
+    });
+    await this.audit.record('PurchaseOrder', id, 'MANUFACTURER_PAYMENT_REMOVED', gone, { reason: dto.reason });
     return this.present(user, id);
   }
 

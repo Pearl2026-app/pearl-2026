@@ -1427,6 +1427,8 @@ model PurchaseOrder {
   billUrl                String?
   billAmountPaise        Int?
   billUploadedAt         DateTime?
+  /// Money paid to the manufacturer for this PO: [{id, amountPaise, method, reference, paidOn, note, at, by}], oldest first
+  manufacturerPayments   Json?
 
   @@index([manufacturerId, status])
   @@index([productId])
