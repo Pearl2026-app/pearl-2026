@@ -364,12 +364,16 @@ async function seedProduction() {
   const password = process.env.SEED_ADMIN_PASSWORD ?? '';
   const name = process.env.SEED_ADMIN_NAME?.trim() || 'Owner';
   const phone = process.env.SEED_ADMIN_PHONE?.trim() || null;
-  if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email))
-    throw new Error('Set SEED_ADMIN_EMAIL to the owner’s email address.');
-  if (password.length < 12 || !/[A-Za-z]/.test(password) || !/\d/.test(password))
-    throw new Error('Set SEED_ADMIN_PASSWORD: at least 12 characters with letters and digits.');
-  if (phone && !/^\+91[6-9]\d{9}$/.test(phone))
-    throw new Error('SEED_ADMIN_PHONE must look like +919812345678.');
+  // The owner login is checked only while there is none yet, so the setup can run on every start (SETUP_ON_START).
+  const hasOwner = !!(await prisma.user.findFirst({ where: { role: 'SUPER_ADMIN' }, select: { id: true } }));
+  if (!hasOwner) {
+    if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email))
+      throw new Error('Set SEED_ADMIN_EMAIL to the owner’s email address.');
+    if (password.length < 12 || !/[A-Za-z]/.test(password) || !/\d/.test(password))
+      throw new Error('Set SEED_ADMIN_PASSWORD: at least 12 characters with letters and digits.');
+    if (phone && !/^\+91[6-9]\d{9}$/.test(phone))
+      throw new Error('SEED_ADMIN_PHONE must look like +919812345678.');
+  }
 
   await seedSettings();
   await seedTemplates();
@@ -393,10 +397,13 @@ async function seedProduction() {
     console.log(`A Super Admin already exists (${existing.email}); no login created.`);
   } else {
     await prisma.user.create({
-      data: { role: 'SUPER_ADMIN', name, email, phone, passwordHash: await hashPassword(password) },
+      data: { role: 'SUPER_ADMIN', name, email: email!, phone, passwordHash: await hashPassword(password) },
     });
     console.log(`Super Admin created: ${email}`);
   }
+  // The client's own designs go live with the shop; the manufacturer's stock list only when asked for.
+  if (process.env.IMPORT_SIGNATURE_COLLECTION !== 'false') await importClientCollection(prisma, STORAGE);
+  if (process.env.IMPORT_STOCK_LIST === 'true') await importRealStock();
   console.log('Production setup complete. Add cities, WhatsApp numbers, partners and products in the admin.');
 }
 

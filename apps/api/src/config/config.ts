@@ -33,6 +33,8 @@ const schema = z.object({
   DEV_FIXED_OTP: z.string().regex(/^\d{6}$/).optional(),
   /** Presentation site: sample data, sign-in code 123456, payment sandbox, jobs in-process. Never takes real money (D66). */
   DEMO_MODE: bool.default(false),
+  /** Live shop without a terminal (Vercel): apply migrations, copy the bundled photos and run the production setup on start. */
+  SETUP_ON_START: bool.default(false),
   COOKIE_SECURE: bool.optional(),
   COOKIE_DOMAIN: z.string().optional(),
 
@@ -96,21 +98,23 @@ export type AppConfig = z.infer<typeof schema> & { appSecret: string; cookieSecu
 let cached: AppConfig | null = null;
 
 /**
- * Demo site only (D66): fewer settings to paste. Missing signing secrets are derived from the database address
- * (itself a secret, and stable across restarts and instances), and the public address comes from Vercel's own
- * VERCEL_PROJECT_PRODUCTION_URL. The real shop never uses this: it must set every secret itself.
+ * Fewer settings to paste. On Vercel the public address comes from Vercel's own VERCEL_PROJECT_PRODUCTION_URL (the
+ * custom domain once one is connected) when WEB_URL, ADMIN_URL or API_URL are not set; this holds for the live shop
+ * too. Demo site only (D66): missing signing secrets are derived from the database address (itself a secret, and
+ * stable across restarts and instances). The live shop must set every secret itself.
  */
 function demoDefaults(env: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
-  if (!['1', 'true', 'yes', 'on'].includes(String(env.DEMO_MODE ?? '').toLowerCase()) || !env.DATABASE_URL) return env;
-  const derive = (label: string) => require('node:crypto').createHash('sha256').update(`sahyadri-demo:${label}:${env.DATABASE_URL}`).digest('hex') as string;
   const host = env.VERCEL_PROJECT_PRODUCTION_URL ?? env.SPACE_HOST;
   const site = host ? `https://${host}` : undefined;
+  const urls = site ? { WEB_URL: env.WEB_URL || site, ADMIN_URL: env.ADMIN_URL || `${site}/admin`, API_URL: env.API_URL || site } : {};
+  if (!['1', 'true', 'yes', 'on'].includes(String(env.DEMO_MODE ?? '').toLowerCase()) || !env.DATABASE_URL) return { ...env, ...urls };
+  const derive = (label: string) => require('node:crypto').createHash('sha256').update(`sahyadri-demo:${label}:${env.DATABASE_URL}`).digest('hex') as string;
   return {
     ...env,
     JWT_ACCESS_SECRET: env.JWT_ACCESS_SECRET || derive('access'),
     JWT_REFRESH_SECRET: env.JWT_REFRESH_SECRET || derive('refresh'),
     APP_SECRET: env.APP_SECRET || derive('app'),
-    ...(site ? { WEB_URL: env.WEB_URL || site, ADMIN_URL: env.ADMIN_URL || `${site}/admin`, API_URL: env.API_URL || site } : {}),
+    ...urls,
   };
 }
 

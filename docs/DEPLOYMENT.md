@@ -2,6 +2,8 @@
 
 How to put Sahyadri Pearls online. Everything runs in Mumbai so customer data stays in India.
 
+> **Opening on Vercel + Supabase only?** Follow [GO-LIVE.md](GO-LIVE.md): no Fly.io, Redis or terminal needed (`SETUP_ON_START`). This guide covers the full setup with a separate worker.
+
 | Part | Service | Region |
 |---|---|---|
 | Website (`apps/web`), at `/` | Vercel, service `web` | Mumbai (`bom1`) |

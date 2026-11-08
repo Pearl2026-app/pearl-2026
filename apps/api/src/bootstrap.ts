@@ -12,6 +12,7 @@ import { AppModule } from './app.module';
 import { contextMiddleware } from './common/context.middleware';
 import { IS_PUBLIC, REQUIRES, ROLES } from './common/decorators';
 import { config } from './config/config';
+import { STORAGE, type StorageProvider } from './providers/types';
 
 
 
@@ -55,6 +56,29 @@ export async function createApp(opts: { logger?: boolean } = {}): Promise<INestA
       },
     }),
   );
+
+  // Photos uploaded to S3 (or Supabase Storage) without a CDN have /media/… addresses too: anything not on this
+  // instance's disk is read from the bucket, so the bucket can stay private.
+  const storage = app.get<StorageProvider>(STORAGE);
+  if (storage.name === 's3') {
+    const TYPES: Record<string, string> = { webp: 'image/webp', jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', gif: 'image/gif', avif: 'image/avif', svg: 'image/svg+xml', mp4: 'video/mp4', webm: 'video/webm', pdf: 'application/pdf' };
+    app.use('/media', (req: express.Request, res: express.Response, next: express.NextFunction) => {
+      if (req.method !== 'GET' && req.method !== 'HEAD') return next();
+      const key = decodeURIComponent(req.path.replace(/^\/+/, ''));
+      if (!key || key.includes('..')) return next();
+      storage
+        .get(key, 'public')
+        .then((body) => {
+          if (!body) return void res.status(404).end();
+          res.setHeader('Content-Type', TYPES[key.split('.').pop()!.toLowerCase()] ?? 'application/octet-stream');
+          res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+          res.setHeader('X-Content-Type-Options', 'nosniff');
+          res.setHeader('Content-Security-Policy', "default-src 'none'; img-src 'self'; style-src 'unsafe-inline'; sandbox");
+          res.end(req.method === 'HEAD' ? undefined : body);
+        })
+        .catch(next);
+    });
+  }
 
   app.setGlobalPrefix('api/v1');
   app.enableShutdownHooks();

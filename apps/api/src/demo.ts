@@ -1,5 +1,5 @@
 import { spawn, spawnSync } from 'node:child_process';
-import { existsSync } from 'node:fs';
+import { cpSync, existsSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { Logger } from '@nestjs/common';
 import { PrismaClient } from '@sahyadri/db';
@@ -10,8 +10,11 @@ const log = new Logger('Demo');
 
 const dbDir = resolve(__dirname, '../../../packages/db');
 
-/** Demo site: apply the database migrations before the API starts (Prisma's own lock keeps two instances apart). */
-export function migrateDemoDatabase(): void {
+/**
+ * Demo site, and the live shop when SETUP_ON_START is on: apply the database migrations before the API starts
+ * (Prisma's own lock keeps two instances apart).
+ */
+export function migrateDatabase(): void {
   const prisma = join(dbDir, 'node_modules/.bin/prisma');
   if (!existsSync(prisma)) return log.error(`Cannot set up the database: ${prisma} is missing.`);
   const run = (args: string[]) => spawnSync(prisma, args, { cwd: dbDir, env: process.env, encoding: 'utf8' });
@@ -29,6 +32,75 @@ export function migrateDemoDatabase(): void {
     Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 3000 * attempt);
   }
   log.log('Database tables are up to date.');
+}
+
+/** @deprecated name kept for older callers. */
+export const migrateDemoDatabase = migrateDatabase;
+
+/**
+ * The photos and videos that ship with the code (the signature collection and the stock-list photos) are copied to
+ * this instance's disk on every start, because a new deployment starts with an empty disk. Served at /media/….
+ */
+export function copyBundledMedia(): void {
+  const pub = join(config().storageDir, 'public');
+  const copied: string[] = [];
+  for (const [from, to] of [
+    ['seed/collection', 'collection'],
+    ['seed/media', 'real'],
+  ] as const) {
+    const src = join(dbDir, from);
+    if (!existsSync(src)) continue;
+    try {
+      cpSync(src, join(pub, to), { recursive: true });
+      copied.push(to);
+    } catch (e) {
+      log.error(`Could not copy ${from}: ${(e as Error).message}`);
+    }
+  }
+  if (copied.length) log.log(`Bundled photos ready (${copied.join(', ')}).`);
+}
+
+/**
+ * The live shop when SETUP_ON_START is on: run the production setup once per start, in the background. It never
+ * overwrites anything: it adds missing settings, message templates, categories and draft legal pages, creates the
+ * owner login from SEED_ADMIN_* when there is no Super Admin yet, and imports the signature collection (51 pieces,
+ * skip with IMPORT_SIGNATURE_COLLECTION=false; the 646-piece stock list only with IMPORT_STOCK_LIST=true).
+ */
+export async function runProductionSetup(): Promise<void> {
+  const c = config();
+  const tsx = join(dbDir, 'node_modules/.bin/tsx');
+  if (!existsSync(tsx)) return log.error(`Cannot run the setup: ${tsx} is missing.`);
+  const db = new PrismaClient({ datasources: { db: { url: c.DATABASE_URL } } });
+  try {
+    await db.$transaction(
+      async (tx) => {
+        await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext('production-setup'))`;
+        const out = await new Promise<string>((done, fail) => {
+          const child = spawn(tsx, ['seed/seed.ts'], {
+            cwd: dbDir,
+            env: { ...process.env, SEED_MODE: 'production', STORAGE_LOCAL_DIR: c.storageDir },
+            stdio: ['ignore', 'pipe', 'pipe'],
+          });
+          let text = '';
+          child.stdout.on('data', (d) => (text = (text + String(d)).slice(-4000)));
+          child.stderr.on('data', (d) => (text = (text + String(d)).slice(-4000)));
+          child.on('error', fail);
+          child.on('exit', (code) => (code === 0 ? done(text) : fail(new Error(`setup exited with ${code}: ${text}`))));
+        });
+        log.log(`Production setup: ${out.trim().split('\n').slice(-3).join(' | ')}`);
+      },
+      { maxWait: 120_000, timeout: 600_000 },
+    );
+  } catch (e) {
+    log.error(`Production setup failed: ${(e as Error).message}`);
+    try {
+      await db.auditLog.create({ data: { entity: 'ProductionSetup', action: 'ERROR', after: { message: (e as Error).message.slice(0, 8000) } } });
+    } catch {
+      /* best-effort */
+    }
+  } finally {
+    await db.$disconnect();
+  }
 }
 
 /**

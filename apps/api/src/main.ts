@@ -2,15 +2,19 @@ import { Logger } from '@nestjs/common';
 import { SwaggerModule } from '@nestjs/swagger';
 import { buildOpenApi, createApp } from './bootstrap';
 import { config } from './config/config';
-import { drawDemoSamples, migrateDemoDatabase, prepareDemo } from './demo';
+import { copyBundledMedia, drawDemoSamples, migrateDatabase, prepareDemo, runProductionSetup } from './demo';
 import { JobsService } from './queue/jobs.service';
 
 async function main() {
   const c = config();
   // Demo site (D66): the database gets its tables on start, so no separate migration step is needed.
   if (c.demoMode) {
-    migrateDemoDatabase();
+    migrateDatabase();
     drawDemoSamples();
+  } else if (c.SETUP_ON_START) {
+    // Live shop on Vercel (no terminal needed): tables, then the bundled photos; the setup itself runs after start.
+    migrateDatabase();
+    copyBundledMedia();
   }
   const app = await createApp();
   // The API reference lists every endpoint, so it is served only outside production.
@@ -23,6 +27,8 @@ async function main() {
   if (c.demoMode) {
     Logger.warn('DEMO MODE: sample data, sign-in code 123456, payment sandbox. Not for real customers.', 'Bootstrap');
     void prepareDemo();
+  } else if (c.SETUP_ON_START) {
+    void runProductionSetup();
   }
 }
 
