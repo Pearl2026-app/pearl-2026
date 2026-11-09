@@ -23,15 +23,20 @@ export class SystemController {
     private readonly jobs: JobsService,
   ) {}
 
-  /** The daily scheduled call (Vercel Cron): runs every repeating job once. Needs CRON_SECRET as a Bearer token. */
+  /**
+   * The daily scheduled call (Vercel Cron): runs the repeating jobs that are due. Without CRON_SECRET anyone may call
+   * it, but it only runs what is due anyway (each job keeps its own interval), so repeated calls do nothing extra.
+   * With CRON_SECRET set (Vercel sends it as a Bearer token), the call must carry it and runs every job at once.
+   */
   @Public()
   @ApiExcludeEndpoint()
   @Get('system/tick')
   async tick(@Headers('authorization') auth?: string) {
     const secret = config().CRON_SECRET;
+    if (!secret) return { ok: true, ran: await this.jobs.tick(false) };
     const given = Buffer.from(auth ?? '');
-    const want = Buffer.from(`Bearer ${secret ?? ''}`);
-    if (!secret || given.length !== want.length || !timingSafeEqual(given, want)) throw new UnauthorizedException();
+    const want = Buffer.from(`Bearer ${secret}`);
+    if (given.length !== want.length || !timingSafeEqual(given, want)) throw new UnauthorizedException();
     return { ok: true, ran: await this.jobs.tick(true) };
   }
 
