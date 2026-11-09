@@ -32,13 +32,13 @@
     "api": {
       "root": "apps/api",
       "framework": "nestjs",
-      "entrypoint": "dist/main.js",
+      "entrypoint": "server.js",
       "installCommand": "cd ../.. && pnpm install --frozen-lockfile --filter @sahyadri/api...",
       "buildCommand": "cd ../.. && bash scripts/vercel/api-build.sh",
       "functions": {
-        "dist/main.js": {
+        "server.js": {
           "maxDuration": 60,
-          "includeFiles": "bundled-media/**"
+          "includeFiles": "{bundled-media/**,dist/**}"
         }
       }
     }
