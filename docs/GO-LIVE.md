@@ -2,6 +2,7 @@
 
 The shop runs on the **existing Vercel project** (`sahyadri-pearls-demo`, website + admin + API). **Supabase** holds the
 database and the photos. Nothing else is needed to open: no Fly.io, no Redis, no AWS account and no terminal.
+It runs on Vercel's **free (Hobby) plan**: the API is a normal Vercel Function, not a container.
 
 Setting it up takes about 30 minutes. You do it once, in four websites: Supabase, Gmail, Vercel and the admin.
 
@@ -47,16 +48,15 @@ Open the project → **Settings → Environment Variables**. Edit the **Producti
 | Name | Value |
 |---|---|
 | `DATABASE_URL` | the Supabase URI from step 1.2 |
-| `SETUP_ON_START` | `true` (creates the tables, the owner login and the signature collection by itself) |
+| `SETUP_ON_START` | `true` (on each production deploy, the build creates any missing tables, the owner login and the signature collection) |
 | `SEED_ADMIN_EMAIL` | the owner's email, for the first admin login |
 | `SEED_ADMIN_PASSWORD` | a password of 12+ characters with letters and digits |
 | `SEED_ADMIN_NAME` | the owner's name |
 | `JWT_ACCESS_SECRET` | secret 1 (Claude sends you three long random secrets; or make each with `openssl rand -hex 32`) |
 | `JWT_REFRESH_SECRET` | secret 2 |
 | `APP_SECRET` | secret 3 |
-| `QUEUE_MODE` | `inline` (reminders and timers run inside the site; no Redis needed) |
-| `RUN_WORKERS` | `true` |
-| `STORAGE_DRIVER` | `s3` |
+| `QUEUE_MODE` | `inline` (reminders and expiring holds run as visitors arrive, plus a daily check; no Redis needed) |
+| `STORAGE_DRIVER` | `s3` (required: the free plan keeps no files between visits, so photos you upload must go to the bucket) |
 | `S3_ENDPOINT` | the Supabase endpoint from step 1.4 |
 | `S3_REGION` | `ap-south-1` |
 | `S3_BUCKET` | `sahyadri-media` |
@@ -72,7 +72,8 @@ Open the project → **Settings → Environment Variables**. Edit the **Producti
 Leave `WEB_URL`, `ADMIN_URL` and `API_URL` out: the site takes its address from Vercel, including your own domain once
 it is connected.
 
-Then open **Deployments**, click **⋯** on the top one and choose **Redeploy**. When it is ready:
+Then open **Deployments**, click **⋯** on the top one and choose **Redeploy**. The first deploy takes about 20 minutes
+(the build sets up the database). When it is ready:
 
 - `https://<your-site>/api/v1/health` shows `{"ok":true,…}`
 - the home page shows the signature collection (51 pieces)
