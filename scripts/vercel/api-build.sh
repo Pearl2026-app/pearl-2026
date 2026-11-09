@@ -18,9 +18,14 @@ on() { case "$(echo "${1:-}" | tr 'A-Z' 'a-z')" in 1|true|yes|on) return 0;; *) 
 if [ "${VERCEL_ENV:-}" = "production" ] && [ -n "${DATABASE_URL:-}" ] && { on "${DEMO_MODE:-}" || on "${SETUP_ON_START:-}"; }; then
   echo "Applying database migrations…"
   (cd packages/db && npx prisma migrate deploy)
-  if on "${DEMO_MODE:-}"; then MODE=demo; else MODE=production; fi
-  echo "Running the $MODE setup…"
-  (cd packages/db && SEED_MODE=$MODE STORAGE_LOCAL_DIR="$MEDIA" timeout 600 npx tsx seed/seed.ts) || echo "::warning:: The $MODE setup did not finish; the site still deploys. See the build log above."
+  if on "${DEMO_MODE:-}"; then
+    # The demo's sample data is already in place; the full demo seed is too slow from here. Add the collection only.
+    echo "Adding the signature collection…"
+    (cd packages/db && STORAGE_LOCAL_DIR="$MEDIA" timeout 300 npx tsx seed/collection-only.ts) || echo "::warning:: The signature collection was not added; the site still deploys."
+  else
+    echo "Running the production setup (adds only what is missing)…"
+    (cd packages/db && SEED_MODE=production STORAGE_LOCAL_DIR="$MEDIA" timeout 1500 npx tsx seed/seed.ts) || echo "::warning:: The production setup did not finish; the site still deploys. See the build log above."
+  fi
 else
   echo "Database setup skipped (not the production deployment, or neither DEMO_MODE nor SETUP_ON_START is on)."
 fi
