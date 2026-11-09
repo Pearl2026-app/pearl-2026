@@ -3,6 +3,7 @@ import { HeroCarousel } from '@/components/hero-carousel';
 import { CategoryTiles, CenterHeading, FinishTabs, OutlineLink, ProductRail, StoreHero, type StoreSlide } from '@/components/home-store';
 import { LocationGate } from '@/components/location-gate';
 import { IconFor } from '@/components/icons';
+import { Turntable } from '@/components/turntable';
 import { Container } from '@/components/ui';
 import { JsonLd, meta, SITE_URL } from '@/lib/seo';
 import { cityFromCookie, get, pinFromCookie } from '@/lib/server-api';
@@ -103,6 +104,8 @@ export default async function HomePage() {
   ].filter((t) => t.image);
 
   const loved = oneEach.slice(0, 10);
+  const crown = signature.find((p) => p.sku === 'SP-JRP-01-1');
+  const crownHref = crown ? `/product/${crown.slug}` : '/collections/signature';
   const trustItems = (trust?.data.items as Array<{ icon: string; title: string }> | undefined) ?? [
     { icon: 'farm', title: 'Farm-traced pearls' },
     { icon: 'certificate', title: 'Certified & verifiable' },
@@ -136,6 +139,21 @@ export default async function HomePage() {
         </Container>
       )}
 
+      {/* The ring, turning: a full 360° of the client's own film as the visitor scrolls. */}
+      <div className="pt-14 lg:pt-20">
+        <Turntable
+          frames="/turntable/sp-jrp-01"
+          count={120}
+          href={crownHref}
+          cta="See the Filigree Crown ring"
+          captions={[
+            { eyebrow: 'The pearl', title: 'Chosen by hand.', text: 'Each pearl is matched for lustre, roundness and colour before it leaves the farm.' },
+            { eyebrow: 'The setting', title: 'Set by our craftsmen.', text: 'A filigree crown holds the pearl, in yellow, rose or white gold, made to your ring size.' },
+            { eyebrow: 'The proof', title: 'Traced to its farm.', text: 'Every piece comes with a certificate you can check online, down to the farm that grew it.' },
+          ]}
+        />
+      </div>
+
       {loved.length > 0 && (
         <Container className="pt-14 lg:pt-20">
           <CenterHeading title="Most loved" sub="Our customers' favourite designs" />
@@ -149,9 +167,11 @@ export default async function HomePage() {
       {/* Craft and origin, picture and words side by side. */}
       <Container className="pt-16 lg:pt-24">
         <div className="grid overflow-hidden rounded-md border border-line md:grid-cols-2">
-          <div className="nacre flex items-center justify-center">
+          <div className="nacre flex items-center justify-center overflow-hidden">
             {img(earring ?? ring, 1) && (
-              <img src={img(earring ?? ring, 1)!} alt="" loading="lazy" width={700} height={700} className="aspect-square w-full object-contain p-10 mix-blend-multiply md:aspect-[5/4]" />
+              <span data-depth="0.1" className="block w-full">
+                <img src={img(earring ?? ring, 1)!} alt="" loading="lazy" width={700} height={700} className="aspect-square w-full object-contain p-10 mix-blend-multiply md:aspect-[5/4]" />
+              </span>
             )}
           </div>
           <div className="flex flex-col justify-center bg-ink px-6 py-12 text-white md:px-12 lg:px-20">

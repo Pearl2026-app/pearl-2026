@@ -68,7 +68,7 @@ export function ProductGrid({ products, priorityCount = 0 }: { products: Card[];
   return (
     <ul className="grid grid-cols-2 gap-x-3 gap-y-8 md:grid-cols-3 lg:grid-cols-4 lg:gap-x-6 lg:gap-y-12">
       {products.map((p, i) => (
-        <li key={p.id} data-reveal style={{ ['--reveal-delay' as string]: `${(i % 4) * 70}ms` }}>
+        <li key={p.id} data-reveal="3d" style={{ ['--reveal-delay' as string]: `${(i % 4) * 70}ms` }}>
           <ProductCard p={p} priority={i < priorityCount} />
         </li>
       ))}

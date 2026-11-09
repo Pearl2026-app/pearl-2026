@@ -85,6 +85,7 @@ export function StoreHero({ slides }: { slides: StoreSlide[] }) {
               </div>
             </div>
             <Link href={s.href} tabIndex={-1} className="nacre order-1 flex items-center justify-center overflow-hidden sm:order-2">
+              <span data-depth="-0.08" className="flex h-full w-full items-center justify-center">
               <img
                 src={s.image}
                 alt=""
@@ -93,6 +94,7 @@ export function StoreHero({ slides }: { slides: StoreSlide[] }) {
                 fetchPriority={k === 0 ? 'high' : 'auto'}
                 className={`h-full max-h-full w-auto max-w-full object-contain p-6 mix-blend-multiply transition-transform duration-[6000ms] ease-out lg:p-10 ${k === i ? 'scale-105' : 'scale-100'}`}
               />
+              </span>
             </Link>
           </div>
         ))}
@@ -136,11 +138,12 @@ export function CategoryTiles({ tiles }: { tiles: Array<{ label: string; href: s
     <ul
       className={`no-scrollbar -mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-1 lg:mx-0 lg:grid lg:gap-6 lg:overflow-visible lg:px-0 ${tiles.length === 3 ? 'lg:grid-cols-3' : 'lg:grid-cols-4'}`}
     >
-      {tiles.map((t) => (
-        <li key={t.label} className="w-[62%] shrink-0 snap-start sm:w-[40%] lg:w-auto">
+      {tiles.map((t, k) => (
+        <li key={t.label} data-reveal="3d" style={{ ['--reveal-delay' as string]: `${k * 90}ms` }} className="w-[62%] shrink-0 snap-start sm:w-[40%] lg:w-auto">
           <Link href={t.href} className="group block overflow-hidden rounded-md border border-line/60">
             <span className="nacre block aspect-[4/5] overflow-hidden">
               {t.image && (
+                <span data-depth="0.06" className="block h-full w-full">
                 <img
                   src={t.image}
                   alt=""
@@ -149,6 +152,7 @@ export function CategoryTiles({ tiles }: { tiles: Array<{ label: string; href: s
                   height={625}
                   className="h-full w-full object-contain p-6 mix-blend-multiply transition-transform duration-500 group-hover:scale-105"
                 />
+                </span>
               )}
             </span>
             <span className="flex items-center justify-between bg-ink px-4 py-3.5 text-white">
@@ -173,7 +177,7 @@ export function ProductRail({ products }: { products: Card[] }) {
     <div className="relative">
       <ul ref={track} className="no-scrollbar -mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-1 lg:mx-0 lg:gap-6 lg:px-0">
         {products.map((p, k) => (
-          <li key={p.id} className="w-[46%] shrink-0 snap-start sm:w-[31%] lg:w-[calc((100%-4.5rem)/4)]">
+          <li key={p.id} data-reveal="3d" style={{ ['--reveal-delay' as string]: `${(k % 4) * 80}ms` }} className="w-[46%] shrink-0 snap-start sm:w-[31%] lg:w-[calc((100%-4.5rem)/4)]">
             <ProductCard p={p} priority={k < 2} />
           </li>
         ))}

@@ -171,6 +171,20 @@ html.motion-ready [data-reveal].is-in {
   opacity: 1;
   transform: none;
 }
+/* Cards and tiles tip up into place, like a piece set down on a table. */
+html.motion-ready [data-reveal='3d'] {
+  transform: perspective(1100px) rotateX(16deg) translateY(48px) scale(0.97);
+  transform-origin: 50% 100%;
+  transition:
+    opacity 1s var(--ease-silk),
+    transform 1.1s var(--ease-silk);
+}
+html.motion-ready [data-reveal='3d'].is-in {
+  transform: perspective(1100px) rotateX(0) translateY(0) scale(1);
+}
+[data-depth] {
+  will-change: transform;
+}
 
 @media (prefers-reduced-motion: reduce) {
   html.motion-ready [data-reveal] {
