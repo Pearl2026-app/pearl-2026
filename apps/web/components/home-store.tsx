@@ -65,7 +65,7 @@ export function StoreHero({ slides }: { slides: StoreSlide[] }) {
             className={`absolute inset-0 grid transition-opacity duration-700 sm:grid-cols-2 ${k === i ? 'opacity-100' : 'pointer-events-none opacity-0'}`}
           >
             <div
-              className={`order-2 flex flex-col justify-center px-6 py-8 sm:order-1 sm:px-12 lg:px-24 ${s.dark ? 'bg-[linear-gradient(135deg,#070e4d,#1d2f6b_60%,#47628a)] text-white' : 'bg-surface text-ink'}`}
+              className={`order-2 flex flex-col justify-center px-6 py-8 sm:order-1 sm:px-12 lg:px-24 ${s.dark ? 'bg-[linear-gradient(135deg,#070e4d,#070e4d_45%,#47628a)] text-white' : 'bg-surface text-ink'}`}
             >
               <p className={`lux-track text-[12px] ${s.dark ? 'text-gold' : 'text-gold'}`}>{s.eyebrow}</p>
               {k === 0 ? (

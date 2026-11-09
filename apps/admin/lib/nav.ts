@@ -17,17 +17,17 @@ export interface NavGroup {
 }
 
 export const NAV: NavGroup[] = [
-  { label: 'Overview', items: [{ href: '/', info: 'Today at a glance: sales, orders waiting, stock value left, and low-stock alerts.', label: 'Dashboard', module: 'DASHBOARD', primary: '#14212B' }] },
+  { label: 'Overview', items: [{ href: '/', info: 'Today at a glance: sales, orders waiting, stock value left, and low-stock alerts.', label: 'Dashboard', module: 'DASHBOARD', primary: '#070E4D' }] },
   {
     label: 'Sales',
     items: [
-      { href: '/enquiries', info: 'WhatsApp and website enquiries from shoppers. Reply, follow up, and convert one into an order in a click.', label: 'Enquiries', module: 'ENQUIRIES', primary: '#1F7A4D' },
+      { href: '/enquiries', info: 'WhatsApp and website enquiries from shoppers. Reply, follow up, and convert one into an order in a click.', label: 'Enquiries', module: 'ENQUIRIES', primary: '#47628A' },
       {
         href: '/orders', info: 'Every order from the website, stores and enquiries. Confirm, pack, assign a delivery partner and track it to delivery.',
         label: 'Orders',
         module: 'ORDERS',
         roles: ['SUPER_ADMIN', 'STAFF', 'STATE_MANAGER', 'CITY_MANAGER', 'VENDOR', 'FRANCHISE'],
-        primary: '#2B5C8A',
+        primary: '#47628A',
       },
       { href: '/custom-orders', info: "Made-to-order requests (shopper's own design or photo). Quote a price, approve, and track making.", label: 'Customized orders', module: 'CUSTOM_ORDERS' },
       {
@@ -47,18 +47,18 @@ export const NAV: NavGroup[] = [
   },
   {
     label: 'Delivery',
-    items: [{ href: '/delivery', info: "The delivery partner's own list: scan pieces at pickup, start delivery, and record proof (photo, customer code, cash).", label: 'My deliveries', roles: ['DELIVERY_PARTNER'], primary: '#2B5C8A' }],
+    items: [{ href: '/delivery', info: "The delivery partner's own list: scan pieces at pickup, start delivery, and record proof (photo, customer code, cash).", label: 'My deliveries', roles: ['DELIVERY_PARTNER'], primary: '#47628A' }],
   },
   {
     label: 'Catalogue',
     items: [
-      { href: '/products', info: 'The full catalogue: add pieces with photos, CAD and video; set price, sizes, SR code and where each piece is shown.', label: 'Products', module: 'PRODUCTS', primary: '#9A7546', roles: ['SUPER_ADMIN', 'STAFF', 'STATE_MANAGER', 'CITY_MANAGER', 'VENDOR', 'FRANCHISE', 'FARMER'] },
+      { href: '/products', info: 'The full catalogue: add pieces with photos, CAD and video; set price, sizes, SR code and where each piece is shown.', label: 'Products', module: 'PRODUCTS', primary: '#B89042', roles: ['SUPER_ADMIN', 'STAFF', 'STATE_MANAGER', 'CITY_MANAGER', 'VENDOR', 'FRANCHISE', 'FARMER'] },
       {
         href: '/restock', info: 'Pieces running low (under 5). A draft purchase order is created automatically so you can reorder in one step.',
         label: 'Purchase orders (low stock)',
         module: 'PRODUCTS',
         roles: ['SUPER_ADMIN', 'STAFF', 'STATE_MANAGER', 'CITY_MANAGER', 'VENDOR', 'MANUFACTURER'],
-        primary: '#9A7546',
+        primary: '#B89042',
       },
       { href: '/products/offers', info: 'Product-level discounts shown on the website, e.g. 10% off a collection for a period.', label: 'Offers & discounts', module: 'PRODUCTS', action: 'edit', roles: ['SUPER_ADMIN', 'STAFF'] },
       { href: '/categories', info: 'Rings, necklaces, earrings… the groups shoppers browse by. Also used in reports.', label: 'Categories', module: 'CATEGORIES', roles: ['SUPER_ADMIN', 'STAFF'] },
@@ -71,10 +71,10 @@ export const NAV: NavGroup[] = [
   {
     label: 'Customers',
     items: [
-      { href: '/customers', info: 'Retail shoppers: contact details, order history and points. Activate or deactivate an account.', label: 'Customers', module: 'USERS', primary: '#6B4C9A' },
+      { href: '/customers', info: 'Retail shoppers: contact details, order history and points. Activate or deactivate an account.', label: 'Customers', module: 'USERS', primary: '#47628A' },
       // Main menu, right below Customers (meeting of 31 Oct). No role list, so manufacturers keep their own POs.
-      { href: '/purchase-orders', info: 'Orders we place on manufacturers with exact specs, photos and CAD. We send the pearls; they confirm, accept with a deadline and update each work stage (you get an email). Making charge, GST and their bill are checked here.', label: 'Purchase orders', module: 'PURCHASE_ORDERS', primary: '#6B4C9A' },
-      { href: '/business-buyers', info: "Wholesale (B2B) buyers: approve applications, and see the B2B price list with each piece's business price and minimum order quantity (MOQ).", label: 'Business buyers (B2B)', module: 'USERS', action: 'edit', roles: ['SUPER_ADMIN', 'STAFF'], primary: '#6B4C9A' },
+      { href: '/purchase-orders', info: 'Orders we place on manufacturers with exact specs, photos and CAD. We send the pearls; they confirm, accept with a deadline and update each work stage (you get an email). Making charge, GST and their bill are checked here.', label: 'Purchase orders', module: 'PURCHASE_ORDERS', primary: '#47628A' },
+      { href: '/business-buyers', info: "Wholesale (B2B) buyers: approve applications, and see the B2B price list with each piece's business price and minimum order quantity (MOQ).", label: 'Business buyers (B2B)', module: 'USERS', action: 'edit', roles: ['SUPER_ADMIN', 'STAFF'], primary: '#47628A' },
       { href: '/wallet-payouts', info: 'Customers withdrawing their referral wallet as cash. Pay by UPI or bank, then mark paid with the reference — or reject and the money goes back to their wallet.', label: 'Wallet payouts', module: 'USERS', action: 'edit', roles: ['SUPER_ADMIN', 'STAFF'] },
     ],
   },
@@ -128,8 +128,8 @@ export const NAV: NavGroup[] = [
   {
     label: 'Reports',
     items: [
-      { href: '/reports', info: 'Sales, stock, GST and farm reports. Pick a date range and export to Excel.', label: 'Reports', module: 'REPORTS', primary: '#B4532A', roles: ['SUPER_ADMIN', 'STAFF', 'STATE_MANAGER', 'CITY_MANAGER', 'VENDOR', 'FRANCHISE'] },
-      { href: '/farm-sales', info: "Sales of each farm's pearls, for paying and reviewing farms.", label: 'Farm sales', module: 'REPORTS', primary: '#B4532A', roles: ['SUPER_ADMIN', 'STAFF', 'FARMER'] },
+      { href: '/reports', info: 'Sales, stock, GST and farm reports. Pick a date range and export to Excel.', label: 'Reports', module: 'REPORTS', primary: '#B89042', roles: ['SUPER_ADMIN', 'STAFF', 'STATE_MANAGER', 'CITY_MANAGER', 'VENDOR', 'FRANCHISE'] },
+      { href: '/farm-sales', info: "Sales of each farm's pearls, for paying and reviewing farms.", label: 'Farm sales', module: 'REPORTS', primary: '#B89042', roles: ['SUPER_ADMIN', 'STAFF', 'FARMER'] },
     ],
   },
   {

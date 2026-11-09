@@ -232,7 +232,7 @@ export default function OrderPage() {
             </dl>
           </Card>
           <Card>
-            <h2 className="mb-2 flex items-center gap-2 font-semibold"><History size={17} style={{ color: '#586570' }} aria-hidden /> Timeline</h2>
+            <h2 className="mb-2 flex items-center gap-2 font-semibold"><History size={17} style={{ color: '#47628A' }} aria-hidden /> Timeline</h2>
             <ol className="flex flex-col gap-2 text-sm">
               {o.events.map((e: any) => (
                 <li key={e.id} className="border-l-2 border-line pl-3">
@@ -257,7 +257,7 @@ export default function OrderPage() {
           </Card>
           {o.payments.length > 0 && (
             <Card>
-              <h2 className="mb-2 flex items-center gap-2 font-semibold"><CreditCard size={17} style={{ color: '#2B5C8A' }} aria-hidden /> Payments</h2>
+              <h2 className="mb-2 flex items-center gap-2 font-semibold"><CreditCard size={17} style={{ color: '#47628A' }} aria-hidden /> Payments</h2>
               <ul className="text-sm">
                 {o.payments.map((p: any) => (
                   <li key={p.id} className="flex justify-between border-t border-line py-1">
@@ -285,7 +285,7 @@ export default function OrderPage() {
           )}
           {o.delivery && (
             <Card>
-              <h2 className="mb-2 flex items-center gap-2 font-semibold"><Truck size={17} style={{ color: '#2B5C8A' }} aria-hidden /> Delivery</h2>
+              <h2 className="mb-2 flex items-center gap-2 font-semibold"><Truck size={17} style={{ color: '#47628A' }} aria-hidden /> Delivery</h2>
               <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
                 <dt className="text-muted">Partner</dt>
                 <dd>
@@ -636,7 +636,7 @@ function DeliveryCard({
   return (
     <Card className="flex flex-col gap-3">
       <div>
-        <h2 className="flex items-center gap-2 font-semibold"><Truck size={17} style={{ color: '#2B5C8A' }} aria-hidden /> Delivery</h2>
+        <h2 className="flex items-center gap-2 font-semibold"><Truck size={17} style={{ color: '#47628A' }} aria-hidden /> Delivery</h2>
         <p className="mt-1 text-sm text-muted">
           {order.fulfilmentVendor ? (
             <>

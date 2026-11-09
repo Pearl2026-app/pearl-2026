@@ -1,22 +1,22 @@
 /* Shared Tailwind v4 theme. Import after "tailwindcss" in each app's globals.css. Values mirror tokens.ts. */
 @theme {
   /* "Nacre": cool pearl white, Konkan-sea ink, one warm metal for details. */
-  --color-bg: #f4f5f3;
+  --color-bg: #F7F3E9;
   --color-surface: #ffffff;
-  --color-surface-muted: #e9ecea;
-  --color-ink: #14212b;
-  --color-muted: #586570;
-  --color-line: #d9dedf;
-  --color-accent: #14212b;
-  --color-accent-hover: #0a141b;
-  --color-accent-soft: #e2e8eb;
-  --color-gold: #9a7546;
-  --color-orient: #e9d9d3;
+  --color-surface-muted: #EFE9DA;
+  --color-ink: #070E4D;
+  --color-muted: #47628A;
+  --color-line: #DAD8D6;
+  --color-accent: #070E4D;
+  --color-accent-hover: #47628A;
+  --color-accent-soft: #E4E8EF;
+  --color-gold: #B89042;
+  --color-orient: #ECE4D0;
   --color-whatsapp: #1f7a4d;
   --color-success: #2e7d4f;
   --color-warning: #a86b12;
   --color-danger: #b3261e;
-  --color-info: #2b5c8a;
+  --color-info: #47628A;
 
   --font-serif: var(--font-poppins, Poppins), system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   --font-sans: var(--font-poppins, Poppins), system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;

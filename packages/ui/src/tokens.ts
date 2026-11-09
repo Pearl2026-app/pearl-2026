@@ -1,22 +1,22 @@
 // Brand tokens: change the brand here and every app follows (SPEC Part 11).
 // Web and admin read these through theme.css; the mobile apps import this file directly.
 export const colors = {
-  bg: '#F4F5F3', // cool pearl white (nacre)
+  bg: '#F7F3E9', // cool pearl white (nacre)
   surface: '#FFFFFF',
-  surfaceMuted: '#E9ECEA', // mist
-  text: '#14212B', // Konkan-sea ink
-  textMuted: '#586570',
-  border: '#D9DEDF',
-  accent: '#14212B', // ink: buttons and links
-  accentHover: '#0A141B',
-  accentSoft: '#E2E8EB',
-  gold: '#9A7546', // temple gold, details only
-  orient: '#E9D9D3', // the rose lustre on a pearl's surface, washes only
+  surfaceMuted: '#EFE9DA', // mist
+  text: '#070E4D', // Konkan-sea ink
+  textMuted: '#47628A',
+  border: '#DAD8D6',
+  accent: '#070E4D', // ink: buttons and links
+  accentHover: '#47628A',
+  accentSoft: '#E4E8EF',
+  gold: '#B89042', // temple gold, details only
+  orient: '#ECE4D0', // the rose lustre on a pearl's surface, washes only
   whatsapp: '#1F7A4D',
   success: '#2E7D4F',
   warning: '#A86B12',
   danger: '#B3261E',
-  info: '#2B5C8A',
+  info: '#47628A',
 } as const;
 
 export const fonts = {

@@ -59,17 +59,17 @@ interface Dash {
 
 /** The four figures that need attention, each in its own colour. The rest live in Reports. */
 const CARDS: Array<{ key: string; label: string; info: string; money?: boolean; href: string; tint: string; ink: string; icon: LucideIcon }> = [
-  { key: 'salesPaise', label: 'Sales', info: 'Value of paid orders in the dates chosen above. Tap to open Reports.', money: true, href: '/reports', tint: '#E2F1E8', ink: '#1F5E3A', icon: IndianRupee },
-  { key: 'pendingOrders', label: 'Orders to process', info: 'New orders not yet confirmed or packed. These need action today.', href: '/orders?status=PLACED', tint: '#E3EDF7', ink: '#1F4A73', icon: ShoppingBag },
-  { key: 'pendingEnquiries', label: 'Open enquiries', info: 'Shopper questions not yet answered or converted into an order.', href: '/enquiries', tint: '#FBF0DC', ink: '#7A4C0B', icon: MessageSquare },
-  { key: 'outOfStock', label: 'Out of stock or sold', info: 'Pieces with no stock left. Tap to reorder from the purchase-order list.', href: '/restock', tint: '#F8E1DF', ink: '#8C1D17', icon: PackageX },
-  { key: 'stockValuePaise', label: 'Stock value (remaining)', info: 'What the unsold stock is worth at selling price.', money: true, href: '/products', tint: '#EDE9F5', ink: '#4A3B78', icon: Gem },
+  { key: 'salesPaise', label: 'Sales', info: 'Value of paid orders in the dates chosen above. Tap to open Reports.', money: true, href: '/reports', tint: '#FFFFFF', ink: '#070E4D', icon: IndianRupee },
+  { key: 'pendingOrders', label: 'Orders to process', info: 'New orders not yet confirmed or packed. These need action today.', href: '/orders?status=PLACED', tint: '#FFFFFF', ink: '#070E4D', icon: ShoppingBag },
+  { key: 'pendingEnquiries', label: 'Open enquiries', info: 'Shopper questions not yet answered or converted into an order.', href: '/enquiries', tint: '#FFFFFF', ink: '#070E4D', icon: MessageSquare },
+  { key: 'outOfStock', label: 'Out of stock or sold', info: 'Pieces with no stock left. Tap to reorder from the purchase-order list.', href: '/restock', tint: '#FFFFFF', ink: '#070E4D', icon: PackageX },
+  { key: 'stockValuePaise', label: 'Stock value (remaining)', info: 'What the unsold stock is worth at selling price.', money: true, href: '/products', tint: '#FFFFFF', ink: '#070E4D', icon: Gem },
 ];
 
 /** Shortcuts to the jobs done most often, shown only to people who may do them. */
 const ACTIONS: Array<{ href: string; label: string; module: Module; action: Action; icon: LucideIcon; colour: string }> = [
-  { href: '/orders/new', label: 'New order', module: 'ORDERS', action: 'create', icon: Plus, colour: '#2B5C8A' },
-  { href: '/products/new', label: 'Add product', module: 'PRODUCTS', action: 'create', icon: Plus, colour: '#9A7546' },
+  { href: '/orders/new', label: 'New order', module: 'ORDERS', action: 'create', icon: Plus, colour: '#47628A' },
+  { href: '/products/new', label: 'Add product', module: 'PRODUCTS', action: 'create', icon: Plus, colour: '#B89042' },
   { href: '/enquiries', label: 'Reply to enquiries', module: 'ENQUIRIES', action: 'view', icon: Reply, colour: '#1F7A4D' },
   { href: '/banners', label: 'Change banners', module: 'CONTENT', action: 'edit', icon: ImagePlus, colour: '#1F7A4D' },
 ];
@@ -157,7 +157,7 @@ function TodaysRates({ canEdit }: { canEdit: boolean }) {
   return (
     <Card className="mb-5">
       <h2 className="mb-2 flex flex-wrap items-center gap-2 font-semibold">
-        <Coins size={18} className="text-[#9A7546]" aria-hidden /> Today&rsquo;s rates
+        <Coins size={18} className="text-[#B89042]" aria-hidden /> Today&rsquo;s rates
         <InfoTip text="Gold, silver and platinum per gram, as entered on Pricing → Metal rates. Pieces set to follow the rate are priced from these." />
         {canEdit && (
           <Link href="/pricing/metal-rates" className="ml-auto text-sm font-normal text-accent underline">
@@ -169,7 +169,7 @@ function TodaysRates({ canEdit }: { canEdit: boolean }) {
         <>
           <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
             {shown.map((r) => (
-              <li key={r.metal} className="rounded-md bg-[#F6F1E8] px-3 py-2 text-[#5C4424]">
+              <li key={r.metal} className="rounded-md bg-bg px-3 py-2 text-ink">
                 <span className="block text-xs">{METAL_RATE_LABEL[r.metal]}</span>
                 <span className="text-lg font-semibold tabular-nums">{inr(r.ratePerGramPaise)}</span>
                 <span className="text-xs"> /g</span>
@@ -244,12 +244,12 @@ export function Dashboard() {
                 </span>
                 <Link
                   href={c.href}
-                  className="block rounded-lg p-4 transition-transform hover:-translate-y-0.5"
+                  className="block rounded-lg border border-line p-4 transition-colors hover:border-gold"
                   style={{ backgroundColor: c.tint, color: c.ink }}
                 >
                   <span className="flex items-center justify-between gap-2">
                     <span className="text-sm font-medium">{c.label}</span>
-                    <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-white/70" aria-hidden>
+                    <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-bg text-gold" aria-hidden>
                       <c.icon size={18} />
                     </span>
                   </span>
@@ -282,7 +282,7 @@ export function Dashboard() {
           {me?.permissions.DASHBOARD?.includes('view') && me.role !== 'DELIVERY_PARTNER' && <TodaysRates canEdit={!!me.permissions.PRICING?.includes('edit') && (me.role === 'SUPER_ADMIN' || me.role === 'STAFF')} />}
           <Card className="mb-5">
             <h2 className="mb-2 flex items-center gap-2 font-semibold">
-              <BarChart3 size={18} className="text-[#B4532A]" aria-hidden /> Sales by month
+              <BarChart3 size={18} className="text-[#B89042]" aria-hidden /> Sales by month
               <InfoTip text="Sales for each month, to see the trend at a glance." />
             </h2>
             <Bars data={data.monthly} value={(m) => m.salesPaise} format={(n) => inr(n)} />
@@ -290,7 +290,7 @@ export function Dashboard() {
           <div className="grid gap-4 lg:grid-cols-2">
             <Card>
               <h2 className="mb-2 flex items-center gap-2 font-semibold">
-                <ShoppingBag size={18} className="text-[#2B5C8A]" aria-hidden /> Recent orders
+                <ShoppingBag size={18} className="text-[#47628A]" aria-hidden /> Recent orders
               <InfoTip text="The latest orders and their status. Tap a number to open it." />
               </h2>
               <ul className="text-sm">
@@ -321,7 +321,7 @@ export function Dashboard() {
             {me?.role !== 'VENDOR' && (
               <Card>
                 <h2 className="mb-2 flex items-center gap-2 font-semibold">
-                  <MessageSquare size={18} className="text-[#1F7A4D]" aria-hidden /> Recent enquiries
+                  <MessageSquare size={18} className="text-[#B89042]" aria-hidden /> Recent enquiries
               <InfoTip text="The latest shopper enquiries, so none is missed." />
                 </h2>
                 <ul className="text-sm">

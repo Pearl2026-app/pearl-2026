@@ -143,7 +143,7 @@ export default function CheckoutPage() {
         name: 'Sahyadri Pearls',
         description: `Order ${r.order.number}`,
         prefill: r.payment.prefill,
-        theme: { color: '#111111' },
+        theme: { color: '#070E4D' },
         handler: async (resp: { razorpay_order_id: string; razorpay_payment_id: string; razorpay_signature: string }) => {
           await api('/payments/verify', { method: 'POST', json: { orderId: resp.razorpay_order_id, paymentId: resp.razorpay_payment_id, signature: resp.razorpay_signature } }).catch(() => undefined);
           router.push(done);

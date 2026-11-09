@@ -13,21 +13,21 @@ import { InfoTip } from './info-tip';
 
 /** A colour per menu section, so related pages share a colour and a page is recognised at a glance. */
 export const GROUP_COLOUR: Record<string, string> = {
-  Overview: '#14212B',
-  Sales: '#2B5C8A',
-  Delivery: '#2B5C8A',
-  Catalogue: '#9A7546',
+  Overview: '#070E4D',
+  Sales: '#47628A',
+  Delivery: '#47628A',
+  Catalogue: '#B89042',
   Customers: '#6B4C9A',
   Marketing: '#C2410C',
   Content: '#1F7A4D',
   Network: '#0E7C86',
   Pricing: '#8A6D1F',
   Reports: '#B4532A',
-  Administration: '#586570',
+  Administration: '#47628A',
 };
 export const colourFor = (href: string) => {
   const g = NAV.find((x) => x.items.some((i) => i.href === href || (href !== '/' && href.startsWith(i.href + '/'))));
-  return (g && GROUP_COLOUR[g.label]) ?? '#586570';
+  return (g && GROUP_COLOUR[g.label]) ?? '#47628A';
 };
 
 /** An icon on a soft tile in the page's colour. */
@@ -151,7 +151,7 @@ export function Shell({ children }: { children: ReactNode }) {
             {more.map((g) => (
               <div key={g.label}>
                 <p className="mb-0.5 flex items-center gap-2 px-3 text-[11px] font-medium tracking-wide text-muted uppercase">
-                  <span aria-hidden className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: GROUP_COLOUR[g.label] ?? '#586570' }} />
+                  <span aria-hidden className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: GROUP_COLOUR[g.label] ?? '#47628A' }} />
                   {g.label}
                 </p>
                 <ul>

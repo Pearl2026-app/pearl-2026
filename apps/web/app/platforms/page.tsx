@@ -31,7 +31,7 @@ export default async function PlatformsPage() {
   const site = await get<Site>('/site', { revalidate: 300 });
   const h = await headers();
   const origin = `${h.get('x-forwarded-proto') ?? 'https'}://${h.get('x-forwarded-host') ?? h.get('host')}`;
-  const qr = await Promise.all(PLATFORMS.map((p) => QRCode.toString(origin + p.path, { type: 'svg', margin: 0, color: { dark: '#1F2A2B', light: '#00000000' } })));
+  const qr = await Promise.all(PLATFORMS.map((p) => QRCode.toString(origin + p.path, { type: 'svg', margin: 0, color: { dark: '#070E4D', light: '#00000000' } })));
   return (
     <Container className="pb-16">
       <PageTitle eyebrow="Sahyadri Pearls" title="All platforms" intro="One system: the website, the two phone apps, the head-office admin and a panel for every partner, on one database and one API." />

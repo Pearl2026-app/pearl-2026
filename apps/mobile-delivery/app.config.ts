@@ -23,7 +23,7 @@ const config: ExpoConfig = {
   },
   android: {
     package: 'in.sahyadripearls.delivery',
-    adaptiveIcon: { foregroundImage: './assets/adaptive-icon.png', backgroundColor: '#1F4E52' },
+    adaptiveIcon: { foregroundImage: './assets/adaptive-icon.png', backgroundColor: '#070E4D' },
     permissions: ['CAMERA', 'ACCESS_COARSE_LOCATION', 'ACCESS_FINE_LOCATION', 'POST_NOTIFICATIONS'],
   },
   // Browser preview served under a path of the website (EXPO_BASE_URL, e.g. /apps/customer).
@@ -31,11 +31,11 @@ const config: ExpoConfig = {
   web: { output: 'single', favicon: './assets/icon.png' },
   plugins: [
     'expo-router',
-    ['expo-splash-screen', { image: './assets/splash-icon.png', imageWidth: 200, resizeMode: 'contain', backgroundColor: '#1F4E52' }],
+    ['expo-splash-screen', { image: './assets/splash-icon.png', imageWidth: 200, resizeMode: 'contain', backgroundColor: '#070E4D' }],
     'expo-secure-store',
     ['expo-image-picker', { cameraPermission: 'The camera takes the proof-of-delivery photo of the handover.' }],
     ['expo-location', { locationWhenInUsePermission: 'Your location is saved with a delivery as part of the proof of delivery.' }],
-    ['expo-notifications', { color: '#1F4E52' }],
+    ['expo-notifications', { color: '#070E4D' }],
   ],
   extra: { apiUrl },
 };

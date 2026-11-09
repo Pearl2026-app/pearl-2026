@@ -27,7 +27,7 @@ const config: ExpoConfig = {
   },
   android: {
     package: 'in.sahyadripearls.app',
-    adaptiveIcon: { foregroundImage: './assets/adaptive-icon.png', backgroundColor: '#1F4E52' },
+    adaptiveIcon: { foregroundImage: './assets/adaptive-icon.png', backgroundColor: '#070E4D' },
     permissions: ['POST_NOTIFICATIONS'],
     intentFilters: isLocal
       ? []
@@ -45,11 +45,11 @@ const config: ExpoConfig = {
   web: { output: 'single', favicon: './assets/icon.png' },
   plugins: [
     'expo-router',
-    ['expo-splash-screen', { image: './assets/splash-icon.png', imageWidth: 200, resizeMode: 'contain', backgroundColor: '#1F4E52' }],
+    ['expo-splash-screen', { image: './assets/splash-icon.png', imageWidth: 200, resizeMode: 'contain', backgroundColor: '#070E4D' }],
     'expo-secure-store',
     'expo-web-browser',
     ['expo-image-picker', { photosPermission: 'Add photos of a design you like to a Customized Jewellery request.', cameraPermission: 'Add photos of a design you like to a Customized Jewellery request.' }],
-    ['expo-notifications', { color: '#1F4E52' }],
+    ['expo-notifications', { color: '#070E4D' }],
   ],
   extra: { apiUrl, webUrl },
 };

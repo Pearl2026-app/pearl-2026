@@ -78,7 +78,7 @@ export function ScanCard({
   return (
     <Card>
       <h2 className="mb-1 flex items-center gap-2 font-semibold">
-        <ScanLine size={17} style={{ color: '#9A7546' }} aria-hidden /> Scan to update
+        <ScanLine size={17} style={{ color: '#B89042' }} aria-hidden /> Scan to update
       </h2>
       <p className="mb-3 text-sm text-muted">
         {next ? (

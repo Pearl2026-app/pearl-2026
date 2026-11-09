@@ -213,7 +213,7 @@ ${mark(1576, 880, true)}</svg>`;
     return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" width="1600" height="900">${defs()}
 <defs><radialGradient id="${v}" cx="62%" cy="38%" r="80%"><stop offset="0" stop-color="#5a3c43"/><stop offset=".55" stop-color="#36232a"/><stop offset="1" stop-color="#1e1215"/></radialGradient></defs>
 <rect width="1600" height="900" fill="url(#${v})"/>
-<ellipse cx="1050" cy="330" rx="520" ry="260" fill="#e9d9d3" opacity=".08" filter="url(#b40)"/>
+<ellipse cx="1050" cy="330" rx="520" ry="260" fill="#ECE4D0" opacity=".08" filter="url(#b40)"/>
 ${strand(pts, () => 30, 'White', 0.55)}${loose}
 <circle cx="1508" cy="${(pts[pts.length - 40]![1] - 4).toFixed(0)}" r="13" fill="none" stroke="url(#metal)" stroke-width="6"/>
 ${mark(1576, 880, true)}</svg>`;

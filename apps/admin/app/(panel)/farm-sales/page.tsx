@@ -51,7 +51,7 @@ function Breakdown({ title, info, rows, label }: { title: string; info: string; 
               </span>
             </div>
             <div className="mt-1 h-1.5 rounded-full bg-surface-muted">
-              <div className="h-1.5 rounded-full bg-[#9A7546]" style={{ width: `${total ? Math.max(1, (r.salesPaise / total) * 100) : 0}%` }} />
+              <div className="h-1.5 rounded-full bg-[#B89042]" style={{ width: `${total ? Math.max(1, (r.salesPaise / total) * 100) : 0}%` }} />
             </div>
           </li>
         ))}
@@ -133,7 +133,7 @@ export default function FarmSalesPage() {
                     <td className="px-3 py-2 font-medium">{f.name}</td>
                     <td className="px-3 py-2">
                       <div className="flex items-center gap-2">
-                        <span className="h-2 rounded-full bg-[#9A7546]" style={{ width: `${Math.max(2, (f.salesPaise / max) * 160)}px` }} />
+                        <span className="h-2 rounded-full bg-[#B89042]" style={{ width: `${Math.max(2, (f.salesPaise / max) * 160)}px` }} />
                         {inr(f.salesPaise)}
                       </div>
                     </td>

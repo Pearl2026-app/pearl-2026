@@ -59,6 +59,6 @@ EOF
   sed -i "s|</head>|<link rel=\"manifest\" href=\"/apps/$name/manifest.json\"/><meta name=\"theme-color\" content=\"$colour\"/><link rel=\"apple-touch-icon\" href=\"/apps/$name/app-icon.png\"/><meta name=\"apple-mobile-web-app-capable\" content=\"yes\"/><script>if('serviceWorker' in navigator)navigator.serviceWorker.register('/apps/$name/sw.js',{scope:'/apps/$name/'});</script></head>|" "$OUT/$name/index.html"
   echo "Made the $name app installable (PWA)."
 }
-make_installable delivery 'Sahyadri Pearls Delivery' 'SP Delivery' '#1F4E52'
-make_installable customer 'Sahyadri Pearls' 'Sahyadri' '#111111'
+make_installable delivery 'Sahyadri Pearls Delivery' 'SP Delivery' '#070E4D'
+make_installable customer 'Sahyadri Pearls' 'Sahyadri' '#070E4D'
 exit 0
