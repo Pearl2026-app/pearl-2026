@@ -35,6 +35,8 @@ const schema = z.object({
   DEMO_MODE: bool.default(false),
   /** Live shop without a terminal (Vercel): apply migrations, copy the bundled photos and run the production setup on start. */
   SETUP_ON_START: bool.default(false),
+  /** Shared secret for the scheduled call (Vercel Cron sends it as a Bearer token). */
+  CRON_SECRET: z.string().optional(),
   COOKIE_SECURE: bool.optional(),
   COOKIE_DOMAIN: z.string().optional(),
 
@@ -93,7 +95,7 @@ const schema = z.object({
   BACKUP_DIR: z.string().optional(),
 });
 
-export type AppConfig = z.infer<typeof schema> & { appSecret: string; cookieSecure: boolean; storageDir: string; demoMode: boolean; sandboxAllowed: boolean };
+export type AppConfig = z.infer<typeof schema> & { appSecret: string; cookieSecure: boolean; storageDir: string; demoMode: boolean; sandboxAllowed: boolean; serverless: boolean };
 
 let cached: AppConfig | null = null;
 
@@ -134,6 +136,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     const live = (['RAZORPAY_KEY_SECRET', 'SMS_API_KEY', 'WHATSAPP_API_TOKEN', 'FCM_PRIVATE_KEY'] as const).filter((k) => (c as Record<string, unknown>)[k]);
     if (live.length || c.PAYMENT_PROVIDER !== 'sandbox') throw new Error(`DEMO_MODE cannot run with live services (${[...live, ...(c.PAYMENT_PROVIDER !== 'sandbox' ? ['PAYMENT_PROVIDER'] : [])].join(', ')}). Remove them or turn DEMO_MODE off.`);
   }
+  // On Vercel Functions (no container): VERCEL is set by the platform; SP_CONTAINER marks a container build.
+  const serverless = process.env.VERCEL === '1' && !process.env.SP_CONTAINER;
   return {
     ...c,
     // The demo needs no Redis or separate worker: jobs run inside the API process.
@@ -144,7 +148,9 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     sandboxAllowed: c.NODE_ENV !== 'production' || c.DEMO_MODE,
     appSecret: c.APP_SECRET ?? `${c.JWT_ACCESS_SECRET}:${c.JWT_REFRESH_SECRET}`,
     cookieSecure: c.COOKIE_SECURE ?? c.NODE_ENV === 'production',
-    storageDir: c.STORAGE_LOCAL_DIR ?? require('node:path').resolve(__dirname, '../../../../uploads'),
+    // Vercel Functions (free plan): the disk is read-only apart from /tmp, and each instance has its own.
+    serverless,
+    storageDir: c.STORAGE_LOCAL_DIR ?? (serverless ? '/tmp/uploads' : require('node:path').resolve(__dirname, '../../../../uploads')),
   };
 }
 

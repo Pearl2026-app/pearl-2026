@@ -29,3 +29,4 @@ apps/web/public/apps/
 
 # Generated front-end-only prototype (scripts/prototype/assemble.mjs); not committed until it passes its test
 /prototype/
+apps/api/bundled-media/

@@ -30,9 +30,17 @@
       "buildCommand": "cd ../.. && pnpm --filter \"@sahyadri/admin...\" build"
     },
     "api": {
-      "root": ".",
-      "runtime": "container",
-      "entrypoint": "Dockerfile.vercel"
+      "root": "apps/api",
+      "framework": "nestjs",
+      "entrypoint": "dist/main.js",
+      "installCommand": "cd ../.. && pnpm install --frozen-lockfile --filter @sahyadri/api...",
+      "buildCommand": "cd ../.. && bash scripts/vercel/api-build.sh",
+      "functions": {
+        "dist/main.js": {
+          "maxDuration": 60,
+          "includeFiles": "bundled-media/**"
+        }
+      }
     }
   },
   "rewrites": [
@@ -65,6 +73,12 @@
       "destination": {
         "service": "web"
       }
+    }
+  ],
+  "crons": [
+    {
+      "path": "/api/v1/system/tick",
+      "schedule": "30 21 * * *"
     }
   ]
 }

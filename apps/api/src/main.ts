@@ -7,8 +7,11 @@ import { JobsService } from './queue/jobs.service';
 
 async function main() {
   const c = config();
-  // Demo site (D66): the database gets its tables on start, so no separate migration step is needed.
-  if (c.demoMode) {
+  // On Vercel Functions the tables, sample data and photos are prepared in the build (scripts/vercel/api-build.sh).
+  // Demo site (D66) and the live shop with SETUP_ON_START elsewhere: the database gets its tables on start.
+  if (c.serverless) {
+    // nothing to prepare here
+  } else if (c.demoMode) {
     migrateDatabase();
     drawDemoSamples();
   } else if (c.SETUP_ON_START) {
@@ -24,8 +27,9 @@ async function main() {
   if (c.RUN_WORKERS) await app.get(JobsService).startWorker();
   await app.listen(c.PORT, '0.0.0.0');
   Logger.log(`API listening on ${c.API_URL}${docs ? ' (docs at /api/docs)' : ''}`, 'Bootstrap');
+  if (c.demoMode) Logger.warn('DEMO MODE: sample data, sign-in code 123456, payment sandbox. Not for real customers.', 'Bootstrap');
+  if (c.serverless) return;
   if (c.demoMode) {
-    Logger.warn('DEMO MODE: sample data, sign-in code 123456, payment sandbox. Not for real customers.', 'Bootstrap');
     void prepareDemo();
   } else if (c.SETUP_ON_START) {
     void runProductionSetup();

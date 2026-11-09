@@ -1,4 +1,4 @@
-import { Controller, Get, HttpCode, Inject, Param, Post, Query, Res } from '@nestjs/common';
+import { Controller, Get, Headers, HttpCode, Inject, Param, Post, Query, Res, UnauthorizedException } from '@nestjs/common';
 import { ApiExcludeEndpoint, ApiTags } from '@nestjs/swagger';
 import type { Response } from 'express';
 import { timingSafeEqual } from 'node:crypto';
@@ -8,6 +8,7 @@ import { runSeedNow } from '../../demo';
 import { Public, Roles } from '../../common/decorators';
 import { badRequest, notFound } from '../../common/errors';
 import { PrismaService } from '../../prisma/prisma.service';
+import { JobsService } from '../../queue/jobs.service';
 import { signLocal } from '../../providers/storage';
 import { STORAGE, type StorageProvider } from '../../providers/types';
 
@@ -19,7 +20,20 @@ export class SystemController {
   constructor(
     private readonly prisma: PrismaService,
     @Inject(STORAGE) private readonly storage: StorageProvider,
+    private readonly jobs: JobsService,
   ) {}
+
+  /** The daily scheduled call (Vercel Cron): runs every repeating job once. Needs CRON_SECRET as a Bearer token. */
+  @Public()
+  @ApiExcludeEndpoint()
+  @Get('system/tick')
+  async tick(@Headers('authorization') auth?: string) {
+    const secret = config().CRON_SECRET;
+    const given = Buffer.from(auth ?? '');
+    const want = Buffer.from(`Bearer ${secret ?? ''}`);
+    if (!secret || given.length !== want.length || !timingSafeEqual(given, want)) throw new UnauthorizedException();
+    return { ok: true, ran: await this.jobs.tick(true) };
+  }
 
   @Public()
   @Get('health')

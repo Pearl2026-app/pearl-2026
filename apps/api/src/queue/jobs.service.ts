@@ -58,6 +58,14 @@ export class JobsService implements OnModuleDestroy {
           setTimeout(() => void this.run(name, data).catch((e) => this.log.error(`Delayed job ${name} failed: ${(e as Error).message}`)), opts.delayMs).unref();
           return;
         }
+        if (config().serverless) {
+          // Vercel Functions: an instance lives for minutes, not days. Short delays run on a timer while it lives;
+          // the regular sweeps (expiring holds, reminders) catch anything it misses. Long ones are skipped.
+          if (opts.delayMs <= 10 * 60_000) {
+            setTimeout(() => void this.run(name, data).catch((e) => this.log.error(`Delayed job ${name} failed: ${(e as Error).message}`)), opts.delayMs).unref();
+          } else this.log.warn(`Delayed job ${name} skipped: ${Math.round(opts.delayMs / 3600_000)} h is too long without Redis.`);
+          return;
+        }
         this.delayed.push({ name, data, runAt: Date.now() + opts.delayMs });
         return;
       }
@@ -80,6 +88,36 @@ export class JobsService implements OnModuleDestroy {
     const h = this.handlers.get(name);
     if (!h) throw new Error(`No handler registered for job ${name}`);
     await h(data);
+  }
+
+  private readonly lastRun = new Map<string, number>();
+  private lastTick = 0;
+  private ticking: Promise<void> | null = null;
+
+  /** Runs every repeating job that is due (Vercel Functions: on traffic and on the daily scheduled call). */
+  async tick(force = false): Promise<string[]> {
+    const ran: string[] = [];
+    for (const r of this.repeats) {
+      const last = this.lastRun.get(r.name) ?? 0;
+      if (!force && Date.now() - last < r.everyMs) continue;
+      this.lastRun.set(r.name, Date.now());
+      try {
+        await this.run(r.name, {});
+        ran.push(r.name);
+      } catch (e) {
+        this.log.error(`Repeat job ${r.name} failed: ${(e as Error).message}`);
+      }
+    }
+    return ran;
+  }
+
+  /** At most once a minute per instance, in the background. */
+  tickSoon(): void {
+    if (this.ticking || Date.now() - this.lastTick < 60_000) return;
+    this.lastTick = Date.now();
+    this.ticking = this.tick()
+      .then(() => undefined)
+      .finally(() => (this.ticking = null));
   }
 
   /** Inline mode: wait for queued jobs to finish (tests). */
@@ -125,5 +163,5 @@ export class JobsService implements OnModuleDestroy {
 /** Jobs run on in-process timers when there is no Redis: the demo site, or a live shop with QUEUE_MODE=inline. */
 function inProcessTimers(): boolean {
   const c = config();
-  return c.demoMode || c.NODE_ENV === 'production';
+  return !c.serverless && (c.demoMode || c.NODE_ENV === 'production');
 }

@@ -7,11 +7,13 @@ import cookieParser from 'cookie-parser';
 import express from 'express';
 import helmet from 'helmet';
 import { cleanupOpenApiDoc } from 'nestjs-zod';
+import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { AppModule } from './app.module';
 import { contextMiddleware } from './common/context.middleware';
 import { IS_PUBLIC, REQUIRES, ROLES } from './common/decorators';
 import { config } from './config/config';
+import { JobsService } from './queue/jobs.service';
 import { STORAGE, type StorageProvider } from './providers/types';
 
 
@@ -43,6 +45,21 @@ export async function createApp(opts: { logger?: boolean } = {}): Promise<INestA
   };
   const origins = [...new Set((c.CORS_ORIGINS ?? `${c.WEB_URL},${c.ADMIN_URL}`).split(',').map((s) => s.trim()).filter(Boolean).map(toOrigin))];
   app.enableCors({ origin: origins, credentials: true, allowedHeaders: ['Content-Type', 'Authorization', 'X-SP-Client', 'X-Cart-Token', 'Idempotency-Key'] });
+
+  // On Vercel Functions the photos that ship with the code (sample art, stock photos, the signature collection) are
+  // prepared in the build into apps/api/bundled-media and served read-only from there.
+  const bundled = join(__dirname, '../bundled-media/public');
+  if (existsSync(bundled)) app.use('/media', express.static(bundled, { maxAge: '365d', immutable: true, setHeaders: (res) => res.setHeader('X-Content-Type-Options', 'nosniff') }));
+
+  // Scheduled jobs on Vercel Functions: no long-running process, so due jobs run when requests come in (at most once a
+  // minute per instance), plus a daily Vercel Cron call to /api/v1/system/tick.
+  if (c.serverless) {
+    const jobs = app.get(JobsService);
+    app.use((_req: express.Request, _res: express.Response, next: express.NextFunction) => {
+      next();
+      jobs.tickSoon();
+    });
+  }
 
   // Public media (local storage driver). In production the CDN serves these.
   app.use(
