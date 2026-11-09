@@ -30,15 +30,15 @@
       "buildCommand": "cd ../.. && pnpm --filter \"@sahyadri/admin...\" build"
     },
     "api": {
-      "root": "apps/api",
+      "root": ".",
       "framework": "nestjs",
-      "entrypoint": "server.js",
-      "installCommand": "cd ../.. && pnpm install --frozen-lockfile --filter @sahyadri/api...",
-      "buildCommand": "cd ../.. && bash scripts/vercel/api-build.sh",
+      "entrypoint": "apps/api/server.js",
+      "installCommand": "pnpm install --frozen-lockfile --filter @sahyadri/api...",
+      "buildCommand": "bash scripts/vercel/api-build.sh",
       "functions": {
-        "server.js": {
+        "apps/api/server.js": {
           "maxDuration": 60,
-          "includeFiles": "{bundled-media/**,dist/**}"
+          "includeFiles": "apps/api/{bundled-media,dist}/**"
         }
       }
     }
