@@ -150,4 +150,35 @@ describe('purchase orders (meeting of 31 Oct)', () => {
     await http().get(api('/admin/purchase-orders/prefill?productId=' + product.id)).set(bearer(maker)).expect(403);
     await db.product.update({ where: { id: productId }, data: original });
   });
+
+  it('lists what needs doing next: the manufacturer\'s "My work" and head office\'s tasks', async () => {
+    const due = new Date(Date.now() + 10 * 86_400_000).toISOString().slice(0, 10);
+    const make = async () => (await http().post(api('/admin/purchase-orders')).set(bearer(admin)).send({ manufacturerId, productId, metalWeightG: 2, makingRatePerGramPaise: 10_000, dueDate: due }).expect(201)).body.id as string;
+    const draft = await make();
+    const waiting = await make();
+    await http().post(po(waiting, '/status')).set(bearer(admin)).send({ status: 'SENT' }).expect(200);
+    const toConfirm = await make();
+    await http().post(po(toConfirm, '/status')).set(bearer(admin)).send({ status: 'SENT' }).expect(200);
+    await http().post(po(toConfirm, '/pearls')).set(bearer(admin)).send({ step: 'SENT' }).expect(200);
+
+    type Task = { id: string; nextStage: string | null };
+    const ids = (list: Task[] | undefined) => (list ?? []).map((t) => t.id);
+    const mine = (await http().get(api('/admin/purchase-orders/tasks')).set(bearer(maker)).expect(200)).body;
+    expect(ids(mine.groups.confirmPearls)).toContain(toConfirm);
+    expect(ids(mine.groups.waitingForPearls)).toContain(waiting);
+    // Drafts are head office's business, never the manufacturer's.
+    expect(Object.values(mine.groups as Record<string, Task[]>).flat().map((t) => t.id)).not.toContain(draft);
+    expect(mine.pipeline.length).toBe(11);
+
+    // Confirming the pearls moves it to "accept"; accepting puts it in work with the next stage offered.
+    await http().post(po(toConfirm, '/pearls')).set(bearer(maker)).send({ step: 'RECEIVED' }).expect(200);
+    expect(ids((await http().get(api('/admin/purchase-orders/tasks')).set(bearer(maker))).body.groups.accept)).toContain(toConfirm);
+    await http().post(po(toConfirm, '/status')).set(bearer(maker)).send({ status: 'ACCEPTED', dueDate: due }).expect(200);
+    const inWork = ((await http().get(api('/admin/purchase-orders/tasks')).set(bearer(maker))).body.groups.inWork as Task[]).find((t) => t.id === toConfirm);
+    expect(inWork?.nextStage).toBe('Casting');
+
+    const office = (await http().get(api('/admin/purchase-orders/tasks')).set(bearer(admin)).expect(200)).body;
+    expect(ids(office.groups.send)).toContain(draft);
+    expect(ids(office.groups.sendPearls)).toContain(waiting);
+  });
 });

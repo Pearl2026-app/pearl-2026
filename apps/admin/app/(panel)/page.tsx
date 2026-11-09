@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import { Card } from '@sahyadri/ui';
 import { Dashboard } from '@/components/dashboard';
+import { MakerWork } from '@/components/po-work';
 import { IconTile } from '@/components/shell';
 import { NAV } from '@/lib/nav';
 import { useMe } from '@/lib/session';
@@ -16,6 +17,8 @@ export default function HomePage() {
     if (me?.role === 'DELIVERY_PARTNER') router.replace('/delivery');
   }, [me, router]);
   if (!me || me.role === 'DELIVERY_PARTNER') return null;
+  // Manufacturers start from their to-do list (meeting of 31 Oct).
+  if (me.role === 'MANUFACTURER') return <MakerWork name={me.name} />;
   if (me.permissions.DASHBOARD?.includes('view')) return <Dashboard />;
 
   // No dashboard right: a plain welcome with shortcuts to what this login can open.

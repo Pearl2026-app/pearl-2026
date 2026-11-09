@@ -17,7 +17,7 @@ export interface NavGroup {
 }
 
 export const NAV: NavGroup[] = [
-  { label: 'Overview', items: [{ href: '/', info: 'Today at a glance: sales, orders waiting, stock value left, and low-stock alerts.', label: 'Dashboard', module: 'DASHBOARD', primary: '#070E4D' }] },
+  { label: 'Overview', items: [{ href: '/', info: 'Today at a glance: sales, orders waiting, stock value left, and low-stock alerts.', label: 'Dashboard', module: 'DASHBOARD', primary: '#070E4D' }, { href: '/', info: 'What to do next on your purchase orders: pearls to confirm, POs to accept, stages to update and bills to upload.', label: 'My work', roles: ['MANUFACTURER'], primary: '#070E4D' }] },
   {
     label: 'Sales',
     items: [
@@ -57,7 +57,7 @@ export const NAV: NavGroup[] = [
         href: '/restock', info: 'Pieces running low (under 5). A draft purchase order is created automatically so you can reorder in one step.',
         label: 'Purchase orders (low stock)',
         module: 'PRODUCTS',
-        roles: ['SUPER_ADMIN', 'STAFF', 'STATE_MANAGER', 'CITY_MANAGER', 'VENDOR', 'MANUFACTURER'],
+        roles: ['SUPER_ADMIN', 'STAFF', 'STATE_MANAGER', 'CITY_MANAGER', 'VENDOR'],
         primary: '#B89042',
       },
       { href: '/products/offers', info: 'Product-level discounts shown on the website, e.g. 10% off a collection for a period.', label: 'Offers & discounts', module: 'PRODUCTS', action: 'edit', roles: ['SUPER_ADMIN', 'STAFF'] },

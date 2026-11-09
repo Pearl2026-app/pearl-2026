@@ -13,6 +13,7 @@ import {
   type OrderStatus,
 } from '@sahyadri/shared';
 import { Card, Input, Spinner, StatusBadge } from '@sahyadri/ui';
+import { HeadOfficePoTasks } from './po-work';
 import {
   BarChart3,
   Coins,
@@ -260,6 +261,8 @@ export function Dashboard() {
               </li>
             ))}
           </ul>
+          {/* Purchase orders waiting on head office: drafts, pearls, pickup checks, bills to pay. */}
+          {(me?.role === 'SUPER_ADMIN' || me?.role === 'STAFF') && me.permissions.PURCHASE_ORDERS?.includes('view') && <HeadOfficePoTasks />}
           {(() => {
             const can = ACTIONS.filter((a) => me?.permissions[a.module]?.includes(a.action));
             return can.length ? (

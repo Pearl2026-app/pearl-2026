@@ -7,7 +7,7 @@ import sharp from 'sharp';
 import { ZodValidationPipe } from 'nestjs-zod';
 import { z } from 'zod';
 import type { Prisma } from '@sahyadri/db';
-import { can, formatINR, normalisePoStage, paise, PO_DEFAULT_GST_PERCENT, PO_DONE_STAGES, PO_HEAD_OFFICE_STAGES, PO_WORK_STAGES, poBillMismatch, poCost, type PoStage } from '@sahyadri/shared';
+import { can, formatINR, normalisePoStage, paise, PO_DEFAULT_GST_PERCENT, PO_DONE_STAGES, PO_BILL_TOLERANCE_PAISE, PO_HEAD_OFFICE_STAGES, PO_STAGES, PO_WORK_STAGES, poBillMismatch, poCost, type PoStage } from '@sahyadri/shared';
 import { AuditService } from '../../common/audit.service';
 import type { AuthUser } from '../../common/context';
 import { CurrentUser, Requires } from '../../common/decorators';
@@ -291,6 +291,70 @@ export class PurchaseOrdersController {
       paidPaise: rows.reduce((sum, r) => sum + paidOf(r), 0),
       /** Still to pay on completed work: the bill (or expected amount) less what has been paid. */
       outstandingPaise: completed.reduce((sum, r) => sum + Math.max(0, owedOf(r) - paidOf(r)), 0),
+    };
+  }
+
+  /**
+   * What needs doing next, as a to-do list (the manufacturer's "My work" page and head office's dashboard).
+   * Manufacturer: confirm pearls received → accept with a deadline → move the work stages on → upload the bill.
+   * Head office: send drafts → send the pearls → quality check at pickup → pay uploaded bills; plus anything overdue.
+   */
+  @Get('tasks')
+  @Requires('PURCHASE_ORDERS', 'view')
+  async tasks(@CurrentUser() user: AuthUser) {
+    const maker = user.role === 'MANUFACTURER';
+    const rows = await this.prisma.purchaseOrder.findMany({
+      where: { AND: [purchaseOrderScope(user), { status: { in: maker ? ['SENT', 'ACCEPTED', 'IN_PRODUCTION', 'RECEIVED'] : ['DRAFT', 'SENT', 'ACCEPTED', 'IN_PRODUCTION', 'RECEIVED'] } }] },
+      include: { manufacturer: { select: { id: true, name: true } }, product: { select: { id: true, name: true, sku: true } }, order: { select: { id: true, number: true } } },
+      orderBy: { dueDate: 'asc' },
+      take: 500,
+    });
+    const today = startOfToday().getTime();
+    const item = (r: (typeof rows)[number]) => {
+      const stage = normalisePoStage(r.stage) as PoStage | null;
+      const at = stage ? PO_STAGES.indexOf(stage) : -1;
+      const next = PO_WORK_STAGES.find((s) => PO_STAGES.indexOf(s) > at && !PO_HEAD_OFFICE_STAGES.includes(s)) ?? null;
+      const daysLeft = Math.round((new Date(r.dueDate).setHours(0, 0, 0, 0) - today) / 86_400_000);
+      return {
+        id: r.id,
+        number: r.number,
+        status: r.status,
+        stage,
+        nextStage: ['ACCEPTED', 'IN_PRODUCTION'].includes(r.status) ? next : null,
+        dueDate: r.dueDate,
+        daysLeft,
+        quantity: r.quantity,
+        manufacturer: r.manufacturer.name,
+        piece: r.product ? `${r.product.sku} · ${r.product.name}` : r.order ? `Order ${r.order.number}` : (r.specification?.slice(0, 60) ?? ''),
+        balancePaise: r.billAmountPaise != null ? Math.max(0, r.billAmountPaise - paidOf(r)) : null,
+      };
+    };
+    const inWork = (r: (typeof rows)[number]) => ['ACCEPTED', 'IN_PRODUCTION'].includes(r.status);
+    const done = (r: (typeof rows)[number]) => PO_DONE_STAGES.includes(normalisePoStage(r.stage) as PoStage) || r.status === 'RECEIVED';
+    const groups = maker
+      ? {
+          confirmPearls: rows.filter((r) => r.status === 'SENT' && r.pearlsSentAt && !r.pearlsReceivedAt),
+          accept: rows.filter((r) => r.status === 'SENT' && r.pearlsReceivedAt),
+          inWork: rows.filter((r) => inWork(r) && !done(r)),
+          uploadBill: rows.filter((r) => done(r) && !r.billUploadedAt),
+          waitingForPearls: rows.filter((r) => r.status === 'SENT' && !r.pearlsSentAt),
+          readyForPickup: rows.filter((r) => inWork(r) && normalisePoStage(r.stage) === 'Ready for pickup'),
+        }
+      : {
+          send: rows.filter((r) => r.status === 'DRAFT'),
+          sendPearls: rows.filter((r) => r.status === 'SENT' && !r.pearlsSentAt),
+          waitingForManufacturer: rows.filter((r) => r.status === 'SENT' && r.pearlsSentAt),
+          pickup: rows.filter((r) => inWork(r) && normalisePoStage(r.stage) === 'Ready for pickup'),
+          pay: rows.filter((r) => r.billAmountPaise != null && r.billAmountPaise - paidOf(r) > PO_BILL_TOLERANCE_PAISE),
+          inWork: rows.filter((r) => inWork(r) && !done(r)),
+        };
+    const overdue = rows.filter((r) => inWork(r) && !done(r) && new Date(r.dueDate).getTime() < today);
+    // How many pieces sit at each stage, for the progress strip.
+    const pipeline = PO_STAGES.map((stage) => ({ stage, count: rows.filter((r) => r.status !== 'DRAFT' && r.status !== 'RECEIVED' && normalisePoStage(r.stage) === stage).length }));
+    return {
+      groups: Object.fromEntries(Object.entries(groups).map(([k, v]) => [k, v.map(item)])),
+      overdue: overdue.map(item),
+      pipeline,
     };
   }
 
