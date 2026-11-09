@@ -85,7 +85,7 @@ export function StoreHero({ slides }: { slides: StoreSlide[] }) {
               </div>
             </div>
             <Link href={s.href} tabIndex={-1} className="nacre order-1 flex items-center justify-center overflow-hidden sm:order-2">
-              <span data-depth="-0.08" className="flex h-full w-full items-center justify-center">
+              <span data-depth="-0.08" className="flex h-full w-full items-center justify-center mix-blend-multiply">
               <img
                 src={s.image}
                 alt=""
@@ -143,7 +143,7 @@ export function CategoryTiles({ tiles }: { tiles: Array<{ label: string; href: s
           <Link href={t.href} className="group block overflow-hidden rounded-md border border-line/60">
             <span className="nacre block aspect-[4/5] overflow-hidden">
               {t.image && (
-                <span data-depth="0.06" className="block h-full w-full">
+                <span data-depth="0.06" className="block h-full w-full mix-blend-multiply">
                 <img
                   src={t.image}
                   alt=""

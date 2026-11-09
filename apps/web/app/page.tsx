@@ -169,7 +169,7 @@ export default async function HomePage() {
         <div className="grid overflow-hidden rounded-md border border-line md:grid-cols-2">
           <div className="nacre flex items-center justify-center overflow-hidden">
             {img(earring ?? ring, 1) && (
-              <span data-depth="0.1" className="block w-full">
+              <span data-depth="0.1" className="block w-full mix-blend-multiply">
                 <img src={img(earring ?? ring, 1)!} alt="" loading="lazy" width={700} height={700} className="aspect-square w-full object-contain p-10 mix-blend-multiply md:aspect-[5/4]" />
               </span>
             )}
