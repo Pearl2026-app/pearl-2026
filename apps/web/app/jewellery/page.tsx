@@ -10,7 +10,7 @@ export default async function JewelleryPage({ searchParams }: { searchParams: Pr
   return (
     <Container>
       <Breadcrumbs items={[{ name: 'Home', href: '/' }, { name: 'Jewellery' }]} />
-      <PageTitle eyebrow="The collection" title="Jewellery" intro="Every piece names the farm its pearls came from." />
+      <PageTitle eyebrow="The collection" title="Jewellery" intro="Rings, earrings, necklaces and more, all in pearl." />
       <Suspense fallback={<CatalogueSkeleton />}>
         <Catalogue searchParams={sp} fixed={{}} basePath="/jewellery" />
       </Suspense>

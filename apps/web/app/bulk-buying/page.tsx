@@ -5,7 +5,7 @@ import { meta } from '@/lib/seo';
 import { get } from '@/lib/server-api';
 import type { Site } from '@/lib/types';
 
-export const metadata = meta({ title: 'Bulk Buying & B2B', description: 'Wedding gifting, corporate orders and trade enquiries for farm-traced pearls.', path: '/bulk-buying' });
+export const metadata = meta({ title: 'Bulk Buying & B2B', description: 'Wedding gifting, corporate orders and trade enquiries for pearl jewellery.', path: '/bulk-buying' });
 
 export default async function BulkPage() {
   const site = await get<Site>('/site', { revalidate: 300 });

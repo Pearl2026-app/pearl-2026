@@ -17,7 +17,7 @@ interface Platform {
 }
 
 const PLATFORMS: Platform[] = [
-  { name: 'Website', who: 'Customers', path: '/', shows: 'Browse farm-traced pearls, Ring Finder, enquire on WhatsApp, checkout and track an order.', login: 'Optional. Mobile 9800000007' },
+  { name: 'Website', who: 'Customers', path: '/', shows: 'Browse pearl jewellery, Ring Finder, enquire on WhatsApp, checkout and track an order.', login: 'Optional. Mobile 9800000007' },
   { name: 'Customer app', who: 'Customers (Android and iPhone)', path: '/apps/customer', shows: 'The phone app: shop, wishlist, cart, gift packing, orders, returns, referral. Shown here in the browser.', login: 'Account tab → mobile 9800000007' },
   { name: 'Admin', who: 'Head office', path: '/admin', shows: 'Dashboard, enquiries, orders, products and approval, certificates, custom orders, purchase orders, pricing, reports, settings.', login: 'admin@sahyadripearls.test · Sahyadri@2026' },
   { name: 'City Manager panel', who: 'City teams', path: '/admin', shows: 'Only their city: enquiries, orders, delivery assignment, returns, city reports.', login: 'pune.manager@sahyadripearls.test · Sahyadri@2026' },

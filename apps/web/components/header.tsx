@@ -51,7 +51,6 @@ function Announcement() {
         free != null
           ? `Free insured delivery on orders above ₹${(free / 100).toLocaleString('en-IN')}`
           : site.delivery.promise,
-        'Every pearl traced to its farm, with a certificate you can verify',
         site.returns.windowDays > 0 ? `Easy ${site.returns.windowDays}-day returns` : null,
       ].filter((m): m is string => !!m);
   const [i, setI] = useState(0);

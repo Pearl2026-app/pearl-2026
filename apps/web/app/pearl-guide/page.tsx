@@ -37,7 +37,7 @@ export default function PearlGuidePage() {
     <Container>
       <Breadcrumbs items={[{ name: 'Home', href: '/' }, { name: 'Pearl Guide' }]} />
       <PageTitle eyebrow="Pearl Guide" title="How to choose a pearl" intro="Everything we look at when we grade a pearl, in plain words, so you can choose with confidence." />
-      <div className="grid gap-12 lg:grid-cols-[220px_1fr] lg:gap-16">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-12 lg:grid-cols-[220px_minmax(0,1fr)] lg:gap-16">
         <nav aria-label="On this page" className="lg:sticky lg:top-36 lg:self-start">
           <ul className="no-scrollbar flex gap-2 overflow-x-auto text-sm lg:flex-col lg:gap-1">
             {SECTIONS.map(([id, label]) => (
@@ -50,7 +50,7 @@ export default function PearlGuidePage() {
         <article className="flex max-w-3xl flex-col gap-14 leading-relaxed">
           <section className="flex flex-col gap-4">
             <H2 id="types">Pearl types</H2>
-            <p>A pearl forms when an oyster or mussel coats a tiny nucleus with layer upon layer of nacre. Where it grows decides its size, colour and look. Each of our product pages names the type and the farm.</p>
+            <p>A pearl forms when an oyster or mussel coats a tiny nucleus with layer upon layer of nacre. Where it grows decides its size, colour and look.</p>
             <div className="overflow-x-auto">
               <table className={table}>
                 <thead><tr><th>Type</th><th>Where it grows</th><th>Usual size</th><th>The look</th></tr></thead>
@@ -61,7 +61,7 @@ export default function PearlGuidePage() {
 
           <section className="flex flex-col gap-4">
             <H2 id="grading">How we grade</H2>
-            <p>There is no single worldwide grading standard for pearls: different sellers use AAA–A or A–D scales in different ways. So here is exactly what our letters mean. Our graders look at every pearl by hand, in daylight, and the grade on the product page is the grade of that piece.</p>
+            <p>There is no single worldwide grading standard for pearls: different sellers use AAA–A or A–D scales in different ways. So here is exactly what our letters mean. Where a product page shows a grade, it is the grade of that piece.</p>
             <div className="overflow-x-auto">
               <table className={table}>
                 <thead><tr><th>Grade</th><th>Lustre</th><th>Surface</th><th>Shape and matching</th></tr></thead>
@@ -126,7 +126,7 @@ export default function PearlGuidePage() {
 
           <section className="flex flex-col gap-3">
             <H2 id="certificate">Your certificate</H2>
-            <p>Every piece comes with a Sahyadri Pearls certificate of authenticity naming the pearl type, size, grade and the farm it came from. Each certificate has a QR code: scan it, or enter its number on our <Link href="/verify" className="text-accent underline underline-offset-2">verify page</Link>, to see the record we keep. Our certificate records our own grading; it is not an independent laboratory report. For a high-value piece, ask us about an independent report.</p>
+            <p>A piece sold with a Sahyadri Pearls certificate of authenticity shows it on its product page. The certificate records the pearl type, size and grade, and the farm when we know it. Each certificate has a QR code: scan it, or enter its number on our <Link href="/verify" className="text-accent underline underline-offset-2">verify page</Link>, to see the record we keep. Our certificate records our own grading; it is not an independent laboratory report. For a high-value piece, ask us about an independent report.</p>
           </section>
 
           <section className="flex flex-col items-start gap-4 bg-surface-muted p-6 lg:p-10">

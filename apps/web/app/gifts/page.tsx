@@ -28,7 +28,7 @@ export default async function GiftsPage() {
   return (
     <Container>
       <Breadcrumbs items={[{ name: 'Home', href: '/' }, { name: 'Gifts' }]} />
-      <PageTitle eyebrow="Gifts" title="A pearl, beautifully given" intro="Every piece arrives in our signature box with its certificate. Add free gift packing and a message card at checkout." />
+      <PageTitle eyebrow="Gifts" title="A pearl, beautifully given" intro={site?.storefront.giftWrapEnabled ? 'Pieces chosen for giving. Add gift packing and a message card at checkout.' : 'Pieces chosen for giving, with insured delivery across India.'} />
 
       <section aria-labelledby="by-price">
         <h2 id="by-price" className="eyebrow mb-4">Shop by budget</h2>
@@ -69,7 +69,7 @@ export default async function GiftsPage() {
       <section className="mt-16 grid gap-8 bg-surface-muted p-6 lg:grid-cols-3 lg:p-10">
         <div>
           <p className="font-serif text-2xl">Free gift packing</p>
-          <p className="mt-2 text-sm text-muted">{site?.storefront.giftWrapEnabled ? 'Tick “This is a gift” at checkout. We pack it in our gift box with a ribbon and a message card.' : 'Every piece arrives in our signature box.'}</p>
+          <p className="mt-2 text-sm text-muted">{site?.storefront.giftWrapEnabled ? 'Tick “This is a gift” at checkout. We pack it in our gift box with a ribbon and a message card.' : 'Ask us on WhatsApp about gift packing.'}</p>
         </div>
         <div>
           <p className="font-serif text-2xl">No price in the parcel</p>

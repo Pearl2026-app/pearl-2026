@@ -17,7 +17,6 @@ import type { CartView } from '@/lib/types-commerce';
 function Reassurance({ cod }: { cod: boolean }) {
   const site = useSite();
   const items = [
-    'Every pearl certified, with a code you can verify',
     site.returns.windowDays > 0 ? `${site.returns.windowDays}-day returns` : null,
     'Insured, tracked delivery',
     `Pay by UPI, card or net banking${cod && site.payments.codEnabled ? ', or cash on delivery' : ''}`,
