@@ -3,6 +3,8 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState, type ReactNode } from 'react';
 import { ChevronRight, LogOut, Menu } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { METAL_RATE_LABEL, type MetalRateKey } from '@sahyadri/shared';
 import { ROLE_LABEL } from '@sahyadri/shared';
 import { Button, cx, Spinner } from '@sahyadri/ui';
 import { adminPath } from '@/lib/base-path';
@@ -203,7 +205,8 @@ export function Shell({ children }: { children: ReactNode }) {
           </div>
         )}
         <div className="flex min-w-0 flex-1 flex-col">
-          <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-line bg-surface/95 px-4 backdrop-blur">
+          <header className="sticky top-0 z-30 border-b border-line bg-surface/95 backdrop-blur">
+           <div className="flex h-14 items-center gap-3 px-4">
             <button
               className="rounded-sm px-2 py-1 text-sm lg:hidden"
               onClick={() => setOpen(true)}
@@ -223,6 +226,8 @@ export function Shell({ children }: { children: ReactNode }) {
                 Sign out
               </Button>
             </div>
+           </div>
+           {me.permissions.DASHBOARD?.includes('view') && <RatesBar canEdit={!!me.permissions.PRICING?.includes('edit')} />}
           </header>
           <main className="min-w-0 flex-1 p-4 lg:p-6">
             {blocked ? (
@@ -274,6 +279,63 @@ export function PageHeader({
         </div>
       </div>
       {actions && <div className="flex flex-wrap gap-2">{actions}</div>}
+    </div>
+  );
+}
+
+interface RatesBarData {
+  date: string;
+  liveMetals: boolean;
+  metals: Array<{ metal: MetalRateKey; ratePerGramPaise: number | null; isToday: boolean; source: string | null }>;
+  pearl: { liveFeed: boolean; extraPercent: number; grade: string | null; fromPerCaratPaise: number | null };
+}
+
+const BAR_METALS: MetalRateKey[] = ['GOLD_24K', 'GOLD_22K', 'GOLD_18K', 'SILVER_999', 'PLATINUM'];
+const rupees = (p: number) => `₹${Math.round(p / 100).toLocaleString('en-IN')}`;
+
+/** Today's rates on every admin page (owner, 10 Nov): gold, silver and platinum per gram, and the pearl rate. */
+function RatesBar({ canEdit }: { canEdit: boolean }) {
+  const { data } = useQuery({ queryKey: ['/admin/pricing/rates-bar'], queryFn: () => api<RatesBarData>('/admin/pricing/rates-bar'), staleTime: 5 * 60_000, refetchInterval: 15 * 60_000 });
+  if (!data) return null;
+  const metals = data.metals.filter((m) => BAR_METALS.includes(m.metal) && m.ratePerGramPaise != null);
+  const stale = metals.some((m) => !m.isToday);
+  const item = (href: string, children: ReactNode) =>
+    canEdit ? (
+      <Link href={href} className="flex shrink-0 items-baseline gap-1.5 hover:text-accent">
+        {children}
+      </Link>
+    ) : (
+      <span className="flex shrink-0 items-baseline gap-1.5">{children}</span>
+    );
+  return (
+    <div className="flex h-8 items-center gap-5 overflow-x-auto border-t border-line/70 bg-bg/60 px-4 text-xs whitespace-nowrap text-ink">
+      <span className="flex shrink-0 items-center gap-1.5 text-muted" title={data.liveMetals ? 'Gold, silver and platinum refresh every hour from the market' : 'Rates are entered by hand on Pricing → Metal rates'}>
+        <span aria-hidden className={`inline-block h-1.5 w-1.5 rounded-full ${data.liveMetals && !stale ? 'bg-emerald-600' : 'bg-amber-500'}`} />
+        {data.liveMetals ? (stale ? 'Live rates (waiting for today’s)' : 'Live rates') : 'Rates entered by hand'}
+      </span>
+      {metals.length === 0 && item('/pricing/metal-rates', <span className="text-muted">No metal rates yet</span>)}
+      {metals.map((m) =>
+        item(
+          '/pricing/metal-rates',
+          <>
+            <span className="text-muted">{METAL_RATE_LABEL[m.metal]}</span>
+            <span className="font-semibold tabular-nums">{rupees(m.ratePerGramPaise!)}</span>
+            <span className="text-muted">/g</span>
+          </>,
+        ),
+      )}
+      {item(
+        '/pearl-rates',
+        data.pearl.fromPerCaratPaise != null ? (
+          <>
+            <span className="text-muted">Pearl {data.pearl.grade} from</span>
+            <span className="font-semibold tabular-nums">{rupees(data.pearl.fromPerCaratPaise)}</span>
+            <span className="text-muted">/ct (incl. +{data.pearl.extraPercent}%, {data.pearl.liveFeed ? 'live feed' : 'your rates'})</span>
+          </>
+        ) : (
+          <span className="text-muted">No pearl rates yet</span>
+        ),
+      )}
     </div>
   );
 }

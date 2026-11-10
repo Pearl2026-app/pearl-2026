@@ -86,6 +86,8 @@ export const SETTING_SCHEMAS = {
       partnerPercent: z.number().min(0).max(100).default(20),
     })
     .refine((v) => Math.abs(v.farmerPercent + v.traderPercent + v.partnerPercent - 100) < 0.001, { message: 'The three shares must add up to 100%', path: ['partnerPercent'] }),
+  /** Pearl rates (owner, 10 Nov): an extra % on top of every pearl rate (table or live feed) when pricing. */
+  pearl_pricing: z.object({ extraPercent: z.number().min(0).max(100).default(3) }),
   /** Daily metal rates: the margin added per metal for products whose price follows the rate. */
   metal_pricing: z.object({
     /** Daily rate feed (JSON) when METAL_RATE_FEED_URL is not set; empty = rates are entered by hand */

@@ -474,7 +474,7 @@ export const RESOURCES: Record<string, ResourceDef> = {
     singular: 'Rate',
     api: '/admin/pearl-rates',
     module: 'PRICING',
-    description: 'Rate per carat by grade, farm and size. These manual rates are the guaranteed source; a live feed, when switched on, only adds feed rows.',
+    description: 'Rate per carat by grade, farm and size. These manual rates are the guaranteed source; a live feed, when switched on, only adds feed rows. Quotes add the extra on pearl rates (3 % unless changed on Price calculator) on top.',
     sortDefault: 'grade',
     columns: [
       { key: 'grade', label: 'Grade', sortable: true },
