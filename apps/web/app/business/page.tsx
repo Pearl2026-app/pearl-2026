@@ -1,11 +1,12 @@
-import type { Metadata } from 'next';
 import { Container } from '@/components/ui';
+import { meta } from '@/lib/seo';
 import { BusinessCta } from './cta';
 
-export const metadata: Metadata = {
+export const metadata = meta({
   title: 'Business Buyers (B2B)',
   description: 'Business prices on bulk quantities for jewellers, resellers and corporate buyers, with GST invoices in your business name.',
-};
+  path: '/business',
+});
 
 const POINTS: Array<[string, string]> = [
   ['Business prices', 'Bulk prices only approved accounts can see.'],
