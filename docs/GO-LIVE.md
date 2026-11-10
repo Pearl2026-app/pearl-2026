@@ -2,7 +2,8 @@
 
 The shop runs on the **existing Vercel project** (`sahyadri-pearls-demo`, website + admin + API). **Supabase** holds the
 database and the photos. Nothing else is needed to open: no Fly.io, no Redis, no AWS account and no terminal.
-It runs on Vercel's **free (Hobby) plan**: the API is a normal Vercel Function, not a container.
+The API is a normal Vercel Function, not a container. It works on the free plans, and the owner is moving both to
+**Pro** (Vercel Pro about $20 a month, Supabase Pro about $25 a month): see [Pro plans](#pro-plans-what-changes) below.
 
 Setting it up takes about 30 minutes. You do it once, in four websites: Supabase, Gmail, Vercel and the admin.
 
@@ -14,12 +15,14 @@ Setting it up takes about 30 minutes. You do it once, in four websites: Supabase
    - Name: `sahyadri-pearls`
    - Region: **South Asia (Mumbai)**
    - Database password: make up a long one and **save it**.
-2. When the project is ready, click **Connect** (at the top).
-   - Choose **Session pooler**, the one that works everywhere.
-   - Copy the URI. It looks like `postgresql://postgres.abcd:[YOUR-PASSWORD]@aws-0-ap-south-1.pooler.supabase.com:5432/postgres`.
-   - Replace `[YOUR-PASSWORD]` with your password.
-   - Add this to the end: `?sslmode=require&connection_limit=5`
-   - This is your **DATABASE_URL**.
+2. When the project is ready, click **Connect** (at the top). You need two addresses from there; in both, replace
+   `[YOUR-PASSWORD]` with your password.
+   - **Transaction pooler** (port **6543**). It looks like
+     `postgresql://postgres.abcd:[YOUR-PASSWORD]@aws-0-ap-south-1.pooler.supabase.com:6543/postgres`.
+     Add this to the end: `?pgbouncer=true&connection_limit=1&sslmode=require`. This is your **DATABASE_URL**: the
+     website uses it for every visit, and it copes with many visitors at once.
+   - **Session pooler** (port **5432**), the same address with `:5432`. Add `?sslmode=require` to the end. This is your
+     **DATABASE_MIGRATE_URL**: only the deploy uses it, to set up and update the tables.
 3. Left menu, **Storage**: click **New bucket**.
    - Name: `sahyadri-media`
    - Leave it **private**.
@@ -47,7 +50,8 @@ Open the project → **Settings → Environment Variables**. Edit the **Producti
 
 | Name | Value |
 |---|---|
-| `DATABASE_URL` | the Supabase URI from step 1.2 |
+| `DATABASE_URL` | the transaction pooler address from step 1.2 (port 6543) |
+| `DATABASE_MIGRATE_URL` | the session pooler address from step 1.2 (port 5432) |
 | `SETUP_ON_START` | `true` (on each production deploy, the build creates any missing tables, the owner login and the signature collection) |
 | `SEED_ADMIN_EMAIL` | the owner's email, for the first admin login |
 | `SEED_ADMIN_PASSWORD` | a password of 12+ characters with letters and digits |
@@ -55,8 +59,8 @@ Open the project → **Settings → Environment Variables**. Edit the **Producti
 | `JWT_ACCESS_SECRET` | secret 1 (Claude sends you three long random secrets; or make each with `openssl rand -hex 32`) |
 | `JWT_REFRESH_SECRET` | secret 2 |
 | `APP_SECRET` | secret 3 |
-| `QUEUE_MODE` | `inline` (reminders and expiring holds run as visitors arrive, plus a daily check; no Redis needed) |
-| `STORAGE_DRIVER` | `s3` (required: the free plan keeps no files between visits, so photos you upload must go to the bucket) |
+| `QUEUE_MODE` | `inline` (reminders and expiring holds run as visitors arrive, plus the scheduled check; no Redis needed) |
+| `STORAGE_DRIVER` | `s3` (required: Vercel Functions keep no files between visits, so photos you upload must go to the bucket) |
 | `S3_ENDPOINT` | the Supabase endpoint from step 1.4 |
 | `S3_REGION` | `ap-south-1` |
 | `S3_BUCKET` | `sahyadri-media` |
@@ -97,6 +101,29 @@ Then open **Deployments**, click **⋯** on the top one and choose **Redeploy**.
 | Razorpay live keys | Card/UPI payments. Without them, customers can still enquire on WhatsApp. | Vercel variables `PAYMENT_PROVIDER=razorpay`, `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, `RAZORPAY_WEBHOOK_SECRET`; webhook URL `https://<site>/api/v1/webhooks/payment` |
 | SMS provider (DLT registered) | Customer accounts sign in with a code sent to their phone. Guest checkout works without it. | `SMS_PROVIDER=http` and the `SMS_*` variables. Tell Claude which provider you choose (MSG91, Fast2SMS…) to connect it. |
 | Domain | The real address. | Vercel → Settings → Domains (the site picks up the new address by itself on the next deploy) |
+
+## Pro plans: what changes
+
+Upgrade **Supabase first, then Vercel**. Neither upgrade loses data or takes the site down.
+
+**Supabase Pro** (Organization → Billing → Upgrade to Pro):
+- Nothing to change in the shop. The project keeps its addresses and password.
+- You get daily backups kept for 7 days (Database → Backups), no pausing after a quiet week, and room for 8 GB of
+  data and 100 GB of photos.
+- Point-in-time recovery is a paid add-on; daily backups are enough to start.
+
+**Vercel Pro** (Team settings → Billing → Upgrade):
+1. Merge the pull request **"Vercel Pro: checks every 5 minutes, longer requests"** on GitHub (one click,
+   "Merge pull request"). Merge it only **after** the upgrade: the free plan refuses a check more often than daily, so
+   deploys would fail. It changes two settings in `vercel.json`:
+   - the background check (`/api/v1/system/tick`) runs every 5 minutes instead of once a night, so reminders, expiring
+     checkout holds and live gold/silver rates stay on time even when nobody is visiting;
+   - a request may run for up to 2 minutes instead of 1 (large exports and PDFs).
+2. Settings → **Billing → Spend management**: set a monthly limit, e.g. $50, so a traffic spike cannot surprise you.
+3. Nothing else: the server already runs in **Mumbai** (`bom1`), next to a Supabase project in Mumbai.
+
+Check after the merge: Vercel → the project → **Settings → Cron Jobs** lists the check as "every 5 minutes", and
+`https://<your-site>/api/v1/health` still shows `{"ok":true,…}`.
 
 ### Optional extras
 

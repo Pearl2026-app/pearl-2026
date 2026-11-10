@@ -12,7 +12,7 @@ export async function generateMetadata({ params }: { params: Promise<{ category:
   const { category } = await params;
   const c = await get<Category>(`/catalogue/categories/${category}`, { revalidate: 300 });
   if (!c) return {};
-  return meta({ title: c.seoTitle ?? `Pearl ${c.name}`, description: c.seoDescription ?? c.description ?? `Farm-traced pearl ${c.name.toLowerCase()} from Sahyadri Pearls.`, path: `/jewellery/${c.slug}`, image: c.imageUrl });
+  return meta({ title: c.seoTitle ?? `Pearl ${c.name}`, description: c.seoDescription ?? c.description ?? `Pearl ${c.name.toLowerCase()} from Sahyadri Pearls.`, path: `/jewellery/${c.slug}`, image: c.imageUrl });
 }
 
 export default async function CategoryPage({ params, searchParams }: { params: Promise<{ category: string }>; searchParams: Promise<SearchParams> }) {

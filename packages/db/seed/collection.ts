@@ -78,6 +78,8 @@ export async function importClientCollection(prisma: PrismaClient, storageDir: s
       where: { collectionId: collection.id, stockType: 'UNIQUE', quantity: 1, soldAt: null, sku: { startsWith: 'SP-JRP-' } },
       data: { stockType: 'QUANTITY', quantity: 10 },
     });
+    // The first text said "hand-set", which nobody has confirmed (brief, 10 Nov: no invented making claims).
+    await prisma.$executeRaw`UPDATE "Product" SET description = replace(description, 'A cultured pearl, hand-set', 'A cultured pearl') WHERE "collectionId" = ${collection.id} AND description LIKE '%hand-set%'`;
     const now = new Date();
     let made = 0;
     for (const [i, v] of manifest.entries()) {
@@ -93,7 +95,7 @@ export async function importClientCollection(prisma: PrismaClient, storageDir: s
           sku,
           name,
           slug: slugify(`${name}-${sku}`),
-          description: `From the Sahyadri Pearls signature collection (design ${v.design}${v.finish ? `, ${v.finish.toLowerCase()} finish` : ''}). A cultured pearl, hand-set${isRing ? ', made to your ring size' : ''}. Also available in ${['Yellow Gold', 'Rose Gold', 'White Gold'].filter((f) => f !== v.finish).join(' and ').toLowerCase()}. Ask us for the price.`,
+          description: `From the Sahyadri Pearls signature collection (design ${v.design}${v.finish ? `, ${v.finish.toLowerCase()} finish` : ''}). A cultured pearl${isRing ? ', made to your ring size' : ''}. Also available in ${['Yellow Gold', 'Rose Gold', 'White Gold'].filter((f) => f !== v.finish).join(' and ').toLowerCase()}. Ask us for the price.`,
           status: 'PUBLISHED',
           publishedAt: new Date(now.getTime() - i * 60_000),
           categoryId,

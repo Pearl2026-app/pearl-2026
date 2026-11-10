@@ -44,7 +44,7 @@ export async function generateMetadata(): Promise<Metadata> {
   const site = await get<Site>('/site', { revalidate: 300 });
   return {
     metadataBase: new URL(SITE_URL),
-    title: { default: 'Sahyadri Pearls · Farm-traced pearl jewellery', template: `%s${site?.seo.titleSuffix ?? ' | Sahyadri Pearls'}` },
+    title: { default: 'Sahyadri Pearls · Pearl jewellery in gold', template: `%s${site?.seo.titleSuffix ?? ' | Sahyadri Pearls'}` },
     description: site?.seo.defaultDescription,
     applicationName: 'Sahyadri Pearls',
     formatDetection: { telephone: false },

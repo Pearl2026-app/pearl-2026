@@ -107,7 +107,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
               </Link>
             )}
             {p.isExclusive && (
-              <Link href="/jewellery?exclusive=1" className="lux-track mt-2 inline-block border border-gold px-3 py-1 text-[11px] text-gold">
+              <Link href="/jewellery?exclusive=1" className="lux-track mt-3 block w-fit border border-gold px-3 py-1 text-[11px] text-gold">
                 Exclusive designer piece
               </Link>
             )}
@@ -161,33 +161,46 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
               <p className="mt-3 text-sm text-muted">One of a kind: there is only this piece.</p>
             )}
           </div>
-          {/* Trust next to the price and buttons (SPEC Part 11), as three short marks. */}
-          <ul className="grid grid-cols-3 border-y border-line py-5 text-center text-[13px]">
-            <li className="flex flex-col items-center gap-2">
-              <IconFor name="farm" className="text-gold" />
-              {p.farm ? (
-                <Link href={`/our-farm/${p.farm.slug}`} className="underline-offset-4 hover:underline">
-                  From {p.farm.name.replace(/ Farm$/, '')}
-                </Link>
-              ) : (
-                <span>Farm-traced</span>
-              )}
-            </li>
-            <li className="flex flex-col items-center gap-2 border-x border-line">
-              <IconFor name="certificate" className="text-gold" />
-              {p.certificateCode ? (
-                <Link href={`/verify/${encodeURIComponent(p.certificateCode)}`} className="underline-offset-4 hover:underline">
-                  Certified
-                </Link>
-              ) : (
-                <span>Graded by hand</span>
-              )}
-            </li>
-            <li className="flex flex-col items-center gap-2">
-              <IconFor name="truck" className="text-gold" />
-              <span>Insured delivery</span>
-            </li>
-          </ul>
+          {/* Trust next to the price and buttons (SPEC Part 11), as up to three short marks. Each one comes from this
+              piece's own data or the store's settings: the farm and certificate only when recorded, never as a claim. */}
+          {(() => {
+            const marks: Array<{ icon: string; node: React.ReactNode }> = [];
+            if (p.farm)
+              marks.push({
+                icon: 'farm',
+                node: (
+                  <Link href={`/our-farm/${p.farm.slug}`} className="underline-offset-4 hover:underline">
+                    From {p.farm.name.replace(/ Farm$/, '')}
+                  </Link>
+                ),
+              });
+            if (p.certificateCode)
+              marks.push({
+                icon: 'certificate',
+                node: (
+                  <Link href={`/verify/${encodeURIComponent(p.certificateCode)}`} className="underline-offset-4 hover:underline">
+                    Certified
+                  </Link>
+                ),
+              });
+            marks.push({ icon: 'truck', node: <span>Insured delivery</span> });
+            const sf = site?.storefront;
+            if (sf?.deliveryMinDays && sf.deliveryMaxDays)
+              marks.push({ icon: 'clock', node: <span>Ships in {sf.deliveryMinDays}–{sf.deliveryMaxDays} days</span> });
+            if (site?.returns.windowDays)
+              marks.push({ icon: 'return', node: <span>{site.returns.windowDays}-day returns</span> });
+            const shown = marks.slice(0, 3);
+            return (
+              <ul className={`grid border-y border-line py-5 text-center text-[13px] ${shown.length === 3 ? 'grid-cols-3' : 'grid-cols-2'}`}>
+                {shown.map((m, k) => (
+                  <li key={k} className={`flex flex-col items-center gap-2 px-1 ${k > 0 ? 'border-l border-line' : ''}`}>
+                    <IconFor name={m.icon} className="text-gold" />
+                    {m.node}
+                  </li>
+                ))}
+              </ul>
+            );
+          })()}
           {sizeGuideKind(p.category.slug) && (
             <div className="-mb-2 flex items-center justify-between text-sm">
               <span className="text-muted">

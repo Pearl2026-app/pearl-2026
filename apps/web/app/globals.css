@@ -203,6 +203,44 @@ html.motion-ready [data-reveal='3d'].is-in {
 [data-depth] {
   will-change: transform;
 }
+/* Hero words arriving: the eyebrow, headline and copy rise into place in turn. */
+@keyframes hero-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 18px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.hero-in > * {
+  animation: hero-in var(--duration-reveal) var(--ease-silk) both;
+}
+.hero-in > :nth-child(2) {
+  animation-delay: 90ms;
+}
+.hero-in > :nth-child(3) {
+  animation-delay: 180ms;
+}
+.hero-in > :nth-child(4) {
+  animation-delay: 270ms;
+}
+/* A quiet text link: a gold underline that draws in on hover. */
+.link-quiet {
+  background: linear-gradient(var(--color-gold), var(--color-gold)) 0 100% / 100% 1px no-repeat;
+  padding-bottom: 2px;
+  transition: background-size var(--duration-hover) var(--ease-silk);
+}
+.link-quiet:hover {
+  background-size: 0% 1px;
+  background-position: 100% 100%;
+}
+@media (prefers-reduced-motion: reduce) {
+  .hero-in > * {
+    animation: none;
+  }
+}
 
 @media (prefers-reduced-motion: reduce) {
   html.motion-ready [data-reveal] {

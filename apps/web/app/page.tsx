@@ -7,7 +7,7 @@ import { Turntable } from '@/components/turntable';
 import { Container } from '@/components/ui';
 import { JsonLd, meta, SITE_URL } from '@/lib/seo';
 import { cityFromCookie, get, pinFromCookie } from '@/lib/server-api';
-import type { ProductCard } from '@/lib/types';
+import type { ProductCard, Site } from '@/lib/types';
 
 interface Banner {
   id: string;
@@ -36,19 +36,20 @@ interface Home {
 }
 
 export const metadata = meta({
-  title: 'Sahyadri Pearls · Farm-traced pearl jewellery',
+  title: 'Sahyadri Pearls · Pearl jewellery in gold',
   description:
-    'Fine pearl jewellery traced to named farms in the Sahyadri hills and the Konkan coast. Certified, insured delivery across India.',
+    'Pearl jewellery by Sahyadri Pearls: our own designs in cultured pearl and gold, made to order, with insured delivery across India.',
   path: '/',
 });
 
 export default async function HomePage() {
   const [city, pin] = await Promise.all([cityFromCookie(), pinFromCookie()]);
   const where = new URLSearchParams({ ...(city ? { city } : {}), ...(pin ? { pin } : {}) });
-  const [h, sig] = await Promise.all([
+  const [h, sig, site] = await Promise.all([
     get<Home>(`/content/home${where.size ? `?${where}` : ''}`, { revalidate: 60 }),
     // The whole signature collection (51 pieces), for the banner, the tiles and the finish tabs.
     get<{ items: ProductCard[] }>(`/catalogue/products?${new URLSearchParams({ collection: 'signature', pageSize: '60', ...Object.fromEntries(where) })}`, { revalidate: 60 }),
+    get<Site>('/site', { revalidate: 300 }),
   ]);
   if (!h) return null;
   const heroes = h.banners.filter((b) => b.placement === 'HOME_HERO');
@@ -68,28 +69,30 @@ export default async function HomePage() {
   const earring = oneEach.find(isEarring);
   const ring2 = oneEach.filter((p) => !isEarring(p) && !isMens(p))[1];
 
+  // Words kept to what is true of the pieces: the client's own designs, cultured pearl, three gold finishes,
+  // made to order (price on request).
   const slides: StoreSlide[] = [
     ring && {
       eyebrow: 'The Signature Collection',
-      title: 'Pearls, grown in the Sahyadris.',
-      text: 'Our own designs in cultured pearl, hand-set in yellow, rose or white gold, and traced to the farm that grew them.',
+      title: 'Quiet pearls, fine gold.',
+      text: 'Our own designs in cultured pearl, made to order in yellow, rose or white gold.',
       href: signature.length ? '/collections/signature' : '/jewellery',
       cta: 'Shop the collection',
       image: img(ring)!,
-      dark: true,
+      secondary: { href: '/customized-jewellery', label: 'Or design your own' },
     },
     earring && {
       eyebrow: 'Earrings',
       title: 'Studs and drops for every day.',
-      text: 'Classic studs, halos and teardrops, each with a pearl chosen by hand.',
+      text: 'Classic studs, halos and teardrops, each set with a cultured pearl.',
       href: '/jewellery/earrings',
       cta: 'Shop earrings',
       image: img(earring)!,
     },
     mens && {
       eyebrow: 'For him',
-      title: "Men's pearl rings.",
-      text: 'Bold settings with a single pearl, made to his ring size.',
+      title: 'Pearl rings for men.',
+      text: 'Bold settings around a single pearl, made to his ring size.',
       href: '/search?q=men',
       cta: "Shop men's rings",
       image: img(mens)!,
@@ -106,18 +109,21 @@ export default async function HomePage() {
   const loved = oneEach.slice(0, 10);
   const crown = signature.find((p) => p.sku === 'SP-JRP-01-1');
   const crownHref = crown ? `/product/${crown.slug}` : '/collections/signature';
+  // The owner's own points (Admin → Content → home.trust) win; until they write them, only what the store's settings
+  // actually say: delivery, the delivery window, returns, and a way to talk to us.
+  const sf = site?.storefront;
   const trustItems = (trust?.data.items as Array<{ icon: string; title: string }> | undefined) ?? [
-    { icon: 'farm', title: 'Farm-traced pearls' },
-    { icon: 'certificate', title: 'Certified & verifiable' },
     { icon: 'truck', title: 'Insured delivery' },
-    { icon: 'check', title: 'Easy returns' },
+    ...(sf?.deliveryMinDays && sf.deliveryMaxDays ? [{ icon: 'clock', title: `Ships in ${sf.deliveryMinDays}–${sf.deliveryMaxDays} days` }] : []),
+    ...(site?.returns.windowDays ? [{ icon: 'return', title: `${site.returns.windowDays}-day returns` }] : []),
+    ...(site?.whatsapp.default ? [{ icon: 'chat', title: 'Talk to us on WhatsApp' }] : []),
   ];
 
   return (
     <>
       {/* The first thing a new visitor meets: where should we deliver? */}
       <LocationGate />
-      {slides.length > 0 ? <StoreHero slides={slides} /> : <h1 className="sr-only">Sahyadri Pearls · farm-traced pearl jewellery</h1>}
+      {slides.length > 0 ? <StoreHero slides={slides} /> : <h1 className="sr-only">Sahyadri Pearls · pearl jewellery in gold</h1>}
       {slides.length === 0 && heroes.length > 0 && <HeroCarousel slides={heroes} />}
 
       {/* Why buy here, in four lines. */}
@@ -147,16 +153,16 @@ export default async function HomePage() {
           href={crownHref}
           cta="See the Filigree Crown ring"
           captions={[
-            { eyebrow: 'The pearl', title: 'Chosen by hand.', text: 'Each pearl is matched for lustre, roundness and colour before it leaves the farm.' },
-            { eyebrow: 'The setting', title: 'Set by our craftsmen.', text: 'A filigree crown holds the pearl, in yellow, rose or white gold, made to your ring size.' },
-            { eyebrow: 'The proof', title: 'Traced to its farm.', text: 'Every piece comes with a certificate you can check online, down to the farm that grew it.' },
+            { eyebrow: 'The design', title: 'A crown for one pearl.', text: 'An open filigree crown holds a single cultured pearl, so the light reaches it from every side.' },
+            { eyebrow: 'The finish', title: 'Three golds.', text: 'Every design in the Signature Collection comes in yellow, rose or white gold.' },
+            { eyebrow: 'Made for you', title: 'To your ring size.', text: 'Each piece is made to order. Tell us your size and finish, and we will share the price.' },
           ]}
         />
       </div>
 
       {loved.length > 0 && (
         <Container className="pt-14 lg:pt-20">
-          <CenterHeading title="Most loved" sub="Our customers' favourite designs" />
+          <CenterHeading title="The Signature Collection" sub="One of each of our own designs" />
           <ProductRail products={loved} />
           <div className="mt-9 text-center">
             <OutlineLink href={signature.length ? '/collections/signature' : '/jewellery'}>Discover more</OutlineLink>
@@ -175,11 +181,11 @@ export default async function HomePage() {
             )}
           </div>
           <div className="flex flex-col justify-center bg-ink px-6 py-12 text-white md:px-12 lg:px-20">
-            <p className="lux-track text-[12px] text-gold">Our craft</p>
-            <h2 className="mt-3 font-serif text-[30px] leading-tight lg:text-[42px]">From our pearl farms to your hands.</h2>
+            <p className="lux-track text-[12px] text-gold">Our pearls</p>
+            <h2 className="mt-3 font-serif text-[34px] leading-tight lg:text-[48px]">Know where your pearl comes from.</h2>
             <p className="mt-4 max-w-md text-[15px] leading-relaxed text-white/80">
-              Every pearl is grown on a named farm in the Sahyadri hills and the Konkan coast, chosen by hand and set by
-              our craftsmen. Each piece comes with its certificate.
+              Meet the farms we work with and the pieces they supply, or read our guide to pearl types, quality and care
+              before you choose.
             </p>
             <div className="mt-7 flex flex-wrap gap-3">
               <Link href="/our-farm" className="lux-track inline-flex min-h-11 items-center bg-gold px-8 text-ink transition-colors hover:bg-white">

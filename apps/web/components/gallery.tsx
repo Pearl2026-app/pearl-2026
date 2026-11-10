@@ -43,7 +43,7 @@ export function Gallery({ images, video, name }: { images: ImageRef[]; video: st
             <div key={i} className="w-full shrink-0 snap-center" aria-roledescription="slide" aria-label={`${i + 1} of ${slides.length}`}>
               {s.kind === 'image' ? (
                 <button
-                  className="nacre group block w-full cursor-zoom-in overflow-hidden rounded-2xl"
+                  className="nacre group block w-full cursor-zoom-in overflow-hidden rounded-md"
                   onClick={() => setZoom(true)}
                   onMouseMove={(e) => {
                     const r = e.currentTarget.getBoundingClientRect();

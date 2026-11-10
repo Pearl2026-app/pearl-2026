@@ -35,99 +35,133 @@ export interface StoreSlide {
   href: string;
   cta: string;
   image: string;
-  dark?: boolean;
+  /** Optional second link under the button */
+  secondary?: { href: string; label: string };
 }
 
-/** The top banner: words on one side, the piece on the other; moves on every 6 seconds. */
+/**
+ * The top banner (owner's brief, 10 Nov): an editorial composition on pearl ivory: the headline beside a large
+ * render of the piece on a nacre stage. Layers drift at different speeds as the page scrolls (the stage, a fine gold
+ * ring, the piece), the words fade gently, and the slides change every 7 s. Phones get their own layout: the piece
+ * on top, then a two-line headline and a full-width button, all within the first screen at 360 px.
+ */
 export function StoreHero({ slides }: { slides: StoreSlide[] }) {
   const [i, setI] = useState(0);
   const [paused, setPaused] = useState(false);
+  const root = useRef<HTMLElement>(null);
+  const words = useRef<HTMLDivElement>(null);
+  const piece = useRef<HTMLDivElement>(null);
   const n = slides.length;
+
   useEffect(() => {
     if (paused || n < 2 || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-    const t = setTimeout(() => setI((x) => (x + 1) % n), 6000);
+    const t = setTimeout(() => setI((x) => (x + 1) % n), 7000);
     return () => clearTimeout(t);
   }, [i, paused, n]);
+
+  // Scroll: the words fade and rise a little, the piece grows a touch; the stage layers use data-depth.
+  useEffect(() => {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    let raf = 0;
+    const update = () => {
+      raf = 0;
+      const el = root.current;
+      if (!el) return;
+      const p = Math.min(1, Math.max(0, -el.getBoundingClientRect().top / Math.max(1, el.offsetHeight)));
+      if (words.current) {
+        words.current.style.opacity = String(1 - p * 0.9);
+        words.current.style.transform = `translate3d(0, ${(-p * 36).toFixed(1)}px, 0)`;
+      }
+      if (piece.current) piece.current.style.transform = `scale(${(1 + p * 0.07).toFixed(3)})`;
+    };
+    const onScroll = () => {
+      if (!raf) raf = requestAnimationFrame(update);
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    update();
+    return () => {
+      window.removeEventListener('scroll', onScroll);
+      cancelAnimationFrame(raf);
+    };
+  }, []);
+
   if (!n) return null;
+  const s = slides[i];
   return (
     <section
+      ref={root}
       aria-roledescription="carousel"
       aria-label="Featured"
-      className="relative overflow-hidden border-b border-line"
+      className="relative overflow-hidden border-b border-line bg-bg"
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
     >
-      <div className="relative h-[560px] sm:h-[520px] lg:h-[540px]">
-        {slides.map((s, k) => (
-          <div
-            key={k}
-            aria-hidden={k !== i}
-            className={`absolute inset-0 grid transition-opacity duration-700 sm:grid-cols-2 ${k === i ? 'opacity-100' : 'pointer-events-none opacity-0'}`}
-          >
-            <div
-              className={`order-2 flex flex-col justify-center px-6 py-8 sm:order-1 sm:px-12 lg:px-24 ${s.dark ? 'bg-[linear-gradient(135deg,#070e4d,#070e4d_45%,#47628a)] text-white' : 'bg-surface text-ink'}`}
-            >
-              <p className={`lux-track text-[12px] ${s.dark ? 'text-gold' : 'text-gold'}`}>{s.eyebrow}</p>
-              {k === 0 ? (
-                <h1 className="mt-3 font-serif text-[34px] leading-[1.08] lg:text-[54px]">{s.title}</h1>
-              ) : (
-                <h2 className="mt-3 font-serif text-[34px] leading-[1.08] lg:text-[54px]">{s.title}</h2>
-              )}
-              <p className={`mt-4 max-w-md text-[15px] leading-relaxed ${s.dark ? 'text-white/80' : 'text-muted'}`}>{s.text}</p>
-              <div className="mt-7">
-                <Link
-                  href={s.href}
-                  tabIndex={k === i ? 0 : -1}
-                  className={`lux-track inline-flex min-h-12 items-center px-9 transition-colors ${s.dark ? 'bg-gold text-ink hover:bg-white' : 'bg-ink text-white hover:bg-gold hover:text-ink'}`}
-                >
-                  {s.cta}
+      <div className="grid sm:min-h-[min(78vh,720px)] sm:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] sm:items-center">
+        {/* The words: below the piece on phones, on the left from tablets up. */}
+        <div ref={words} className="order-2 px-5 pt-5 pb-8 will-change-transform sm:order-1 sm:py-16 sm:pr-6 sm:pl-8 lg:pl-[max(3rem,calc((100vw-80rem)/2+2rem))]">
+          <div key={i} className="hero-in">
+            <p className="lux-track text-[11px] text-gold sm:text-[12px]">{s.eyebrow}</p>
+            {i === 0 ? (
+              <h1 className="mt-3 max-w-[13ch] font-serif text-[38px] leading-[1.02] text-ink sm:text-[46px] lg:text-[64px]">{s.title}</h1>
+            ) : (
+              <h2 className="mt-3 max-w-[13ch] font-serif text-[38px] leading-[1.02] text-ink sm:text-[46px] lg:text-[64px]">{s.title}</h2>
+            )}
+            <p className="mt-4 max-w-sm text-[15px] leading-relaxed text-muted lg:text-[16px]">{s.text}</p>
+            <div className="mt-7 flex flex-col gap-4 sm:flex-row sm:items-center sm:gap-7">
+              <Link href={s.href} className="lux-track inline-flex min-h-12 items-center justify-center bg-ink px-9 text-white transition-colors duration-500 hover:bg-gold hover:text-ink">
+                {s.cta}
+              </Link>
+              {s.secondary && (
+                <Link href={s.secondary.href} className="link-quiet self-center text-[14px] text-ink sm:self-auto">
+                  {s.secondary.label}
                 </Link>
-              </div>
+              )}
             </div>
-            <Link href={s.href} tabIndex={-1} className="nacre order-1 flex items-center justify-center overflow-hidden sm:order-2">
-              <span data-depth="-0.08" className="flex h-full w-full items-center justify-center mix-blend-multiply">
-              <img
-                src={s.image}
-                alt=""
-                width={900}
-                height={900}
-                fetchPriority={k === 0 ? 'high' : 'auto'}
-                className={`h-full max-h-full w-auto max-w-full object-contain p-6 mix-blend-multiply transition-transform duration-[6000ms] ease-out lg:p-10 ${k === i ? 'scale-105' : 'scale-100'}`}
-              />
+          </div>
+          {n > 1 && (
+            <div className="mt-8 flex items-center gap-3" role="group" aria-label="Choose a slide">
+              {slides.map((x, k) => (
+                <button
+                  key={k}
+                  onClick={() => setI(k)}
+                  aria-label={`Show ${x.eyebrow}`}
+                  aria-current={k === i}
+                  className="flex h-8 items-center"
+                >
+                  <span className={`block h-px transition-all duration-500 ${k === i ? 'w-10 bg-ink' : 'w-5 bg-ink/25'}`} />
+                </button>
+              ))}
+              <span className="lux-track ml-2 text-[11px] text-muted">
+                {String(i + 1).padStart(2, '0')} / {String(n).padStart(2, '0')}
               </span>
-            </Link>
-          </div>
-        ))}
+            </div>
+          )}
+        </div>
+
+        {/* The stage: a nacre field, a fine gold ring and the piece, each drifting at its own depth. */}
+        <Link href={s.href} tabIndex={-1} aria-hidden className="relative order-1 block h-[42svh] min-h-[250px] overflow-hidden sm:order-2 sm:h-full sm:min-h-[min(78vh,720px)]">
+          <span data-depth="0.22" className="nacre absolute -inset-[12%] block" />
+          <span data-depth="0.12" className="pointer-events-none absolute inset-0 flex items-center justify-center">
+            <span className="block aspect-square w-[64%] max-w-[520px] rounded-full border border-gold/45 sm:w-[58%]" />
+          </span>
+          <span data-depth="0.04" className="absolute inset-0 flex items-center justify-center mix-blend-multiply">
+            <div ref={piece} className="flex h-full w-full items-center justify-center will-change-transform">
+              {slides.map((x, k) => (
+                <img
+                  key={k}
+                  src={x.image}
+                  alt=""
+                  width={900}
+                  height={900}
+                  fetchPriority={k === 0 ? 'high' : 'auto'}
+                  loading={k === 0 ? 'eager' : 'lazy'}
+                  className={`absolute h-[82%] w-auto max-w-[88%] object-contain transition-all duration-[1200ms] ease-[cubic-bezier(.22,1,.36,1)] ${k === i ? 'scale-100 opacity-100' : 'scale-95 opacity-0'}`}
+                />
+              ))}
+            </div>
+          </span>
+        </Link>
       </div>
-      {n > 1 && (
-        <>
-          <div className="absolute bottom-4 left-1/2 flex -translate-x-1/2 gap-2">
-            {slides.map((_, k) => (
-              <button
-                key={k}
-                onClick={() => setI(k)}
-                aria-label={`Show slide ${k + 1}`}
-                aria-current={k === i}
-                className={`h-1.5 rounded-full transition-all ${k === i ? 'w-7 bg-gold' : 'w-1.5 bg-ink/30'}`}
-              />
-            ))}
-          </div>
-          <button
-            onClick={() => setI((i - 1 + n) % n)}
-            aria-label="Previous slide"
-            className="absolute top-1/2 left-3 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/85 text-ink shadow-sm hover:bg-white lg:flex"
-          >
-            ‹
-          </button>
-          <button
-            onClick={() => setI((i + 1) % n)}
-            aria-label="Next slide"
-            className="absolute top-1/2 right-3 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/85 text-ink shadow-sm hover:bg-white lg:flex"
-          >
-            ›
-          </button>
-        </>
-      )}
     </section>
   );
 }
