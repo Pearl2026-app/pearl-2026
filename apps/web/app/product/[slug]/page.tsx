@@ -305,7 +305,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
           {p.farm.heroImageUrl && (
             <img
               src={p.farm.heroImageUrl}
-              alt=""
+              alt={p.farm.name}
               loading="lazy"
               width={1600}
               height={900}
@@ -326,11 +326,8 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
         </section>
       )}
 
-      <section id="reviews" className="mt-20" aria-labelledby="reviews-h">
+      <section id="reviews" className="mt-20" aria-label="Reviews">
         <SectionHeading title="Reviews" />
-        <h2 id="reviews-h" className="sr-only">
-          Reviews
-        </h2>
         {p.reviews.length === 0 ? (
           <p className="text-muted">
             No reviews yet. Customers are invited to review after their piece is delivered.

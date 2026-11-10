@@ -49,6 +49,8 @@ export async function generateMetadata(): Promise<Metadata> {
     applicationName: 'Sahyadri Pearls',
     formatDetection: { telephone: false },
     icons: { icon: '/icon.svg', apple: '/brand/logo.png' },
+    // The demo (sample data, fixed sign-in code) must never appear in search results.
+    robots: site?.demo ? { index: false, follow: false } : undefined,
   };
 }
 
@@ -95,6 +97,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             '@type': 'Organization',
             name: 'Sahyadri Pearls',
             url: SITE_URL,
+            logo: `${SITE_URL}/brand/logo.png`,
             telephone: site.store.phone,
             email: site.store.email,
             address: site.store.address,
