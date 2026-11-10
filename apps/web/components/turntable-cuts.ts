@@ -1,0 +1,4 @@
+// Per frame of the Filigree Crown turntable film (sp-jrp-01, 120 stills of 720 × 880): the row just below the ring.
+// The film was shot on a glossy white floor; the faint reflection under the ring is left out when it is drawn over
+// colour (the oyster and ocean scenes). Measured from the stills: lowest row with gold in it, + 3 px.
+export const SP_JRP_01_BOTTOM_ROWS = [624,623,624,624,623,623,623,622,620,619,618,617,615,613,612,610,609,607,604,602,600,597,595,591,589,586,583,581,579,576,573,570,572,574,575,579,580,582,584,587,589,591,595,597,598,599,602,605,606,608,611,613,614,616,618,620,621,623,625,626,628,629,631,632,633,634,636,637,638,639,640,640,641,642,643,643,643,644,644,644,644,644,644,644,644,644,643,643,643,642,641,640,640,639,637,636,636,635,633,632,631,628,627,625,624,623,620,618,617,616,613,611,609,607,605,602,600,598,597,595];

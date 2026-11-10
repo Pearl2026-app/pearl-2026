@@ -1,9 +1,9 @@
 import Link from 'next/link';
-import { HeroCarousel } from '@/components/hero-carousel';
-import { CategoryTiles, CenterHeading, FinishTabs, OutlineLink, ProductRail, StoreHero, type StoreSlide } from '@/components/home-store';
+import { CategoryTiles, CenterHeading, FinishTabs, OutlineLink, ProductRail } from '@/components/home-store';
 import { LocationGate } from '@/components/location-gate';
 import { IconFor } from '@/components/icons';
-import { RingBox } from '@/components/ring-box';
+import { OceanHero, type OceanProduct } from '@/components/ocean/OceanHero';
+import { SP_JRP_01_BOTTOM_ROWS } from '@/components/turntable-cuts';
 import { Container } from '@/components/ui';
 import { JsonLd, meta, SITE_URL } from '@/lib/seo';
 import { cityFromCookie, get, pinFromCookie } from '@/lib/server-api';
@@ -52,7 +52,6 @@ export default async function HomePage() {
     get<Site>('/site', { revalidate: 300 }),
   ]);
   if (!h) return null;
-  const heroes = h.banners.filter((b) => b.placement === 'HOME_HERO');
   const trust = h.blocks['home.trust'];
   const cta = h.blocks['home.custom_cta'];
   // The client's own signature collection leads the page; the older stock-list photos stay in the catalogue.
@@ -69,36 +68,6 @@ export default async function HomePage() {
   const earring = oneEach.find(isEarring);
   const ring2 = oneEach.filter((p) => !isEarring(p) && !isMens(p))[1];
 
-  // Words kept to what is true of the pieces: the client's own designs, cultured pearl, three gold finishes,
-  // made to order (price on request).
-  const slides: StoreSlide[] = [
-    ring && {
-      eyebrow: 'The Signature Collection',
-      title: 'Quiet pearls, fine gold.',
-      text: 'Our own designs in cultured pearl, made to order in yellow, rose or white gold.',
-      href: signature.length ? '/collections/signature' : '/jewellery',
-      cta: 'Shop the collection',
-      image: img(ring)!,
-      secondary: { href: '/customized-jewellery', label: 'Or design your own' },
-    },
-    earring && {
-      eyebrow: 'Earrings',
-      title: 'Studs and drops for every day.',
-      text: 'Classic studs, halos and teardrops, each set with a cultured pearl.',
-      href: '/jewellery/earrings',
-      cta: 'Shop earrings',
-      image: img(earring)!,
-    },
-    mens && {
-      eyebrow: 'For him',
-      title: 'Pearl rings for men.',
-      text: 'Bold settings around a single pearl, made to his ring size.',
-      href: '/search?q=men',
-      cta: "Shop men's rings",
-      image: img(mens)!,
-    },
-  ].filter(Boolean) as StoreSlide[];
-
   const categoryTiles = [
     { label: 'Rings', href: '/jewellery/rings', image: img(ring2 ?? ring) },
     { label: 'Earrings', href: '/jewellery/earrings', image: img(oneEach.filter(isEarring)[1] ?? earring) },
@@ -109,6 +78,18 @@ export default async function HomePage() {
   const loved = oneEach.slice(0, 10);
   const crown = signature.find((p) => p.sku === 'SP-JRP-01-1');
   const crownHref = crown ? `/product/${crown.slug}` : '/collections/signature';
+  // The opening scene's glass card: only what the catalogue says about the piece.
+  const crownFinishes = [...new Set(signature.filter((p) => p.sku.startsWith('SP-JRP-01-')).map((p) => p.metal).filter((m): m is string => !!m))];
+  const waNumber = site?.whatsapp.default?.replace(/\D/g, '');
+  const oceanProduct: OceanProduct = {
+    name: 'Filigree Crown Ring',
+    href: crownHref,
+    collection: 'The Signature Collection',
+    text: 'An open filigree crown holds a single cultured pearl, so the light reaches it from every side.',
+    finishes: crownFinishes,
+    priceLabel: crown && !crown.priceOnRequest && crown.pricePaise ? `₹${Math.round(crown.pricePaise / 100).toLocaleString('en-IN')}` : 'Price on request',
+    enquireHref: waNumber ? `https://wa.me/${waNumber}?text=${encodeURIComponent(`Hello, I would like to know more about the Filigree Crown Ring${crown ? ` (${crown.sku})` : ''}.`)}` : null,
+  };
   // The owner's own points (Admin → Content → home.trust) win; until they write them, only what the store's settings
   // actually say: delivery, the delivery window, returns, and a way to talk to us.
   const sf = site?.storefront;
@@ -123,8 +104,8 @@ export default async function HomePage() {
     <>
       {/* The first thing a new visitor meets: where should we deliver? */}
       <LocationGate />
-      {slides.length > 0 ? <StoreHero slides={slides} /> : <h1 className="sr-only">Sahyadri Pearls · pearl jewellery in gold</h1>}
-      {slides.length === 0 && heroes.length > 0 && <HeroCarousel slides={heroes} />}
+      {/* The opening scene: a shell on the sea opens, a pearl rises out of it, and under the water it becomes the ring. */}
+      <OceanHero frames="/turntable/sp-jrp-01" count={120} product={oceanProduct} ringCuts={SP_JRP_01_BOTTOM_ROWS} />
 
       {/* Why buy here, in four lines. */}
       <div className="border-b border-line bg-surface">
@@ -144,21 +125,6 @@ export default async function HomePage() {
           <CategoryTiles tiles={categoryTiles} />
         </Container>
       )}
-
-      {/* The reveal: an oyster opens, the ring rises out of it and turns a full 360° as the visitor scrolls. */}
-      <div className="pt-14 lg:pt-20">
-        <RingBox
-          frames="/turntable/sp-jrp-01"
-          count={120}
-          href={crownHref}
-          cta="See the Filigree Crown ring"
-          captions={[
-            { eyebrow: 'The design', title: 'A crown for one pearl.', text: 'An open filigree crown holds a single cultured pearl, so the light reaches it from every side.' },
-            { eyebrow: 'The finish', title: 'Three golds.', text: 'Every design in the Signature Collection comes in yellow, rose or white gold.' },
-            { eyebrow: 'Made for you', title: 'To your ring size.', text: 'Each piece is made to order. Tell us your size and finish, and we will share the price.' },
-          ]}
-        />
-      </div>
 
       {loved.length > 0 && (
         <Container className="pt-14 lg:pt-20">

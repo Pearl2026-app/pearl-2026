@@ -84,6 +84,8 @@ export function Motion() {
     void import('lenis').then(({ default: Lenis }) => {
       if (!alive) return;
       lenis = new Lenis({ lerp: 0.12, wheelMultiplier: 0.95, smoothWheel: true });
+      // shared, so scroll-driven scenes (the opening ocean scene's ScrollTrigger) can stay in step with it
+      (window as unknown as { __lenis?: unknown }).__lenis = lenis;
       const loop = (t: number) => {
         lenis?.raf(t);
         raf = requestAnimationFrame(loop);
@@ -94,6 +96,7 @@ export function Motion() {
       alive = false;
       cancelAnimationFrame(raf);
       lenis?.destroy();
+      delete (window as unknown as { __lenis?: unknown }).__lenis;
     };
   }, []);
 
