@@ -142,9 +142,9 @@ function LowStockPopup({ count }: { count: number }) {
 }
 
 /** The rates shown on the tile: the ones the business prices with most. */
-const TILE_RATES: MetalRateKey[] = ['GOLD_24K', 'GOLD_22K', 'GOLD_18K', 'SILVER_925', 'PLATINUM'];
+const TILE_RATES: MetalRateKey[] = ['GOLD_24K', 'GOLD_22K', 'GOLD_18K', 'GOLD_14K', 'SILVER_925'];
 
-/** "Today's rates" tile: gold, silver and platinum per gram from the Metal rates page (meeting of 4 Nov). */
+/** "Today's rates" tile: gold and silver per gram from the Metal rates page (meeting of 4 Nov). */
 function TodaysRates({ canEdit }: { canEdit: boolean }) {
   const { data } = useQuery({
     queryKey: ['/admin/metal-rates/today'],
@@ -159,7 +159,7 @@ function TodaysRates({ canEdit }: { canEdit: boolean }) {
     <Card className="mb-5">
       <h2 className="mb-2 flex flex-wrap items-center gap-2 font-semibold">
         <Coins size={18} className="text-[#B89042]" aria-hidden /> Today&rsquo;s rates
-        <InfoTip text="Gold, silver and platinum per gram, as entered on Pricing → Metal rates. Pieces set to follow the rate are priced from these." />
+        <InfoTip text="Gold and silver per gram, as entered on Pricing → Metal rates. Pieces set to follow the rate are priced from these." />
         {canEdit && (
           <Link href="/pricing/metal-rates" className="ml-auto text-sm font-normal text-accent underline">
             {shown.length ? 'Update' : 'Enter today’s rates'}

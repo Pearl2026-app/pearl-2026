@@ -290,10 +290,10 @@ interface RatesBarData {
   pearl: { liveFeed: boolean; extraPercent: number; grade: string | null; fromPerCaratPaise: number | null };
 }
 
-const BAR_METALS: MetalRateKey[] = ['GOLD_24K', 'GOLD_22K', 'GOLD_18K', 'SILVER_999', 'PLATINUM'];
+const BAR_METALS: MetalRateKey[] = ['GOLD_24K', 'GOLD_22K', 'GOLD_18K', 'SILVER_999', 'SILVER_925'];
 const rupees = (p: number) => `₹${Math.round(p / 100).toLocaleString('en-IN')}`;
 
-/** Today's rates on every admin page (owner, 10 Nov): gold, silver and platinum per gram, and the pearl rate. */
+/** Today's rates on every admin page (owner, 10 Nov): gold and silver per gram, and the pearl rate. */
 function RatesBar({ canEdit }: { canEdit: boolean }) {
   const { data } = useQuery({ queryKey: ['/admin/pricing/rates-bar'], queryFn: () => api<RatesBarData>('/admin/pricing/rates-bar'), staleTime: 5 * 60_000, refetchInterval: 15 * 60_000 });
   if (!data) return null;
@@ -309,7 +309,7 @@ function RatesBar({ canEdit }: { canEdit: boolean }) {
     );
   return (
     <div className="flex h-8 items-center gap-5 overflow-x-auto border-t border-line/70 bg-bg/60 px-4 text-xs whitespace-nowrap text-ink">
-      <span className="flex shrink-0 items-center gap-1.5 text-muted" title={data.liveMetals ? 'Gold, silver and platinum refresh every hour from the market' : 'Rates are entered by hand on Pricing → Metal rates'}>
+      <span className="flex shrink-0 items-center gap-1.5 text-muted" title={data.liveMetals ? 'Gold and silver refresh every hour from the market' : 'Rates are entered by hand on Pricing → Metal rates'}>
         <span aria-hidden className={`inline-block h-1.5 w-1.5 rounded-full ${data.liveMetals && !stale ? 'bg-emerald-600' : 'bg-amber-500'}`} />
         {data.liveMetals ? (stale ? 'Live rates (waiting for today’s)' : 'Live rates') : 'Rates entered by hand'}
       </span>

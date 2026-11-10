@@ -30,7 +30,7 @@ describe('metalRateKeyFor', () => {
     expect(metalRateKeyFor('22K Gold')).toBe('GOLD_22K');
     expect(metalRateKeyFor('18k gold')).toBe('GOLD_18K');
     expect(metalRateKeyFor('14K Gold')).toBe('GOLD_14K');
-    expect(metalRateKeyFor('Platinum')).toBe('PLATINUM');
+    expect(metalRateKeyFor('Platinum')).toBeNull();
     expect(metalRateKeyFor('Brass')).toBeNull();
     expect(metalRateKeyFor(null)).toBeNull();
   });

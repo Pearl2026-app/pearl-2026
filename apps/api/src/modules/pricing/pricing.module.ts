@@ -234,7 +234,7 @@ export class PricingCalcController {
     private readonly metals: MetalRatesService,
   ) {}
 
-  /** Today's gold, silver and platinum rates and the pearl rate, for the top bar of every admin page. */
+  /** Today's gold and silver rates and the pearl rate, for the top bar of every admin page. */
   @Get('rates-bar')
   @Requires('DASHBOARD', 'view')
   async ratesBar() {

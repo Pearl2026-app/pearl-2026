@@ -37,26 +37,25 @@ const marginsInput = z.object({
     .refine((v) => v === '' || /^https:\/\/[^\s]+$/i.test(v), 'Use an https:// link, or leave it empty')
     .optional(),
   liveMarket: z.boolean().optional(),
-  marketPremium: z.object({ GOLD: z.number().min(-20).max(60), SILVER: z.number().min(-20).max(60), PLATINUM: z.number().min(-20).max(60) }).optional(),
+  marketPremium: z.object({ GOLD: z.number().min(-20).max(60), SILVER: z.number().min(-20).max(60) }).optional(),
 });
 
 const TROY_OUNCE_G = 31.1034768;
-/** Purity of each rate against its base metal (24K gold, 999 silver, platinum). */
-const PURITY: Record<MetalRateKey, { base: 'XAU' | 'XAG' | 'XPT'; factor: number; premium: 'GOLD' | 'SILVER' | 'PLATINUM' }> = {
+/** Purity of each rate against its base metal (24K gold, 999 silver). */
+const PURITY: Record<MetalRateKey, { base: 'XAU' | 'XAG'; factor: number; premium: 'GOLD' | 'SILVER' }> = {
   GOLD_24K: { base: 'XAU', factor: 1, premium: 'GOLD' },
   GOLD_22K: { base: 'XAU', factor: 22 / 24, premium: 'GOLD' },
   GOLD_18K: { base: 'XAU', factor: 0.75, premium: 'GOLD' },
   GOLD_14K: { base: 'XAU', factor: 0.585, premium: 'GOLD' },
   SILVER_999: { base: 'XAG', factor: 1, premium: 'SILVER' },
   SILVER_925: { base: 'XAG', factor: 0.925, premium: 'SILVER' },
-  PLATINUM: { base: 'XPT', factor: 1, premium: 'PLATINUM' },
 };
 
 /**
  * Indian rates per gram from live spot prices in ₹ per troy ounce: spot ÷ 31.1035 × (1 + premium) × purity.
  * Spot comes from gold-api.com (free, no key; prices in ₹ at the current exchange rate).
  */
-export function marketRates(spotInrPerOz: Partial<Record<'XAU' | 'XAG' | 'XPT', number>>, premium: { GOLD: number; SILVER: number; PLATINUM: number }) {
+export function marketRates(spotInrPerOz: Partial<Record<'XAU' | 'XAG', number>>, premium: { GOLD: number; SILVER: number }) {
   return METAL_RATE_KEYS.flatMap((metal) => {
     const p = PURITY[metal];
     const spot = spotInrPerOz[p.base];
@@ -135,10 +134,10 @@ export class MetalRatesService implements OnModuleInit {
   }
 
   /** Live spot prices in ₹ per troy ounce. */
-  private async spot(): Promise<Partial<Record<'XAU' | 'XAG' | 'XPT', number>>> {
-    const out: Partial<Record<'XAU' | 'XAG' | 'XPT', number>> = {};
+  private async spot(): Promise<Partial<Record<'XAU' | 'XAG', number>>> {
+    const out: Partial<Record<'XAU' | 'XAG', number>> = {};
     await Promise.all(
-      (['XAU', 'XAG', 'XPT'] as const).map(async (sym) => {
+      (['XAU', 'XAG'] as const).map(async (sym) => {
         try {
           const res = await fetch(`https://api.gold-api.com/price/${sym}/INR`, { signal: AbortSignal.timeout(10_000) });
           const body = (await res.json().catch(() => null)) as { price?: number; currency?: string } | null;

@@ -1,7 +1,7 @@
 // Daily metal rates and products whose price follows them (client meeting, 4 Nov).
 
 /** The rates head office enters each day (₹ per gram). */
-export const METAL_RATE_KEYS = ['GOLD_24K', 'GOLD_22K', 'GOLD_18K', 'GOLD_14K', 'SILVER_999', 'SILVER_925', 'PLATINUM'] as const;
+export const METAL_RATE_KEYS = ['GOLD_24K', 'GOLD_22K', 'GOLD_18K', 'GOLD_14K', 'SILVER_999', 'SILVER_925'] as const; // no platinum (owner, 10 Nov)
 export type MetalRateKey = (typeof METAL_RATE_KEYS)[number];
 
 export const METAL_RATE_LABEL: Record<MetalRateKey, string> = {
@@ -11,17 +11,16 @@ export const METAL_RATE_LABEL: Record<MetalRateKey, string> = {
   GOLD_14K: 'Gold 14K',
   SILVER_999: 'Silver 999',
   SILVER_925: 'Silver 92.5',
-  PLATINUM: 'Platinum',
 };
 
 /** The metal choices on the product form; "Other" takes free text. */
-export const PRODUCT_METALS = ['92.5 Silver', '18K Gold', '22K Gold', '14K Gold', 'Platinum', 'Other'] as const;
+export const PRODUCT_METALS = ['92.5 Silver', '18K Gold', '22K Gold', '14K Gold', 'Other'] as const;
 
 /** Which daily rate a product's metal follows, guessed from its metal text (null when it cannot be told). */
 export function metalRateKeyFor(metal: string | null | undefined): MetalRateKey | null {
   const m = (metal ?? '').toLowerCase().replace(/\s+/g, ' ');
   if (!m) return null;
-  if (/platinum/.test(m)) return 'PLATINUM';
+  if (/platinum/.test(m)) return null; // platinum is not sold
   if (/silver|92\.?5|sterling/.test(m)) return /999|fine silver/.test(m) ? 'SILVER_999' : 'SILVER_925';
   if (/24 ?k|24 ?kt|999 gold/.test(m)) return 'GOLD_24K';
   if (/22 ?k|22 ?kt|916/.test(m)) return 'GOLD_22K';

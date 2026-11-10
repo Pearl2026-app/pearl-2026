@@ -11,7 +11,7 @@ import { Banner, Button, Chip, Field, H1, Muted, ProductTile } from '@/ui';
 const Q = {
   occasion: ['Engagement', 'Anniversary', 'Birthday', 'Everyday', 'Gift'],
   style: ['Classic solitaire', 'Modern', 'Vintage', 'Bold statement'],
-  metal: [['any', 'Any metal'], ['gold', 'Gold'], ['silver', 'Silver'], ['platinum', 'Platinum']] as const,
+  metal: [['any', 'Any metal'], ['gold', 'Gold'], ['silver', 'Silver']] as const,
   colour: ['Any', 'White', 'Cream', 'Golden', 'Rose', 'Black'],
   shape: ['Any', 'Round', 'Drop', 'Button', 'Baroque'],
   budget: [[1_500_000, 'Up to ₹15,000'], [3_000_000, 'Up to ₹30,000'], [6_000_000, 'Up to ₹60,000'], [0, 'No limit']] as const,

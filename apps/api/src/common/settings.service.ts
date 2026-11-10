@@ -92,15 +92,15 @@ export const SETTING_SCHEMAS = {
   metal_pricing: z.object({
     /** Daily rate feed (JSON) when METAL_RATE_FEED_URL is not set; empty = rates are entered by hand */
     feedUrl: z.string().default(''),
-    /** Live market rates (gold, silver, platinum spot in ₹, refreshed hourly) when no feed link is set */
+    /** Live market rates (gold and silver spot in ₹, refreshed hourly) when no feed link is set */
     liveMarket: z.boolean().default(true),
     /**
      * Spot (international) to Indian market rate: import duty, taxes and the usual premium, in %. Defaults match the
      * published Indian rates of 9–10 Nov 2026 (24K ₹1,41,023–1,42,316 / 10 g; silver ₹1,87,510 / kg).
      */
     marketPremium: z
-      .object({ GOLD: z.number().min(-20).max(60).default(13.8), SILVER: z.number().min(-20).max(60).default(16.7), PLATINUM: z.number().min(-20).max(60).default(10) })
-      .default({ GOLD: 13.8, SILVER: 16.7, PLATINUM: 10 }),
+      .object({ GOLD: z.number().min(-20).max(60).default(13.8), SILVER: z.number().min(-20).max(60).default(16.7) })
+      .default({ GOLD: 13.8, SILVER: 16.7 }),
     margins: z
       .record(z.string(), z.object({ percent: z.number().min(0).max(500).default(0), perGramPaise: z.number().int().min(0).max(100_000_000).default(0) }))
       .default({}),

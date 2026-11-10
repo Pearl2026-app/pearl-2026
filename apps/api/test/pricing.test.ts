@@ -137,11 +137,11 @@ describe('daily metal rates', () => {
 
   it('turns live spot prices into Indian rates per gram', () => {
     // ₹3,86,761 / troy oz gold and ₹4,996.57 / oz silver (10 Nov 2026), with 13.8% and 16.7% India premium.
-    const r = Object.fromEntries(marketRates({ XAU: 386_761.15, XAG: 4_996.57 }, { GOLD: 13.8, SILVER: 16.7, PLATINUM: 10 }).map((x) => [x.metal, x.ratePerGramPaise]));
+    const r = Object.fromEntries(marketRates({ XAU: 386_761.15, XAG: 4_996.57 }, { GOLD: 13.8, SILVER: 16.7 }).map((x) => [x.metal, x.ratePerGramPaise]));
     expect(r.GOLD_24K).toBe(1_415_064); // ₹14,150.64 / g ≈ ₹1,41,506 / 10 g
     expect(r.GOLD_22K).toBe(Math.round(((386_761.15 / 31.1034768) * 1.138 * (22 / 24)) * 100));
     expect(r.SILVER_999).toBe(18_747); // ₹187.47 / g ≈ ₹1,87,470 / kg
-    expect(r.PLATINUM).toBeUndefined(); // no spot price, no rate
+    expect(Object.keys(r)).not.toContain('PLATINUM'); // platinum is not sold
   });
 
   it('reads the common feed shapes', () => {
