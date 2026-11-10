@@ -26,6 +26,7 @@ export function Footer({ site }: { site: Site }) {
   ];
   const discover = [
     { href: '/pearl-guide', label: 'Pearl Guide' },
+    { href: '/pearl-stories', label: 'Pearl Stories' },
     { href: '/gifts', label: 'Gifts' },
     { href: '/book-consultation', label: 'Book a consultation' },
     { href: '/visit-us', label: 'Visit us' },

@@ -17,6 +17,7 @@ const NAV = [
   { href: '/gifts', label: 'Gifts' },
   { href: '/customized-jewellery', label: 'Customized Jewellery' },
   { href: '/pearl-guide', label: 'Pearl Guide' },
+  { href: '/pearl-stories', label: 'Pearl Stories' },
   { href: '/business', label: 'B2B' },
 ];
 const MOBILE_EXTRA = [

@@ -122,7 +122,8 @@ export const WATER_VERT = /* glsl */ `
 export const WATER_FRAG = /* glsl */ `
   ${SKY_COMMON}
   ${NOISE_GLSL}
-  uniform float uTime, uDark;
+  uniform float uTime, uDark, uClear;
+  uniform vec2 uClearC;
   uniform vec3 uSea, uSeaDeep, uUnderTop, uUnderDeep;
   varying vec3 vWorld;
   varying vec3 vNormal2;
@@ -151,13 +152,17 @@ export const WATER_FRAG = /* glsl */ `
       col += uSunGlow * spec * (1.5 + 6.0 * glint);
       // haze into the horizon
       col = mix(col, skyColour(normalize(vec3(v.x, 0.02, v.z))), smoothstep(30.0, 160.0, dist));
-      gl_FragColor = vec4(col * mix(1.0, 0.35, uDark), mix(0.93, 1.0, smoothstep(1.0, 8.0, dist)));
+      // the shallows around the scallop: clear enough to see the sand and its moving light
+      float shallow = uClear * (1.0 - smoothstep(3.0, 9.0, length(vWorld.xz - uClearC)));
+      col = mix(col, mix(col, vec3(0.62, 0.93, 0.9), 0.25), shallow);
+      float alpha = mix(mix(0.93, 1.0, smoothstep(1.0, 8.0, dist)), 0.42 + 0.4 * fres, shallow);
+      gl_FragColor = vec4(col * mix(1.0, 0.35, uDark), alpha);
     } else {
       // from below: a bright moving window overhead, mirror-like at grazing angles
       float window = smoothstep(0.55, 0.85, abs(v.y));
       float cau = 1.0 - smoothstep(0.0, 0.1, cells(vWorld.xz * 1.6 + n.xz * 2.0, uTime * 0.9));
       vec3 col = mix(uUnderDeep * 1.6, uUnderTop * 1.35 + vec3(0.25, 0.22, 0.18) * window, window) + vec3(0.7, 1.0, 0.95) * cau * 0.25 * window;
-      col = mix(col, uUnderTop * 0.9, smoothstep(5.0, 22.0, dist));
+      col = mix(col, mix(uUnderDeep, uUnderTop, 0.47), smoothstep(5.0, 22.0, dist)); // the sky dome's colour at the horizon below
       // far away the surface melts into the water's own colour (no hard line at the horizon)
       gl_FragColor = vec4(col * mix(1.0, 0.35, uDark), 0.96 * (1.0 - smoothstep(10.0, 30.0, dist)));
     }
@@ -396,3 +401,34 @@ export function mistTexture() {
   t.wrapS = THREE.RepeatWrapping;
   return t;
 }
+
+// ---- the sandy bottom of the shallows, with the light of the ripples moving on it --------------------------------
+export const SEABED_VERT = /* glsl */ `
+  varying vec3 vWorld;
+  varying vec2 vUv;
+  void main() {
+    vUv = uv;
+    vec4 w = modelMatrix * vec4(position, 1.0);
+    vWorld = w.xyz;
+    gl_Position = projectionMatrix * viewMatrix * w;
+  }
+`;
+export const SEABED_FRAG = /* glsl */ `
+  ${NOISE_GLSL}
+  uniform float uTime, uDark;
+  varying vec3 vWorld;
+  varying vec2 vUv;
+  void main() {
+    vec2 p = vWorld.xz * 1.6;
+    vec2 w = p + 0.25 * vec2(sin(p.y * 1.3 + uTime * 0.6), cos(p.x * 1.1 - uTime * 0.5));
+    float a = 1.0 - smoothstep(0.0, 0.07, cells(w, uTime * 0.8));
+    float b = 1.0 - smoothstep(0.0, 0.08, cells(w * 1.7 + 4.0, uTime * 1.05));
+    // pale sand seen through turquoise water, with the bright web of light moving across it
+    vec3 sand = mix(vec3(0.7, 0.78, 0.68), vec3(0.84, 0.88, 0.78), noise(vWorld.xz * 0.8));
+    vec3 col = sand * vec3(0.32, 0.72, 0.68) + vec3(0.7, 1.0, 0.94) * (a * 0.32 + b * 0.18);
+    // under the water, distance turns it to the water's own colour
+    col = mix(col, vec3(0.03, 0.3, 0.32), smoothstep(1.0, 9.0, length(vWorld - cameraPosition)) * step(cameraPosition.y, 0.0));
+    float edge = smoothstep(0.5, 0.36, length(vUv - 0.5));
+    gl_FragColor = vec4(col * mix(1.0, 0.35, uDark), edge);
+  }
+`;

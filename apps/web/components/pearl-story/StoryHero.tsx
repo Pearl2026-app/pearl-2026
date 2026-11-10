@@ -1,11 +1,13 @@
 'use client';
 // A scroll-told 3D story of a pearl coming out of the farm (owner, 10 Nov), in one of three versions (versions.ts).
 // The 3D (Stage.tsx: React Three Fiber, post-processing) loads on the visitor's first move; GSAP ScrollTrigger turns the
-// scroll into one smoothed progress value; Framer Motion moves the words and the card. Reduced motion or no WebGL: a
+// scroll into one smoothed progress value; Motion (motion/react) brings the words and the card in and out, and
+// anime.js lifts the words in letter by letter. Reduced motion or no WebGL: a
 // calm still of the opening with the words and the buttons.
-import { AnimatePresence, LazyMotion, domAnimation, m } from 'framer-motion';
+import { AnimatePresence, LazyMotion, domAnimation, m } from 'motion/react';
 import Link from 'next/link';
-import { useEffect, useRef, useState, type ComponentType } from 'react';
+import { useEffect, useRef, useState, type ComponentType, type ReactNode } from 'react';
+import { AnimeText } from './AnimeText';
 import type { StageProps } from './Stage';
 import { versionBySlug } from './versions';
 
@@ -26,7 +28,7 @@ const enter = {
   exit: { opacity: 0, y: -14, filter: 'blur(6px)', transition: { duration: 0.5, ease: EASE } },
 };
 
-export function StoryHero({ slug, product, frames, count }: { slug: string; product: StoryProduct; frames: string; count: number }) {
+export function StoryHero({ slug, product, frames, count, tabs }: { slug: string; product: StoryProduct; frames: string; count: number; tabs?: ReactNode }) {
   const version = versionBySlug(slug)!;
   const section = useRef<HTMLElement>(null);
   const progress = useRef(0);
@@ -138,16 +140,18 @@ export function StoryHero({ slug, product, frames, count }: { slug: string; prod
           )}
           {/* the opening comes up out of the dark */}
           <m.div aria-hidden className="pointer-events-none absolute inset-0 bg-[#021a1f]" initial={{ opacity: still ? 0 : 0.9 }} animate={{ opacity: ready || still ? 0 : 0.9, transition: { duration: 2.2, ease: 'easeOut' } }} />
+          {/* the three stories' tabs stay on screen through the whole story */}
+          {tabs && <div className="absolute inset-x-0 top-0 z-10 flex justify-center px-4 pt-4">{tabs}</div>}
           <div aria-hidden className="pointer-events-none absolute inset-0 bg-[linear-gradient(90deg,rgba(3,40,46,0.42),rgba(3,40,46,0.12)_40%,transparent_60%)] max-lg:bg-[linear-gradient(180deg,rgba(3,40,46,0.45),rgba(3,40,46,0.08)_38%,transparent_55%)]" />
 
-          <div className="pointer-events-none absolute inset-x-0 top-0 flex h-full flex-col px-5 pt-[9vh] lg:justify-center lg:pt-0 lg:pl-[max(3rem,calc((100vw-80rem)/2+2rem))]">
+          <div className="pointer-events-none absolute inset-x-0 top-0 flex h-full flex-col px-5 pt-[calc(9vh+56px)] lg:justify-center lg:pt-0 lg:pl-[max(3rem,calc((100vw-80rem)/2+2rem))]">
             <div className="relative min-h-[150px] max-w-[580px] lg:min-h-[240px]">
               <h1 className="sr-only">Sahyadri Pearls: pearl jewellery in gold</h1>
               <AnimatePresence mode="wait">
                 {line && (
                   <m.div key={`l${lineIdx}`} {...enter} className="text-white [text-shadow:0_1px_22px_rgba(2,30,36,0.45)]">
                     {line.eyebrow && <p className="lux-track text-[11px] text-white/85 lg:text-[12px]">{line.eyebrow}</p>}
-                    <p aria-hidden={lineIdx > 0 || undefined} className="mt-3 font-serif text-[40px] leading-[1.03] sm:text-[52px] lg:text-[72px]">
+                    <AnimeText delay={120} className="mt-3 font-serif text-[40px] leading-[1.03] sm:text-[52px] lg:text-[72px]">
                       {line.first}
                       {line.second && (
                         <>
@@ -155,13 +159,15 @@ export function StoryHero({ slug, product, frames, count }: { slug: string; prod
                           <em className="font-serif italic">{line.second}</em>
                         </>
                       )}
-                    </p>
+                    </AnimeText>
                   </m.div>
                 )}
                 {showTitle && (
                   <m.div key="title" {...enter} className="text-white [text-shadow:0_1px_22px_rgba(2,30,36,0.5)]">
                     <p className="lux-track text-[11px] text-white/85 lg:text-[12px]">{product.collection}</p>
-                    <p className="mt-3 font-serif text-[40px] leading-[1.02] sm:text-[52px] lg:text-[68px]">{product.name}</p>
+                    <AnimeText delay={120} className="mt-3 font-serif text-[40px] leading-[1.02] sm:text-[52px] lg:text-[68px]">
+                      {product.name}
+                    </AnimeText>
                     <p className="mt-4 max-w-sm text-[15px] leading-relaxed text-white/90 lg:text-[16px]">{product.text}</p>
                   </m.div>
                 )}

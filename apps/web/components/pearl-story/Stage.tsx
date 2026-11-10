@@ -9,13 +9,17 @@ import { Bloom, EffectComposer, Vignette } from '@react-three/postprocessing';
 import { useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
-import { FARM, type StoryVersion, type V3 } from './versions';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
+import { FARM, SHELL_AT, type StoryVersion, type V3 } from './versions';
 import {
   MOTE_FRAG,
   MOTE_VERT,
   PALETTE,
   RAY_FRAG,
   RAY_VERT,
+  SEABED_FRAG,
+  SEABED_VERT,
   SKY_FRAG,
   SKY_VERT,
   WATER_FRAG,
@@ -49,6 +53,7 @@ const smooth = (x: number) => {
 const span = (p: number, [a, b]: [number, number]) => smooth((p - a) / (b - a));
 const mix = THREE.MathUtils.lerp;
 const OYSTER_SCALE = 0.16;
+const SCALLOP_SCALE = 0.13;
 const PEARL_R = 0.032;
 const RING_ASPECT = 720 / 880;
 const FOG_ABOVE = new THREE.Color(0xeac3b8);
@@ -121,6 +126,8 @@ function Farm({ version, progress, frames, count, small, onReady }: StageProps) 
         ...sunU,
         uTime: { value: 0 },
         uDark: { value: 0 },
+        uClear: { value: 0 },
+        uClearC: { value: new THREE.Vector2(SHELL_AT[0], SHELL_AT[2]) },
         uSea: { value: PALETTE.sea },
         uSeaDeep: { value: PALETTE.seaDeep },
         uUnderTop: { value: PALETTE.underTop },
@@ -129,9 +136,9 @@ function Farm({ version, progress, frames, count, small, onReady }: StageProps) 
     });
     const waterGeo = new THREE.PlaneGeometry(320, 320, small ? 110 : 220, small ? 110 : 220).rotateX(-Math.PI / 2);
     const hills = [
-      { geo: ridge(520, 26, 1.3), z: -260, colour: 0xe0b9ae },
-      { geo: ridge(420, 20, 4.1), z: -200, colour: 0xc2b0a3 },
-      { geo: ridge(360, 15, 7.7), z: -160, colour: 0x9fa797 },
+      { geo: ridge(520, 18, 1.3), z: -260, colour: 0xd9b7ad },
+      { geo: ridge(420, 13, 4.1), z: -200, colour: 0xa9ab9e },
+      { geo: ridge(360, 9, 7.7), z: -160, colour: 0x7d9688 },
     ].map((h) => ({ ...h, mat: new THREE.MeshBasicMaterial({ color: h.colour, fog: true }) }));
     const mistTex = mistTexture();
     const mist = new THREE.MeshBasicMaterial({ map: mistTex, transparent: true, depthWrite: false, fog: false, opacity: 0.55 });
@@ -258,10 +265,24 @@ function Farm({ version, progress, frames, count, small, onReady }: StageProps) 
     });
     const glowGeo = new THREE.PlaneGeometry(1, 1);
     const fog = new THREE.FogExp2(new THREE.Color(0xf0dbd4), 0.0065);
+    // the shallows' sandy bottom under the scallop, and the scallop's materials (its shape comes from the GLB model)
+    const seabed = new THREE.ShaderMaterial({ vertexShader: SEABED_VERT, fragmentShader: SEABED_FRAG, transparent: true, depthWrite: false, uniforms: { uTime: { value: 0 }, uDark: { value: 0 } } });
+    const seabedGeo = new THREE.PlaneGeometry(22, 22).rotateX(-Math.PI / 2);
+    const shellOut = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.42, metalness: 0, envMapIntensity: 0.7, side: THREE.FrontSide });
+    const shellIn = new THREE.MeshPhysicalMaterial({
+      color: 0xf2c3c3,
+      roughness: 0.2,
+      iridescence: 0.8,
+      iridescenceIOR: 1.5,
+      iridescenceThicknessRange: [200, 500],
+      clearcoat: 0.5,
+      side: THREE.BackSide,
+      envMapIntensity: 0.8,
+    });
 
     return {
       rows, sky, water, waterGeo, hills, mist, mistTex, buoyGeo, buoyMat, buoys, buoyAt, ropeMat, rowRopes, hangers, lineGeo, lines, netTex, netMat, netGeo, nets,
-      oysterGeo, oysterMat, oysters, outside, nacre, topGeo, botGeo, pearlMat, pearlGeo, heroNetGeo, boatGeo, boatMat, rays, rayGeo, moteGeo, motes, ringTex, ringMat, ringGeo, glowMat, glowGeo, fog,
+      oysterGeo, oysterMat, oysters, outside, nacre, topGeo, botGeo, pearlMat, pearlGeo, heroNetGeo, boatGeo, boatMat, rays, rayGeo, moteGeo, motes, ringTex, ringMat, ringGeo, glowMat, glowGeo, fog, seabed, seabedGeo, shellOut, shellIn,
     };
   }, [small]);
 
@@ -271,12 +292,64 @@ function Farm({ version, progress, frames, count, small, onReady }: StageProps) 
       scene.fog = null;
       const all: Array<{ dispose: () => void }> = [
         b.sky, b.water, b.waterGeo, b.mist, b.mistTex, b.buoyGeo, b.buoyMat, b.buoys, b.ropeMat, b.lineGeo, b.lines, b.netTex, b.netMat, b.netGeo, b.nets, b.oysterGeo, b.oysterMat, b.oysters,
-        b.outside, b.nacre, b.topGeo, b.botGeo, b.pearlMat, b.pearlGeo, b.heroNetGeo, b.boatGeo, b.boatMat, b.rayGeo, b.moteGeo, b.motes, b.ringTex, b.ringMat, b.ringGeo, b.glowMat, b.glowGeo,
+        b.outside, b.nacre, b.topGeo, b.botGeo, b.pearlMat, b.pearlGeo, b.heroNetGeo, b.boatGeo, b.boatMat, b.rayGeo, b.moteGeo, b.motes, b.ringTex, b.ringMat, b.ringGeo, b.glowMat, b.glowGeo, b.seabed, b.seabedGeo, b.shellOut, b.shellIn,
         ...b.rays, ...b.hills.flatMap((h) => [h.geo, h.mat]), ...b.rowRopes.map((r) => r.geometry),
       ];
       all.forEach((x) => x.dispose());
     };
   }, [b, scene]);
+
+  // ---- the scallop (public/models/scallop.glb, meshopt-compressed), for the Shell & Sea story --------------------
+  const scallopStory = version.hero === 'scallop';
+  const shell = useRef<{ upper: THREE.BufferGeometry; lower: THREE.BufferGeometry } | null>(null);
+  const shellGroup = useRef<THREE.Group>(null);
+  const shellTop = useRef<THREE.Group>(null);
+  useEffect(() => {
+    if (!scallopStory) return;
+    let live = true;
+    new GLTFLoader()
+      .setMeshoptDecoder(MeshoptDecoder)
+      .loadAsync('/models/scallop.glb')
+      .then((gltf) => {
+        gltf.scene.updateMatrixWorld(true);
+        // the file stores quantised vertices with a scale/offset on each node: bake that back into plain floats
+        const geo = (name: string) => {
+          const mesh = gltf.scene.getObjectByName(name) as THREE.Mesh | undefined;
+          if (!mesh) return null;
+          const g = mesh.geometry;
+          for (const key of Object.keys(g.attributes)) {
+            const a = g.getAttribute(key) as THREE.BufferAttribute;
+            const f = new Float32Array(a.count * a.itemSize);
+            const get = [a.getX, a.getY, a.getZ, a.getW]; // these undo the normalised (quantised) storage
+            for (let i = 0; i < a.count; i++) for (let k = 0; k < a.itemSize; k++) f[i * a.itemSize + k] = get[k].call(a, i);
+            g.setAttribute(key, new THREE.BufferAttribute(f, a.itemSize));
+          }
+          return g.applyMatrix4(mesh.matrixWorld);
+        };
+        const upper = geo('upper');
+        // the upper valve's faces point inwards in the file: turn them so its painted outside faces out
+        if (upper?.index) {
+          const ix = upper.index.array as Uint32Array | Uint16Array;
+          for (let i = 0; i < ix.length; i += 3) [ix[i + 1], ix[i + 2]] = [ix[i + 2], ix[i + 1]];
+          upper.index.needsUpdate = true;
+          upper.computeVertexNormals();
+        }
+        const lower = geo('lower');
+        if (!live || !upper || !lower || !shellGroup.current || !shellTop.current) return;
+        shell.current = { upper, lower };
+        const add = (parent: THREE.Object3D, g: THREE.BufferGeometry) => {
+          parent.add(new THREE.Mesh(g, b.shellOut), new THREE.Mesh(g, b.shellIn));
+        };
+        add(shellGroup.current, lower);
+        add(shellTop.current, upper);
+      })
+      .catch(() => {});
+    return () => {
+      live = false;
+      shell.current?.upper.dispose();
+      shell.current?.lower.dispose();
+    };
+  }, [scallopStory, b]);
 
   // ---- the ring's photographs, fetched when the story nears its end -----------------------------------------------
   const ring = useRef({ imgs: [] as Array<HTMLImageElement | null>, asked: false, shown: -1 });
@@ -371,6 +444,9 @@ function Farm({ version, progress, frames, count, small, onReady }: StageProps) 
     b.sky.uniforms.uDark.value = dark;
     b.water.uniforms.uTime.value = t;
     b.water.uniforms.uDark.value = dark;
+    b.water.uniforms.uClear.value = scallopStory ? 1 : 0;
+    b.seabed.uniforms.uTime.value = t;
+    b.seabed.uniforms.uDark.value = dark;
     b.fog.color.copy(FOG_ABOVE).lerp(FOG_UNDER, under).multiplyScalar(1 - dark * 0.65);
     b.fog.density = mix(0.0065, 0.16, under);
     if (refs.sun.current) refs.sun.current.intensity = mix(2.4, 1.1, under) * (1 - dark * 0.6);
@@ -381,7 +457,10 @@ function Farm({ version, progress, frames, count, small, onReady }: StageProps) 
     });
     b.motes.uniforms.uTime.value = t;
     b.motes.uniforms.uOpacity.value = under * 0.8;
-    if (refs.rays.current) refs.rays.current.visible = under > 0.01;
+    if (refs.rays.current) {
+      refs.rays.current.visible = under > 0.01;
+      refs.rays.current.position.set(cam.position.x - 1.0, 0, cam.position.z + 6.5); // the light falls around the camera, wherever it is
+    }
     if (refs.mist.current) {
       (refs.mist.current.material as THREE.MeshBasicMaterial).map!.offset.x = t * 0.004;
       refs.mist.current.visible = under < 0.5;
@@ -460,7 +539,7 @@ function Farm({ version, progress, frames, count, small, onReady }: StageProps) 
     if (refs.heroNet.current) {
       refs.heroNet.current.position.set(mix(tmp.panel.x, heroX, lift), netY - 0.41 * (1 - lift) + 0.0 * lift, mix(tmp.panel.z, heroZ, lift));
       refs.heroNet.current.rotation.set(-lift * 0.25, 0, Math.sin(t * 0.6) * 0.05 * (1 - lift));
-      refs.heroNet.current.visible = float < 0.999 || p < V.float[1];
+      refs.heroNet.current.visible = !scallopStory && (float < 0.999 || p < V.float[1]);
     }
 
     // the hero oyster: in its net, then floated to the surface where it rides the swell and opens
@@ -479,15 +558,35 @@ function Farm({ version, progress, frames, count, small, onReady }: StageProps) 
       // its lip towards the camera, so the open shell shows its nacre and the pearl
       hero.rotation.set(mix(Math.PI / 2, dz * 0.6, float), mix(0.3, -0.4, float), mix(0, -dx * 0.6, float));
       hero.scale.setScalar(OYSTER_SCALE);
+      hero.visible = !scallopStory;
     }
     if (refs.top.current) refs.top.current.rotation.x = -open * 1.15;
+    const sg = shellGroup.current;
+    if (sg) {
+      const [sx, , sz] = SHELL_AT;
+      const [dx, dz] = waveSlope(sx, sz, t);
+      sg.visible = scallopStory;
+      sg.position.set(sx, waveHeight(sx, sz, t) + 0.035, sz);
+      sg.rotation.set(dz * 0.7 + 0.04, 0.15 + Math.sin(t * 0.2) * 0.04, -dx * 0.7);
+      sg.scale.setScalar(SCALLOP_SCALE);
+      if (shellTop.current) shellTop.current.rotation.x = -open * 1.0;
+    }
 
     // the pearl: in the shell, rises, then moves to where the ring's pearl will be
     const pearl = refs.pearl.current;
     if (pearl && hero) {
       hero.updateMatrixWorld();
-      const seat = tmp.c.set(0, 0.0, 0.55).applyMatrix4(hero.matrixWorld);
-      const lifted = tmp.a.copy(seat).add(tmp.up.set(0, 0.16 * rise + Math.sin(t * 1.2) * 0.006 * rise, 0));
+      const holder = scallopStory && sg ? sg : hero;
+      holder.updateMatrixWorld();
+      const seat = scallopStory ? tmp.c.set(0, 0.02, 0.95).applyMatrix4(holder.matrixWorld) : tmp.c.set(0, 0.0, 0.55).applyMatrix4(holder.matrixWorld);
+      const lifted = tmp.a.copy(seat).add(tmp.up.set(0, (scallopStory ? 0.12 : 0.16) * rise + Math.sin(t * 1.2) * 0.006 * rise, 0));
+      if (scallopStory && V.sink) {
+        // the pearl slips into the water and sinks, the camera following it down
+        const k = span(p, V.sink);
+        const [sx, , sz] = SHELL_AT;
+        tmp.panel.set(sx, -0.62 + Math.sin(t * 0.9) * 0.01, sz - 0.6);
+        lifted.lerp(tmp.panel, k);
+      }
       // the ring's card: in front of the camera, to the right on wide screens, above the card on phones
       cam.getWorldDirection(tmp.fwd);
       tmp.right.crossVectors(tmp.fwd, cam.up).normalize();
@@ -586,6 +685,10 @@ function Farm({ version, progress, frames, count, small, onReady }: StageProps) 
         </group>
       </group>
       <mesh ref={refs.pearl} geometry={b.pearlGeo} material={b.pearlMat} renderOrder={10} />
+      {scallopStory && <mesh geometry={b.seabedGeo} material={b.seabed} position={[SHELL_AT[0], -1.25, SHELL_AT[2] - 2]} renderOrder={1} />}
+      <group ref={shellGroup} visible={false}>
+        <group ref={shellTop} />
+      </group>
       <mesh ref={refs.boat} geometry={b.boatGeo} material={b.boatMat} />
       <group ref={refs.rays}>
         {b.rays.map((m, i) => (
