@@ -8,7 +8,7 @@ const config: ExpoConfig = {
   name: 'Sahyadri Pearls Delivery',
   slug: 'sahyadri-pearls-delivery',
   scheme: 'sahyadri-delivery',
-  version: '1.0.0',
+  version: process.env.APP_VERSION ?? '1.0.0',
   orientation: 'portrait',
   icon: './assets/icon.png',
   userInterfaceStyle: 'light',
@@ -23,6 +23,8 @@ const config: ExpoConfig = {
   },
   android: {
     package: 'in.sahyadripearls.delivery',
+    // Each Play Store upload needs a higher number; the release workflow passes its run number.
+    versionCode: Number(process.env.ANDROID_VERSION_CODE ?? 1),
     adaptiveIcon: { foregroundImage: './assets/adaptive-icon.png', backgroundColor: '#070E4D' },
     permissions: ['CAMERA', 'ACCESS_COARSE_LOCATION', 'ACCESS_FINE_LOCATION', 'POST_NOTIFICATIONS'],
   },

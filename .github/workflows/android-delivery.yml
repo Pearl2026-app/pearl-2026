@@ -1,0 +1,91 @@
+# Builds the Delivery app for Android: a release .aab for the Play Store and a test .apk.
+# No signing keys live here: the .aab is signed afterwards with the owner's upload key (kept off GitHub), then
+# uploaded in the Play Console. Google keeps the app's own signing key (Play App Signing).
+# The files are pushed to the branch `android-builds` (Actions artifacts cannot be fetched from the dev sandbox).
+name: Delivery app (Android release)
+on:
+  push:
+    branches: [main]
+    paths: ['apps/mobile-delivery/**', '.github/workflows/android-delivery.yml']
+  workflow_dispatch:
+    inputs:
+      api_url:
+        description: API address the app talks to
+        default: https://sahyadri-pearls-demo.vercel.app/api/v1
+      version:
+        description: Version shown in the Play Store
+        default: 1.0.0
+
+permissions:
+  contents: write
+
+concurrency:
+  group: android-delivery
+  cancel-in-progress: false
+
+env:
+  API_URL: ${{ inputs.api_url || 'https://sahyadri-pearls-demo.vercel.app/api/v1' }}
+  VERSION: ${{ inputs.version || '1.0.0' }}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Install
+        run: |
+          pnpm install --frozen-lockfile --filter "@sahyadri/mobile-delivery..."
+          pnpm --filter "@sahyadri/mobile-delivery^..." build
+
+      - name: Generate the Android project
+        working-directory: apps/mobile-delivery
+        env:
+          EXPO_PUBLIC_API_URL: ${{ env.API_URL }}
+          APP_VERSION: ${{ env.VERSION }}
+          ANDROID_VERSION_CODE: ${{ github.run_number }}
+        run: npx expo prebuild --platform android --no-install --clean
+
+      - name: Build .aab and .apk
+        working-directory: apps/mobile-delivery/android
+        env:
+          EXPO_PUBLIC_API_URL: ${{ env.API_URL }}
+          NODE_ENV: production
+        shell: bash
+        run: |
+          set -o pipefail
+          ./gradlew --no-daemon -Dorg.gradle.jvmargs=-Xmx4g bundleRelease assembleRelease \
+            -PreactNativeArchitectures=arm64-v8a,armeabi-v7a 2>&1 | tee "$RUNNER_TEMP/gradle.log"
+
+      - name: Report a failed build
+        if: failure()
+        shell: bash
+        run: |
+          f="$RUNNER_TEMP/gradle.log"; [ -f "$f" ] || exit 0
+          body=$(grep -iE "error|failed|what went wrong|exception" "$f" | tail -40 | sed ':a;N;$!ba;s/%/%25/g;s/\r/%0D/g;s/\n/%0A/g')
+          echo "::error title=Gradle::$body"
+
+      - name: Publish the files to the android-builds branch
+        shell: bash
+        run: |
+          out=$(mktemp -d)
+          name="sahyadri-delivery-${VERSION}-${{ github.run_number }}"
+          cp apps/mobile-delivery/android/app/build/outputs/bundle/release/app-release.aab "$out/$name.aab"
+          cp apps/mobile-delivery/android/app/build/outputs/apk/release/app-release.apk "$out/$name-test.apk"
+          printf 'Version %s (code %s), API %s, commit %s\nThe .aab must be re-signed with the upload key before the Play Console.\nThe -test.apk is signed with a debug key: for trying the app only.\n' \
+            "$VERSION" "${{ github.run_number }}" "$API_URL" "${{ github.sha }}" > "$out/BUILD.txt"
+          ls -la "$out"
+          cd "$out"
+          git init -q -b android-builds && git add . && git -c user.name="Sahyadri Pearls" -c user.email="metaaccess4hastagcreator@gmail.com" commit -qm "Delivery app $VERSION (${{ github.run_number }})"
+          git push -qf "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" android-builds
+          echo "::notice title=Built::Delivery app $VERSION (code ${{ github.run_number }}) is on the android-builds branch."
