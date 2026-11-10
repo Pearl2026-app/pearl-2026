@@ -40,6 +40,8 @@ export const metadata = meta({
   description:
     'Pearl jewellery by Sahyadri Pearls: our own designs in cultured pearl and gold, made to order, with insured delivery across India.',
   path: '/',
+  // the link preview on WhatsApp and social apps: generated with ChatGPT (owner's request, 10 Nov), words set in the site's fonts
+  image: '/og/home.jpg',
 });
 
 export default async function HomePage() {
