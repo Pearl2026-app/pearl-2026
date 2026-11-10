@@ -11,6 +11,9 @@ const config: NextConfig = {
   output: 'standalone',
   outputFileTracingRoot: require('node:path').join(__dirname, '../../'),
   compress: true,
+  // next/image is not used: the image optimizer (/_next/image) is switched off so it cannot be fed untrusted images
+  // (Next.js advisory GHSA-2464-fhr4-w9xw; also stops anyone using this server as a free image resizer).
+  images: { unoptimized: true },
   async rewrites() {
     return {
       beforeFiles: [],
@@ -34,6 +37,10 @@ const config: NextConfig = {
           { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
           { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
           { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
+          // A baseline policy that cannot break the page (scripts and styles are not restricted yet): no plug-ins,
+          // no <base> hijacking, and no framing by other sites.
+          { key: 'Content-Security-Policy', value: "object-src 'none'; base-uri 'self'; frame-ancestors 'self'" },
+          { key: 'Strict-Transport-Security', value: 'max-age=31536000' },
         ],
       },
       { source: '/media/:path*', headers: [{ key: 'Cache-Control', value: 'public, max-age=31536000, immutable' }] },

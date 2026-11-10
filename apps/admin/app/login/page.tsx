@@ -3,6 +3,7 @@ import { Suspense, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { Alert, Button, Field, Input, cx } from '@sahyadri/ui';
+import { safeNextPath } from '@sahyadri/shared';
 import { api, ApiError, errorText } from '@/lib/api';
 import { useDemo } from '@/lib/session';
 
@@ -55,8 +56,9 @@ function LoginForm() {
         json: { challengeId: step.challengeId, code },
       });
       await qc.invalidateQueries();
-      const next = params.get('next');
-      router.replace(next && next.startsWith('/') && !next.startsWith('//') ? next : r.user.role === 'DELIVERY_PARTNER' ? '/delivery' :  r.user.role === 'FARMER' ? '/farm-sales' : '/');
+      // Only a path on this site (the shared check also refuses "/\\evil.example" and control characters).
+      const next = safeNextPath(params.get('next'), window.location.origin, '');
+      router.replace(next || (r.user.role === 'DELIVERY_PARTNER' ? '/delivery' : r.user.role === 'FARMER' ? '/farm-sales' : '/'));
     });
 
   const byEmail = () =>

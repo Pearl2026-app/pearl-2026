@@ -11,6 +11,8 @@ const config: NextConfig = {
   transpilePackages: ['@sahyadri/ui', '@sahyadri/shared'],
   output: 'standalone',
   outputFileTracingRoot: require('node:path').join(__dirname, '../../'),
+  // next/image is not used: the image optimizer is switched off (Next.js advisory GHSA-2464-fhr4-w9xw).
+  images: { unoptimized: true },
   // The admin talks to the API through its own origin, so login cookies are first-party.
   async rewrites() {
     return [
@@ -29,6 +31,8 @@ const config: NextConfig = {
           { key: 'X-Content-Type-Options', value: 'nosniff' },
           { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
           { key: 'X-Robots-Tag', value: 'noindex, nofollow' },
+          { key: 'Content-Security-Policy', value: "object-src 'none'; base-uri 'self'; frame-ancestors 'none'" },
+          { key: 'Strict-Transport-Security', value: 'max-age=31536000' },
         ],
       },
     ];
