@@ -3,7 +3,7 @@ import { HeroCarousel } from '@/components/hero-carousel';
 import { CategoryTiles, CenterHeading, FinishTabs, OutlineLink, ProductRail, StoreHero, type StoreSlide } from '@/components/home-store';
 import { LocationGate } from '@/components/location-gate';
 import { IconFor } from '@/components/icons';
-import { Turntable } from '@/components/turntable';
+import { RingBox } from '@/components/ring-box';
 import { Container } from '@/components/ui';
 import { JsonLd, meta, SITE_URL } from '@/lib/seo';
 import { cityFromCookie, get, pinFromCookie } from '@/lib/server-api';
@@ -145,9 +145,9 @@ export default async function HomePage() {
         </Container>
       )}
 
-      {/* The ring, turning: a full 360° of the client's own film as the visitor scrolls. */}
+      {/* The reveal: a velvet ring box opens, the ring rises out of it and turns a full 360° as the visitor scrolls. */}
       <div className="pt-14 lg:pt-20">
-        <Turntable
+        <RingBox
           frames="/turntable/sp-jrp-01"
           count={120}
           href={crownHref}

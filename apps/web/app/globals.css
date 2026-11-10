@@ -249,3 +249,13 @@ html.motion-ready [data-reveal='3d'].is-in {
     transition: none;
   }
 }
+
+/* The ring box's scroll cue: a fine gold line drawing downward, again and again. */
+@keyframes scroll-cue {
+  0% { transform: scaleY(0); transform-origin: top; }
+  50% { transform: scaleY(1); transform-origin: top; }
+  51% { transform: scaleY(1); transform-origin: bottom; }
+  100% { transform: scaleY(0); transform-origin: bottom; }
+}
+.scroll-cue { animation: scroll-cue 2.4s cubic-bezier(.65,0,.35,1) infinite; }
+@media (prefers-reduced-motion: reduce) { .scroll-cue { animation: none; } }
