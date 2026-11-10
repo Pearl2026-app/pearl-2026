@@ -3,7 +3,7 @@ import { Catalogue, CatalogueSkeleton, type SearchParams } from '@/components/ca
 import { Breadcrumbs, Container, PageTitle } from '@/components/ui';
 import { breadcrumbJsonLd, JsonLd, meta } from '@/lib/seo';
 
-export const metadata = meta({ title: 'Pearl Jewellery', description: 'Necklaces, earrings, rings, bracelets, pendants and loose pearls, each traced to a named farm.', path: '/jewellery' });
+export const metadata = meta({ title: 'Pearl Jewellery', description: 'Necklaces, earrings, rings, bracelets, pendants and loose pearls from Sahyadri Pearls, with insured delivery across India.', path: '/jewellery' });
 
 export default async function JewelleryPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
   const sp = await searchParams;

@@ -206,7 +206,7 @@ export default async function HomePage() {
         </Container>
       )}
 
-      {/* Shop by farm: every pearl comes from a named farm, so customers can start from the farm they trust. */}
+      {/* Shop by farm: shown only for farms the owner has added, so customers can start from the farm they trust. */}
       {(h.farms?.length ?? 0) > 0 && (
         <Container className="pt-16 lg:pt-24">
           <CenterHeading title="Shop by farm" sub="Start from the farm you trust" />

@@ -47,7 +47,7 @@ export function Footer({ site }: { site: Site }) {
       <div className="bg-ink text-white/85">
       <div className="mx-auto grid max-w-7xl gap-10 px-4 py-14 md:grid-cols-2 lg:grid-cols-[1.4fr_1fr_1fr_1fr] lg:px-8">
         <div>
-          <img src="/brand/logo.png" alt="Sahyadri Pearls" width={84} height={54} className="mb-4 h-14 w-auto rounded bg-bg p-1.5" />
+          <img src="/brand/logo-220.webp" alt="Sahyadri Pearls" width={84} height={54} className="mb-4 h-14 w-auto rounded bg-bg p-1.5" />
           <Link href="/about" className="lux-track text-[13px] text-gold">About us</Link>
           <address className="mt-3 text-sm not-italic text-white/85">{about.address ?? site.store.address}</address>
           <p className="mt-2 text-sm">

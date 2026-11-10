@@ -192,7 +192,7 @@ export function Header() {
             </a>
           </div>
           <Link href="/" className="flex items-center justify-center" aria-label="Sahyadri Pearls home">
-            <img src="/brand/logo.png" alt="Sahyadri Pearls" width={84} height={54} className="h-11 w-auto object-contain lg:h-[54px]" />
+            <img src="/brand/logo-220.webp" alt="Sahyadri Pearls" width={84} height={54} className="h-11 w-auto object-contain lg:h-[54px]" />
           </Link>
           <div className="flex items-center justify-end gap-1">
             <form
@@ -305,7 +305,7 @@ export function Header() {
             />
             <div className="fade-in relative flex h-full w-[86%] max-w-sm flex-col overflow-y-auto bg-bg p-6">
               <div className="mb-6 flex items-center justify-between">
-                <img src="/brand/logo.png" alt="Sahyadri Pearls" width={84} height={54} className="h-12 w-auto object-contain" />
+                <img src="/brand/logo-220.webp" alt="Sahyadri Pearls" width={84} height={54} className="h-12 w-auto object-contain" />
                 <button
                   className="flex h-11 w-11 items-center justify-center"
                   onClick={() => setMenu(false)}

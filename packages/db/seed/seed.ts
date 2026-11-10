@@ -109,7 +109,7 @@ async function seedSettings() {
     {
       titleSuffix: ' | Sahyadri Pearls',
       defaultDescription:
-        'Fine pearl jewellery traced to named farms. Certified pearls, insured delivery across India.',
+        'Pearl jewellery by Sahyadri Pearls, with insured delivery across India.',
     },
     'Default SEO text.',
   );
@@ -338,7 +338,7 @@ async function seedCategories(withImages: boolean) {
       create: {
         name,
         slug,
-        description: `Pearl ${name.toLowerCase()} traced to named farms.`,
+        description: `Pearl ${name.toLowerCase()} from Sahyadri Pearls.`,
         imageUrl: withImages
           ? writeMedia(
               `samples/category-${slug}.svg`,

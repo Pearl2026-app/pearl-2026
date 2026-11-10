@@ -78,7 +78,7 @@ export function LocationGate() {
   return (
     <div role="dialog" aria-modal="true" aria-label="Where should we deliver?" className="fixed inset-0 z-50 flex items-end justify-center bg-ink/40 p-4 backdrop-blur-sm sm:items-center">
       <div className="fade-in w-full max-w-md rounded-md border border-line bg-surface p-7 text-center shadow-[0_30px_60px_-30px_rgb(7_14_77/0.4)] sm:p-9">
-        <img src="/brand/logo.png" alt="" width={110} height={70} className="mx-auto mb-4 h-16 w-auto object-contain" />
+        <img src="/brand/logo-220.webp" alt="" width={110} height={70} className="mx-auto mb-4 h-16 w-auto object-contain" />
         <h2 className="font-serif text-2xl">Where should we deliver?</h2>
         <p className="mt-2 text-sm text-muted">We show only the pieces available at your address.</p>
         <form onSubmit={submit} className="mt-5 flex gap-2">

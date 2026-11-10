@@ -96,12 +96,16 @@ export function Turntable({
     const loadAll = () => {
       if (loadedAll) return;
       loadedAll = true;
-      for (let i = 1; i < count; i++) {
-        const img = new Image();
-        img.decoding = 'async';
-        img.onload = () => draw(progressNow());
-        img.src = src(i);
-        imgs[i] = img;
+      // Coarse to fine (every 8th frame, then every 4th, 2nd, the rest): the turn works early, then gets smoother.
+      for (const step of [8, 4, 2, 1]) {
+        for (let i = step; i < count; i += step) {
+          if (imgs[i]) continue;
+          const img = new Image();
+          img.decoding = 'async';
+          img.onload = () => draw(progressNow());
+          img.src = src(i);
+          imgs[i] = img;
+        }
       }
     };
     const first = new Image();
@@ -112,8 +116,8 @@ export function Turntable({
     first.src = src(0);
     imgs[0] = first;
 
-    // Fetch the rest only when the section is near, so the home page opens fast.
-    const io = new IntersectionObserver((e) => e.some((x) => x.isIntersecting) && loadAll(), { rootMargin: '1200px 0px' });
+    // Fetch the rest only when the section is half a screen away, so the first screen gets the bandwidth on phones.
+    const io = new IntersectionObserver((e) => e.some((x) => x.isIntersecting) && loadAll(), { rootMargin: '50% 0px' });
     io.observe(el);
     size();
     window.addEventListener('scroll', onScroll, { passive: true });

@@ -15,24 +15,21 @@ import './globals.css';
 
 // Fonts ship with the site (open licence, from Fontsource): no request to Google at build or run time.
 // Type (owner's brief, 10 Nov): an elegant serif for headings (Cormorant Garamond) and a refined sans for reading (Inter).
+// Only the weights the pages use (Cormorant 400/500/500 italic, Inter 400/500): each extra file is ~24 KB on a phone.
 // Supersedes "Poppins everywhere" (27 Oct) on the storefront; the admin keeps Poppins.
 const serif = localFont({
   src: [
     { path: '../node_modules/@fontsource/cormorant-garamond/files/cormorant-garamond-latin-400-normal.woff2', weight: '400', style: 'normal' },
-    { path: '../node_modules/@fontsource/cormorant-garamond/files/cormorant-garamond-latin-400-italic.woff2', weight: '400', style: 'italic' },
     { path: '../node_modules/@fontsource/cormorant-garamond/files/cormorant-garamond-latin-500-normal.woff2', weight: '500', style: 'normal' },
     { path: '../node_modules/@fontsource/cormorant-garamond/files/cormorant-garamond-latin-500-italic.woff2', weight: '500', style: 'italic' },
-    { path: '../node_modules/@fontsource/cormorant-garamond/files/cormorant-garamond-latin-600-normal.woff2', weight: '600', style: 'normal' },
   ],
   variable: '--font-cormorant',
   display: 'swap',
 });
 const sans = localFont({
   src: [
-    { path: '../node_modules/@fontsource/inter/files/inter-latin-300-normal.woff2', weight: '300', style: 'normal' },
     { path: '../node_modules/@fontsource/inter/files/inter-latin-400-normal.woff2', weight: '400', style: 'normal' },
     { path: '../node_modules/@fontsource/inter/files/inter-latin-500-normal.woff2', weight: '500', style: 'normal' },
-    { path: '../node_modules/@fontsource/inter/files/inter-latin-600-normal.woff2', weight: '600', style: 'normal' },
   ],
   variable: '--font-inter',
   display: 'swap',
