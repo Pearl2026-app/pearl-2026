@@ -20,7 +20,8 @@ export function meta(opts: { title: string; description?: string | null; path: s
     alternates: opts.noindex ? undefined : { canonical: opts.path },
     openGraph: { title: opts.title, description, url: opts.path, siteName: 'Sahyadri Pearls', type: 'website', images: opts.image ? [{ url: abs(opts.image) }] : undefined, locale: 'en_IN' },
     twitter: { card: opts.image ? 'summary_large_image' : 'summary', title: opts.title, description },
-    robots: opts.noindex ? { index: false, follow: true } : undefined,
+    // Left out entirely when indexable, so the site-wide rule in the root layout (noindex on the demo) still applies.
+    ...(opts.noindex ? { robots: { index: false, follow: true } } : {}),
   };
 }
 
