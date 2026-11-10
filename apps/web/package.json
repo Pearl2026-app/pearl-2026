@@ -10,6 +10,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@fontsource/cormorant-garamond": "5",
+    "@fontsource/inter": "5",
     "@fontsource/poppins": "5.3.0",
     "@sahyadri/shared": "workspace:*",
     "@sahyadri/ui": "workspace:*",

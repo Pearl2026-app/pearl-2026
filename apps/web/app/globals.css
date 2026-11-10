@@ -5,6 +5,8 @@
 /* Brand palette (client brand guide, 4 Nov): Deep Royal Navy, Steel Blue, Antique Gold on Pearl Ivory.
    Plain, minimal and premium (8 Nov): ivory ground, navy type, thin gold rules, no effects. */
 @theme {
+  /* Colour (brand guide): Pearl Ivory ground (~60%), Deep Royal Navy type and frames (~30%), Steel Blue for
+     secondary text and quiet surfaces (~8%), Antique Gold only for rules, icons and highlights (~2%). */
   --color-bg: #f7f3e9;
   --color-surface: #fffdf8;
   --color-surface-muted: #efe9da;
@@ -18,11 +20,23 @@
   --color-gold-soft: #e9dcc0;
   --color-steel: #47628a;
   --color-orient: #ece4d0;
-  --font-serif: var(--font-poppins), Poppins, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-  --font-sans: var(--font-poppins), Poppins, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-  --radius-sm: 0.5rem;
-  --radius-md: 0.875rem;
+  /* Type: Cormorant Garamond for headings, Inter for reading. */
+  --font-serif: var(--font-cormorant), 'Cormorant Garamond', Georgia, 'Times New Roman', serif;
+  --font-sans: var(--font-inter), Inter, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  /* Shape: crisp, barely rounded corners; soft, low shadows. */
+  --radius-sm: 0.125rem;
+  --radius-md: 0.25rem;
+  --radius-lg: 0.5rem;
+  --shadow-soft: 0 18px 40px -26px rgb(7 14 77 / 0.28);
+  --shadow-lift: 0 26px 50px -30px rgb(7 14 77 / 0.4);
+  /* Motion: one easing and three durations used everywhere. */
   --ease-silk: cubic-bezier(0.22, 1, 0.36, 1);
+  --duration-quick: 250ms;
+  --duration-hover: 500ms;
+  --duration-reveal: 1000ms;
+  /* Section rhythm */
+  --spacing-section: 4rem;
+  --spacing-section-lg: 6rem;
 }
 
 html {
@@ -42,16 +56,20 @@ body {
     font-size: 17px;
   }
 }
-/* Headings in Poppins: medium weight, slightly tightened, so they read clean rather than heavy. */
+/* Headings in Cormorant Garamond: regular-to-medium weight, never bold, a little tighter. Cormorant draws small, so
+   heading sizes in the components are set larger than they would be for a sans. */
 .font-serif {
   font-weight: 500;
-  letter-spacing: -0.015em;
+  letter-spacing: -0.005em;
+  font-feature-settings: 'kern', 'liga', 'onum' 0;
+  /* Cormorant's small x-height, lifted to read like the sizes the layout was drawn for. */
+  font-size-adjust: 0.47;
 }
 h1.font-serif,
 h2.font-serif {
-  font-weight: 600;
-  letter-spacing: -0.02em;
-  line-height: 1.15;
+  font-weight: 500;
+  letter-spacing: -0.012em;
+  line-height: 1.08;
 }
 /* Wayfinding voice (nav, buttons, footer headings): small, spaced capitals — the jewellery-house convention. */
 .lux-track {

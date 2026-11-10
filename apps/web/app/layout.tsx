@@ -14,21 +14,29 @@ import type { Site } from '@/lib/types';
 import './globals.css';
 
 // Fonts ship with the site (open licence, from Fontsource): no request to Google at build or run time.
-// Poppins everywhere (client request, 27 Oct): geometric, friendly and consistent across web and admin.
-const poppins = localFont({
+// Type (owner's brief, 10 Nov): an elegant serif for headings (Cormorant Garamond) and a refined sans for reading (Inter).
+// Supersedes "Poppins everywhere" (27 Oct) on the storefront; the admin keeps Poppins.
+const serif = localFont({
   src: [
-    { path: '../node_modules/@fontsource/poppins/files/poppins-latin-300-normal.woff2', weight: '300', style: 'normal' },
-    { path: '../node_modules/@fontsource/poppins/files/poppins-latin-400-normal.woff2', weight: '400', style: 'normal' },
-    { path: '../node_modules/@fontsource/poppins/files/poppins-latin-400-italic.woff2', weight: '400', style: 'italic' },
-    { path: '../node_modules/@fontsource/poppins/files/poppins-latin-500-normal.woff2', weight: '500', style: 'normal' },
-    { path: '../node_modules/@fontsource/poppins/files/poppins-latin-600-normal.woff2', weight: '600', style: 'normal' },
-    { path: '../node_modules/@fontsource/poppins/files/poppins-latin-700-normal.woff2', weight: '700', style: 'normal' },
+    { path: '../node_modules/@fontsource/cormorant-garamond/files/cormorant-garamond-latin-400-normal.woff2', weight: '400', style: 'normal' },
+    { path: '../node_modules/@fontsource/cormorant-garamond/files/cormorant-garamond-latin-400-italic.woff2', weight: '400', style: 'italic' },
+    { path: '../node_modules/@fontsource/cormorant-garamond/files/cormorant-garamond-latin-500-normal.woff2', weight: '500', style: 'normal' },
+    { path: '../node_modules/@fontsource/cormorant-garamond/files/cormorant-garamond-latin-500-italic.woff2', weight: '500', style: 'italic' },
+    { path: '../node_modules/@fontsource/cormorant-garamond/files/cormorant-garamond-latin-600-normal.woff2', weight: '600', style: 'normal' },
   ],
-  variable: '--font-poppins',
+  variable: '--font-cormorant',
   display: 'swap',
 });
-const serif = poppins;
-const sans = poppins;
+const sans = localFont({
+  src: [
+    { path: '../node_modules/@fontsource/inter/files/inter-latin-300-normal.woff2', weight: '300', style: 'normal' },
+    { path: '../node_modules/@fontsource/inter/files/inter-latin-400-normal.woff2', weight: '400', style: 'normal' },
+    { path: '../node_modules/@fontsource/inter/files/inter-latin-500-normal.woff2', weight: '500', style: 'normal' },
+    { path: '../node_modules/@fontsource/inter/files/inter-latin-600-normal.woff2', weight: '600', style: 'normal' },
+  ],
+  variable: '--font-inter',
+  display: 'swap',
+});
 
 export const dynamic = 'force-dynamic';
 
