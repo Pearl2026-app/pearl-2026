@@ -1,7 +1,7 @@
 'use client';
-// "The reveal" (owner, 10 Nov: props, not text): a navy velvet ring box sits on the ivory ground. Scrolling opens the
-// lid, the Filigree Crown ring rises out of the cushion, the camera moves in and the ring turns a full 360°, then a
-// link to the piece. The box is real 3D (three.js, loaded only when the section is near); the ring is the client's
+// "The reveal" (owner, 10 Nov: props, not text; an oyster, not a box): a pearl oyster rests on the ivory ground. Scrolling opens the
+// shell, the Filigree Crown ring rises out of the mother-of-pearl, the camera moves in and the ring turns 360°, then a
+// link to the piece. The oyster is real 3D (three.js, loaded only when the section is near); the ring is the client's
 // own turntable film. Reduced motion, or a browser without WebGL: the earlier frame-by-frame turntable (its still
 // version for reduced motion).
 import Link from 'next/link';
@@ -107,7 +107,7 @@ export function RingBox({ frames, count, href, cta, captions }: { frames: string
   const showTurn = clamp((p - 0.5) / 0.04) * (1 - clamp((p - 0.97) / 0.03));
   const showCta = clamp((p - 0.9) / 0.06);
   return (
-    <section ref={section} aria-label="The Filigree Crown ring, in its box" className="relative h-[460vh] lg:h-[520vh]">
+    <section ref={section} aria-label="The Filigree Crown ring, in its oyster" className="relative h-[460vh] lg:h-[520vh]">
       <div className="sticky top-0 h-screen overflow-hidden bg-bg">
         <div ref={stage} aria-hidden className={`absolute inset-0 transition-opacity duration-700 ${ready ? 'opacity-100' : 'opacity-0'}`} />
 

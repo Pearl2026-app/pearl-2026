@@ -1,11 +1,11 @@
-// The 3D scene behind <RingBox>: a navy velvet ring box modelled in three.js. As the visitor scrolls, the lid opens,
-// the client's Filigree Crown ring rises out of the ivory cushion, the camera moves in and the ring turns a full
-// 360°. The ring is the client's own turntable film (120 stills on white), drawn on a plane that multiplies onto the
-// scene, so the white of the film disappears into the cushion and the ivory ground. Loaded on demand (dynamic import),
-// so three.js never weighs on the first screen. Renders only when the scroll moves.
+// The 3D scene behind <RingBox>: a pearl oyster modelled in three.js (owner, 10 Nov: an oyster rather than a box,
+// like the shell in the logo). As the visitor scrolls, the shell opens on its hinge, the client's Filigree Crown ring
+// rises out of the mother-of-pearl, the camera moves in and the ring turns a full 360°. The ring is the client's own
+// turntable film (120 stills on white), drawn on a plane that multiplies onto the scene, so the white of the film
+// disappears into the nacre and the ivory ground. Loaded on demand (dynamic import), so three.js never weighs on the
+// first screen. Renders only when the scroll moves.
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
-import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 
 const IVORY = 0xf7f3e9;
 const clamp = (n: number, a = 0, b = 1) => Math.min(b, Math.max(a, n));
@@ -21,6 +21,68 @@ export interface RingBoxScene {
   update(progress: number): void;
   resize(): void;
   dispose(): void;
+}
+
+/**
+ * Per frame, the row (of 880) just below the ring. The film was shot on a glossy white floor: a faint reflection sits
+ * under the ring, invisible on white but grey on the mother-of-pearl, so everything below this row is left out.
+ * Measured from the stills (lowest row with gold in it, + 3 px).
+ */
+const RING_BOTTOM_ROW: Record<string, number[]> = {
+  '/turntable/sp-jrp-01': [624,623,624,624,623,623,623,622,620,619,618,617,615,613,612,610,609,607,604,602,600,597,595,591,589,586,583,581,579,576,573,570,572,574,575,579,580,582,584,587,589,591,595,597,598,599,602,605,606,608,611,613,614,616,618,620,621,623,625,626,628,629,631,632,633,634,636,637,638,639,640,640,641,642,643,643,643,644,644,644,644,644,644,644,644,644,643,643,643,642,641,640,640,639,637,636,636,635,633,632,631,628,627,625,624,623,620,618,617,616,613,611,609,607,605,602,600,598,597,595],
+};
+
+// ---- the oyster's shape ------------------------------------------------------------------------------------------
+const SPAN = THREE.MathUtils.degToRad(104); // half the fan angle either side of straight ahead
+const RX = 1.12; // half-width
+const RZ = 2.25; // hinge to front lip
+const RIBS = 12;
+
+/**
+ * One valve of the shell as a surface over (s: hinge → lip, t: left → right). The outline is a rounded fan with a
+ * gently scalloped lip; radial ribs run out from the hinge, fine growth lines run round it. `dome` > 0 bulges up
+ * (the top valve), < 0 cups down (the bottom valve). Vertex colours carry the growth bands of the outside.
+ */
+function valve(dome: number, seg = { s: 48, t: 96 }) {
+  const pos: number[] = [];
+  const col: number[] = [];
+  const idx: number[] = [];
+  const light = new THREE.Color(0xa8998a);
+  const dark = new THREE.Color(0x6e6153);
+  const c = new THREE.Color();
+  for (let i = 0; i <= seg.s; i++) {
+    const s = i / seg.s;
+    for (let j = 0; j <= seg.t; j++) {
+      const t = j / seg.t;
+      const a = mix(-SPAN, SPAN, t);
+      const rib = Math.cos(a * RIBS * 1.25);
+      const lip = 1 + 0.022 * rib * s; // gently scalloped edge
+      const r = s * lip;
+      // a rounded fan: widest a little forward of the middle
+      const x = Math.sin(a) * RX * r * (1.02 - 0.12 * s);
+      const z = Math.cos(a) * RZ * 0.5 * r + RZ * 0.5 * r * (1 - Math.abs(Math.sin(a)) * 0.15) - 0.02;
+      const bulge = Math.sin(Math.PI * Math.pow(s, 0.85)) * (1 - 0.35 * (a / SPAN) ** 2);
+      const y = dome * bulge + 0.016 * rib * s * Math.sign(dome || 1);
+      pos.push(x, y, z);
+      const band = 0.5 + 0.5 * Math.sin(s * 46 + Math.sin(a * 3) * 0.6);
+      c.copy(dark).lerp(light, 0.35 + 0.45 * band * 0.8 + 0.2 * (0.5 + 0.5 * rib));
+      col.push(c.r, c.g, c.b);
+    }
+  }
+  const row = seg.t + 1;
+  for (let i = 0; i < seg.s; i++)
+    for (let j = 0; j < seg.t; j++) {
+      const a = i * row + j;
+      const b = a + row;
+      if (dome < 0) idx.push(a, b, a + 1, b, b + 1, a + 1);
+      else idx.push(a, a + 1, b, b, a + 1, b + 1);
+    }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+  g.setIndex(idx);
+  g.computeVertexNormals();
+  return g;
 }
 
 export function createRingBoxScene(host: HTMLElement, opts: { frames: string; count: number }): RingBoxScene {
@@ -40,109 +102,105 @@ export function createRingBoxScene(host: HTMLElement, opts: { frames: string; co
   const pmrem = new THREE.PMREMGenerator(renderer);
   const env = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
   scene.environment = env;
-  const key = new THREE.DirectionalLight(0xfff0d8, 1.7);
+  const key = new THREE.DirectionalLight(0xfff0d8, 1.6);
   key.position.set(2.5, 5, 4);
   const rim = new THREE.DirectionalLight(0xdce4ff, 0.7);
   rim.position.set(-4, 3, -3);
-  scene.add(key, rim, new THREE.HemisphereLight(0xfffaf0, 0xd9cdb3, 0.45));
+  scene.add(key, rim, new THREE.HemisphereLight(0xfffaf0, 0xd9cdb3, 0.5));
 
-  // ---- the box -------------------------------------------------------------------------------------------------
-  const W = 2.0; // width
-  const D = 1.9; // depth
-  const BH = 0.95; // base height
-  const LH = 0.5; // lid height
-  const R = 0.12; // corner radius
-  const IN = 0.05; // lining inset: thin navy rims, so the ring rises past light satin
-
-  const velvet = new THREE.MeshPhysicalMaterial({
-    // darker than the brand navy (#070E4D) because the lights lift it: lit, it reads as that navy
-    color: 0x040838,
-    roughness: 0.95,
-    envMapIntensity: 0.2,
-    sheen: 0.55,
-    sheenColor: new THREE.Color(0x1a2766),
-    sheenRoughness: 0.5,
+  // ---- the oyster ----------------------------------------------------------------------------------------------
+  const CUP = 0.42; // depth of the bottom valve
+  const DOME = 0.3; // height of the top valve
+  const LIFT = CUP + 0.05; // the shell rests just above its shadow (the ribs dip below the cup's depth)
+  const outsideMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.92, metalness: 0, envMapIntensity: 0.5, side: THREE.BackSide });
+  const insideMat = new THREE.MeshPhysicalMaterial({
+    color: 0xe4ddd3,
+    roughness: 0.12,
+    metalness: 0,
+    clearcoat: 1,
+    clearcoatRoughness: 0.08,
+    iridescence: 1,
+    iridescenceIOR: 1.7,
+    iridescenceThicknessRange: [320, 880],
+    sheen: 0.4,
+    sheenColor: new THREE.Color(0xe9ddff),
+    envMapIntensity: 1.1,
+    side: THREE.FrontSide,
   });
-  const satin = new THREE.MeshPhysicalMaterial({ color: 0xe6d9c1, roughness: 0.62, envMapIntensity: 0.45, sheen: 0.6, sheenColor: new THREE.Color(0xffffff), sheenRoughness: 0.3 });
-  const gold = new THREE.MeshStandardMaterial({ color: 0xcaa253, metalness: 1, roughness: 0.26 });
 
-  const box = new THREE.Group();
-  scene.add(box);
+  const shell = new THREE.Group();
+  shell.position.set(0, LIFT, -RZ * 0.45);
+  scene.add(shell);
   const geos: THREE.BufferGeometry[] = [];
-  const mesh = (g: THREE.BufferGeometry, m: THREE.Material, x = 0, y = 0, z = 0) => {
+  /** A valve: the same surface drawn twice, rough shell on one face and mother-of-pearl on the other. */
+  const valveMesh = (dome: number) => {
+    const g = valve(dome);
     geos.push(g);
-    const o = new THREE.Mesh(g, m);
-    o.position.set(x, y, z);
-    return o;
+    const grp = new THREE.Group();
+    grp.add(new THREE.Mesh(g, outsideMat), new THREE.Mesh(g, insideMat));
+    return grp;
   };
-
-  box.add(mesh(new RoundedBoxGeometry(W, BH, D, 4, R), velvet, 0, BH / 2, 0));
-  // a fine gold line at the seam
-  box.add(mesh(new RoundedBoxGeometry(W + 0.008, 0.02, D + 0.008, 2, 0.01), gold, 0, BH - R - 0.05, 0)); // on the wall, below the rounded edge
-  // the lining and the two cushion rolls, with the ring's slit between them
-  box.add(mesh(new RoundedBoxGeometry(W - IN * 2, 0.04, D - IN * 2, 2, 0.02), satin, 0, BH + 0.002, 0));
-  const rollR = 0.2;
-  const rollGeo = new THREE.CapsuleGeometry(rollR, W - IN * 2 - rollR * 2 - 0.02, 8, 28);
-  rollGeo.rotateZ(Math.PI / 2);
-  box.add(mesh(rollGeo, satin, 0, BH + 0.05, rollR + 0.004));
-  box.add(mesh(rollGeo, satin, 0, BH + 0.05, -rollR - 0.004));
-
-  // the lid, hinged at the back edge
+  shell.add(valveMesh(-CUP));
+  // the top valve, hinged at the back point
   const hinge = new THREE.Group();
-  hinge.position.set(0, BH, -D / 2);
-  box.add(hinge);
-  hinge.add(mesh(new RoundedBoxGeometry(W, LH, D, 4, R), velvet, 0, LH / 2, D / 2));
-  hinge.add(mesh(new RoundedBoxGeometry(W - IN * 2, 0.04, D - IN * 2, 2, 0.02), satin, 0, -0.004, D / 2));
-  hinge.add(mesh(new RoundedBoxGeometry(W + 0.008, 0.02, D + 0.008, 2, 0.01), gold, 0, R + 0.05, D / 2));
-  hinge.add(mesh(new RoundedBoxGeometry(0.22, 0.1, 0.05, 2, 0.02), gold, 0, 0.07, D + 0.005)); // the clasp
+  shell.add(hinge);
+  hinge.add(valveMesh(DOME));
 
-  // a soft shadow under the box
+  // a soft shadow under the shell
   const shadowCanvas = document.createElement('canvas');
   shadowCanvas.width = shadowCanvas.height = 128;
   const sc = shadowCanvas.getContext('2d')!;
   const grad = sc.createRadialGradient(64, 64, 4, 64, 64, 64);
-  grad.addColorStop(0, 'rgba(40,30,20,0.42)');
+  grad.addColorStop(0, 'rgba(40,30,20,0.4)');
   grad.addColorStop(1, 'rgba(40,30,20,0)');
   sc.fillStyle = grad;
   sc.fillRect(0, 0, 128, 128);
   const shadowTex = new THREE.CanvasTexture(shadowCanvas);
-  const shadow = mesh(
-    new THREE.PlaneGeometry(W * 2.1, D * 2.1),
-    new THREE.MeshBasicMaterial({ map: shadowTex, transparent: true, depthWrite: false, toneMapped: false }),
-    0,
-    0.002,
-    0,
-  );
+  const shadowMat = new THREE.MeshBasicMaterial({ map: shadowTex, transparent: true, depthWrite: false, toneMapped: false });
+  const shadowGeo = new THREE.PlaneGeometry(RX * 3.4, RZ * 1.6);
+  geos.push(shadowGeo);
+  const shadow = new THREE.Mesh(shadowGeo, shadowMat);
   shadow.rotation.x = -Math.PI / 2;
-  box.add(shadow);
+  shadow.position.set(0, -LIFT + 0.002, RZ * 0.5);
+  shell.add(shadow);
 
   // ---- the ring: the film on a plane ---------------------------------------------------------------------------
   // In the stills (720 × 880) the ring spans about 32–70 % of the height and 20–80 % of the width.
   const RW = 1.1;
   const RH = (RW * 880) / 720;
   const ringBottom = RH * (0.5 - 0.7); // plane-space y of the bottom of the shank
-  const yIn = BH + 0.14 - ringBottom; // seated: shank down in the slit
-  const yHidden = yIn - 0.78; // below the lining, before the lid opens
-  const yOut = yIn + 0.62; // lifted clear of the cushion
+  const seatZ = RZ * 0.5; // the middle of the cup
+  const yIn = -CUP * 0.55 - ringBottom; // seated in the cup
+  const yHidden = yIn - 0.85; // down in the closed shell, out of sight
+  const yOut = yIn + 0.95; // lifted clear of the lip
+  // The film is used as it is (sRGB values straight to the screen) and multiplies onto what is behind it.
   const tex = new THREE.Texture();
-  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.colorSpace = THREE.NoColorSpace;
   tex.anisotropy = 4;
-  const ringMat = new THREE.MeshBasicMaterial({
-    map: tex,
+  const cuts = RING_BOTTOM_ROW[frames];
+  const ringMat = new THREE.ShaderMaterial({
+    uniforms: { map: { value: tex }, cutV: { value: 0 } },
+    vertexShader: 'varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+    // fades to white (no effect) over ~18 px below the ring, so no edge shows where the floor reflection is cut
+    fragmentShader: 'uniform sampler2D map; uniform float cutV; varying vec2 vUv; void main() { vec4 c = texture2D(map, vUv); float f = smoothstep(cutV + 0.004, cutV - 0.02, vUv.y); gl_FragColor = mix(c, vec4(1.0), f); }',
     transparent: true,
     blending: THREE.MultiplyBlending,
     premultipliedAlpha: true,
     depthWrite: false,
     toneMapped: false,
   });
-  const ring = mesh(new THREE.PlaneGeometry(RW, RH), ringMat, 0, yHidden, 0);
+  const ringGeo = new THREE.PlaneGeometry(RW, RH);
+  geos.push(ringGeo);
+  const ring = new THREE.Mesh(ringGeo, ringMat);
+  ring.position.set(0, yHidden, seatZ);
   ring.renderOrder = 2;
-  box.add(ring);
+  shell.add(ring);
 
-  // An ivory veil just behind the ring: it rises as the box goes, so the turning ring is left on the ivory ground
-  // and never passes over navy (the film multiplies onto what is behind it).
+  // An ivory veil just behind the ring: it rises as the shell goes, so the turning ring is left on the ivory ground.
   const veilMat = new THREE.MeshBasicMaterial({ color: IVORY, transparent: true, opacity: 0, depthWrite: false, toneMapped: false });
-  const veil = mesh(new THREE.PlaneGeometry(40, 40), veilMat);
+  const veilGeo = new THREE.PlaneGeometry(40, 40);
+  geos.push(veilGeo);
+  const veil = new THREE.Mesh(veilGeo, veilMat);
   veil.renderOrder = 1;
   scene.add(veil);
 
@@ -166,7 +224,7 @@ export function createRingBoxScene(host: HTMLElement, opts: { frames: string; co
     imgs[i] = img;
   };
   load(0);
-  // The rest, coarse to fine, once the box has started to open.
+  // The rest, coarse to fine, once the shell has started to open.
   let loadingAll = false;
   const loadAll = () => {
     if (loadingAll) return;
@@ -177,9 +235,10 @@ export function createRingBoxScene(host: HTMLElement, opts: { frames: string; co
   // ---- camera ----------------------------------------------------------------------------------------------------
   const camera = new THREE.PerspectiveCamera(30, 1, 0.1, 100);
   const tanV = Math.tan(THREE.MathUtils.degToRad(15));
-  let dBox = 5;
+  let dShell = 5;
   let dRing = 2.3;
   const target = new THREE.Vector3();
+  const world = new THREE.Vector3();
 
   function resize() {
     const w = host.clientWidth || 1;
@@ -188,10 +247,9 @@ export function createRingBoxScene(host: HTMLElement, opts: { frames: string; co
     camera.aspect = w / h;
     camera.updateProjectionMatrix();
     const tanH = tanV * camera.aspect;
-    // the open box (about 2.6 high, 2.6 wide with air) fits; then the ring fills ~42 % of the height or ~72 % of
-    // the width, whichever is smaller on this screen
-    dBox = Math.max(1.9 / tanV, (W * 1.45) / 2 / tanH);
-    // (side-on, the ring spans ~80 % of the still's width: 0.88 wide, 0.51 high)
+    // the open shell fits with air; then the ring fills ~42 % of the height or ~78 % of the width, whichever is
+    // smaller on this screen (side-on, the ring spans ~80 % of the still's width: 0.92 wide, 0.51 high)
+    dShell = Math.max(1.75 / tanV, (RX * 2 * 1.45) / 2 / tanH);
     dRing = Math.max(0.51 / 0.42 / 2 / tanV, 0.92 / 0.78 / 2 / tanH);
     render();
   }
@@ -200,26 +258,27 @@ export function createRingBoxScene(host: HTMLElement, opts: { frames: string; co
     const p = progress;
     const open = span(p, ...STAGES.open);
     const rise = span(p, ...STAGES.rise);
-    const lift = span(p, STAGES.rise[1] - 0.04, STAGES.closeIn[0] + 0.06); // up out of the cushion, before the box goes
+    const lift = span(p, STAGES.rise[1] - 0.04, STAGES.closeIn[0] + 0.06); // up out of the shell, before it goes
     const close = span(p, ...STAGES.closeIn);
     if (open > 0.05) loadAll();
 
-    hinge.rotation.x = -open * 1.9; // about 109°
-    box.rotation.y = mix(-0.55, 0, span(p, 0, STAGES.open[1]));
-    // once the ring is out, the box sinks away below and the ring is left on the ivory ground
-    const sink = span(p, STAGES.closeIn[0] + 0.05, STAGES.closeIn[1] - 0.02) * 3.8;
-    box.position.y = -sink;
+    hinge.rotation.x = -open * 1.15; // about 66°, as an oyster gapes
+    shell.rotation.y = mix(-0.5, 0, span(p, 0, STAGES.open[1]));
+    // once the ring is out, the shell sinks away below and the ring is left on the ivory ground
+    const sink = span(p, STAGES.closeIn[0] + 0.05, STAGES.closeIn[1] - 0.02) * 3.4;
+    shell.position.y = LIFT - sink;
     ring.position.y = mix(mix(yHidden, yIn, rise), yOut, lift) + sink;
     // the ring always faces the viewer (the film was shot from the front)
-    ring.rotation.y = -box.rotation.y;
+    ring.rotation.y = -shell.rotation.y;
 
-    // camera: from three-quarters above the box to eye level with the ring
-    const elev = THREE.MathUtils.degToRad(mix(24, 5, close));
-    const dist = mix(dBox * (1 + 0.18 * open), dRing, close);
-    const ringCentre = ring.position.y - sink + RH * (0.5 - 0.51);
-    // as the lid opens, the view rises with it so the open lid stays in frame
-    target.set(0, mix(mix(BH * 0.85, BH + 0.85, open), ringCentre, close), 0);
-    camera.position.set(0, target.y + Math.sin(elev) * dist, Math.cos(elev) * dist);
+    // camera: from three-quarters above the shell to eye level with the ring
+    ring.updateWorldMatrix(true, false);
+    ring.getWorldPosition(world);
+    const ringCentre = world.y + RH * (0.5 - 0.51);
+    const elev = THREE.MathUtils.degToRad(mix(28, 5, close));
+    const dist = mix(dShell * (1 + 0.12 * open), dRing, close);
+    target.set(mix(0, world.x, close), mix(mix(LIFT * 0.6, LIFT + 0.55, open), ringCentre, close), mix(0.1, world.z, close));
+    camera.position.set(target.x, target.y + Math.sin(elev) * dist, target.z + Math.cos(elev) * dist);
     camera.lookAt(target);
 
     // the turn
@@ -229,12 +288,15 @@ export function createRingBoxScene(host: HTMLElement, opts: { frames: string; co
     if (img && img !== tex.image) {
       tex.image = img;
       tex.needsUpdate = true;
+      const k = imgs.indexOf(img);
+      ringMat.uniforms.cutV.value = cuts?.[k] ? 1 - cuts[k] / 880 : 0;
     }
-    ring.visible = !!tex.image;
+    // out of sight until the shell opens (on a tall phone screen it could show below the closed shell)
+    ring.visible = !!tex.image && open > 0.12;
 
     veilMat.opacity = span(p, STAGES.closeIn[0] + 0.01, STAGES.closeIn[0] + 0.1);
     veil.visible = veilMat.opacity > 0.001;
-    veil.position.set(0, ring.position.y - sink, -0.08);
+    veil.position.set(world.x, ringCentre, world.z - 0.08);
     veil.quaternion.copy(camera.quaternion);
     renderer.render(scene, camera);
   }
@@ -247,7 +309,7 @@ export function createRingBoxScene(host: HTMLElement, opts: { frames: string; co
     resize,
     dispose() {
       geos.forEach((g) => g.dispose());
-      [velvet, satin, gold, ringMat, veilMat, shadow.material as THREE.Material].forEach((m) => m.dispose());
+      [outsideMat, insideMat, ringMat, veilMat, shadowMat].forEach((m) => m.dispose());
       tex.dispose();
       shadowTex.dispose();
       env.dispose();

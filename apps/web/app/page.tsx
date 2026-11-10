@@ -145,7 +145,7 @@ export default async function HomePage() {
         </Container>
       )}
 
-      {/* The reveal: a velvet ring box opens, the ring rises out of it and turns a full 360° as the visitor scrolls. */}
+      {/* The reveal: an oyster opens, the ring rises out of it and turns a full 360° as the visitor scrolls. */}
       <div className="pt-14 lg:pt-20">
         <RingBox
           frames="/turntable/sp-jrp-01"
