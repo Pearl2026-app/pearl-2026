@@ -1,0 +1,3 @@
+Version 1.0.0 (code 2), API https://sahyadri-pearls-demo.vercel.app/api/v1, commit 1207b654847359c021a628cdc0e48bbfce9f7449
+The .aab must be re-signed with the upload key before the Play Console.
+The -test.apk is signed with a debug key: for trying the app only.
