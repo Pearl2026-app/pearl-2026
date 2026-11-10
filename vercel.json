@@ -37,7 +37,7 @@
       "buildCommand": "bash scripts/vercel/api-build.sh",
       "functions": {
         "apps/api/server.js": {
-          "maxDuration": 60,
+          "maxDuration": 120,
           "includeFiles": "apps/api/{bundled-media,dist}/**"
         }
       }
@@ -78,7 +78,7 @@
   "crons": [
     {
       "path": "/api/v1/system/tick",
-      "schedule": "30 21 * * *"
+      "schedule": "*/5 * * * *"
     }
   ]
 }
