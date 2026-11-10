@@ -423,7 +423,7 @@ function Farm({ version, progress, frames, count, small, onReady }: StageProps) 
     const ringIn = span(p, V.ring);
     const turn = clamp01((p - V.turn[0]) / (V.turn[1] - V.turn[0]));
     const dark = span(p, V.dark);
-    if (p > V.lift[0] - 0.1) askRing();
+    if (p > Math.min(V.lift[0], V.land[0]) - 0.15) askRing(); // the ring's photographs, in good time before it appears
 
     // camera
     const u = curveT(p);
