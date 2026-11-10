@@ -21,10 +21,13 @@ afterAll(() => db.$disconnect());
 describe('pearl pricing calculator', () => {
   it('suggests a price from the rate table and the most specific margin rule', async () => {
     const r = await http().post(api('/admin/pricing/calculate')).set(bearer(admin)).send({ caratWeight: 2.5, grade: 'aaa', farmId: mulshi, sizeMm: 7, categoryId: rings, metalCostPaise: 1_200_000, labourCostPaise: 300_000 }).expect(200);
-    expect(r.body.ratePerCaratPaise).toBe(450_000);
+    // The table rate (₹4,500 / ct) plus the 3 % extra on pearl rates (owner, 10 Nov).
+    expect(r.body.baseRatePerCaratPaise).toBe(450_000);
+    expect(r.body.extraPercent).toBe(3);
+    expect(r.body.ratePerCaratPaise).toBe(463_500);
     expect(r.body.rate.farm).toBe('Mulshi Lake Farm');
     expect(r.body.marginRule.name).toBe('AAA grade');
-    const expected = suggestPrice({ caratWeight: 2.5, ratePerCaratPaise: 450_000, metalCostPaise: 1_200_000, labourCostPaise: 300_000, marginBp: 4500, gstRateBp: 300 });
+    const expected = suggestPrice({ caratWeight: 2.5, ratePerCaratPaise: 463_500, metalCostPaise: 1_200_000, labourCostPaise: 300_000, marginBp: 4500, gstRateBp: 300 });
     expect(r.body.suggestedPricePaise).toBe(expected.suggestedPricePaise);
     expect(r.body.exclusivePaise + r.body.gstPaise).toBe(r.body.suggestedPricePaise);
 
@@ -37,6 +40,7 @@ describe('pearl pricing calculator', () => {
     expect((await http().post(api('/admin/pricing/calculate')).set(bearer(admin)).send({ caratWeight: 1, grade: 'ZZ' })).body.code).toBe('NO_RATE');
     const manual = await http().post(api('/admin/pricing/calculate')).set(bearer(admin)).send({ caratWeight: 1, grade: 'ZZ', ratePerCaratPaise: 100_000 }).expect(200);
     expect(manual.body.rate).toBeNull();
+    expect(manual.body.ratePerCaratPaise).toBe(103_000);
     expect(manual.body.marginRule.name).toBe('Default margin');
   });
 
@@ -53,6 +57,23 @@ describe('pearl pricing calculator', () => {
     expect(created.body.source).toBe('MANUAL');
     const used = await http().post(api('/admin/pricing/calculate')).set(bearer(admin)).send({ caratWeight: 1, grade: 'B', sizeMm: 3 }).expect(200);
     expect(used.body.rate.id).toBe(created.body.id);
+  });
+
+  it('lets head office change the pearl extra, and shows every rate in the top bar', async () => {
+    const pune = await tokenFor('puneManager');
+    await http().put(api('/admin/pricing/pearl-extra')).set(bearer(pune)).send({ extraPercent: 5 }).expect(403);
+    expect((await http().put(api('/admin/pricing/pearl-extra')).set(bearer(admin)).send({ extraPercent: 101 })).status).toBe(400);
+    await http().put(api('/admin/pricing/pearl-extra')).set(bearer(admin)).send({ extraPercent: 5 }).expect(200);
+    const five = await http().post(api('/admin/pricing/calculate')).set(bearer(admin)).send({ caratWeight: 1, grade: 'ZZ', ratePerCaratPaise: 100_000 }).expect(200);
+    expect(five.body.ratePerCaratPaise).toBe(105_000);
+
+    const bar = await http().get(api('/admin/pricing/rates-bar')).set(bearer(pune)).expect(200);
+    expect(bar.body.pearl).toMatchObject({ extraPercent: 5, liveFeed: false, grade: 'AAA' });
+    expect(bar.body.pearl.fromPerCaratPaise).toBe(Math.round(bar.body.pearl.baseFromPerCaratPaise * 1.05));
+    expect(bar.body.metals.map((m: { metal: string }) => m.metal)).toContain('GOLD_22K');
+    await http().get(api('/admin/pricing/rates-bar')).set(bearer(await tokenFor('vendor'))).expect((res) => expect([200, 403]).toContain(res.status));
+
+    await http().put(api('/admin/pricing/pearl-extra')).set(bearer(admin)).send({ extraPercent: 3 }).expect(200);
   });
 
   it('keeps the live feed off until configured, and never overwrites manual rates', async () => {
@@ -116,11 +137,11 @@ describe('daily metal rates', () => {
 
   it('turns live spot prices into Indian rates per gram', () => {
     // ₹3,86,761 / troy oz gold and ₹4,996.57 / oz silver (10 Nov 2026), with 13.8% and 16.7% India premium.
-    const r = Object.fromEntries(marketRates({ XAU: 386_761.15, XAG: 4_996.57 }, { GOLD: 13.8, SILVER: 16.7, PLATINUM: 10 }).map((x) => [x.metal, x.ratePerGramPaise]));
+    const r = Object.fromEntries(marketRates({ XAU: 386_761.15, XAG: 4_996.57 }, { GOLD: 13.8, SILVER: 16.7 }).map((x) => [x.metal, x.ratePerGramPaise]));
     expect(r.GOLD_24K).toBe(1_415_064); // ₹14,150.64 / g ≈ ₹1,41,506 / 10 g
     expect(r.GOLD_22K).toBe(Math.round(((386_761.15 / 31.1034768) * 1.138 * (22 / 24)) * 100));
     expect(r.SILVER_999).toBe(18_747); // ₹187.47 / g ≈ ₹1,87,470 / kg
-    expect(r.PLATINUM).toBeUndefined(); // no spot price, no rate
+    expect(Object.keys(r)).not.toContain('PLATINUM'); // platinum is not sold
   });
 
   it('reads the common feed shapes', () => {

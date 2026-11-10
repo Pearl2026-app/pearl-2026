@@ -26,7 +26,7 @@ interface Page {
   date: string;
   feed: { configured: boolean; fromEnv: boolean; url: string | null; kind: 'url' | 'market' | null };
   liveMarket: boolean;
-  marketPremium: { GOLD: number; SILVER: number; PLATINUM: number };
+  marketPremium: { GOLD: number; SILVER: number };
   rates: Rate[];
   history: Array<{ id: string; metal: MetalRateKey; ratePerGramPaise: number; effectiveDate: string; source: string }>;
   margins: Partial<Record<MetalRateKey, Margin>>;
@@ -36,7 +36,7 @@ interface Page {
 const day = (iso: string) => new Date(`${iso.slice(0, 10)}T00:00:00`).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
 
 /**
- * Daily gold, silver and platinum rates (meeting of 4 Nov). Head office enters today's rate per gram (or a feed fills
+ * Daily gold and silver rates (meeting of 4 Nov). Head office enters today's rate per gram (or a feed fills
  * it in); products marked "price follows the daily metal rate" are re-priced as soon as a rate or margin is saved.
  */
 export default function MetalRatesPage() {
@@ -50,7 +50,7 @@ export default function MetalRatesPage() {
   const [margins, setMargins] = useState<Partial<Record<MetalRateKey, { percent: string; perGram: string }>>>({});
   const [feedUrl, setFeedUrl] = useState('');
   const [live, setLive] = useState(true);
-  const [premium, setPremium] = useState({ GOLD: '', SILVER: '', PLATINUM: '' });
+  const [premium, setPremium] = useState({ GOLD: '', SILVER: '' });
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
@@ -67,7 +67,7 @@ export default function MetalRatesPage() {
     );
     setFeedUrl(q.data.feed.url ?? '');
     setLive(q.data.liveMarket);
-    setPremium({ GOLD: String(q.data.marketPremium.GOLD), SILVER: String(q.data.marketPremium.SILVER), PLATINUM: String(q.data.marketPremium.PLATINUM) });
+    setPremium({ GOLD: String(q.data.marketPremium.GOLD), SILVER: String(q.data.marketPremium.SILVER) });
   }, [q.data]);
 
   const done = async (msg: string) => {
@@ -105,7 +105,7 @@ export default function MetalRatesPage() {
         if (!Number.isFinite(percent) || percent < 0 || !Number.isFinite(perGramPaise) || perGramPaise < 0) throw new ApiError(400, 'VALIDATION_FAILED', `Check the ${METAL_RATE_LABEL[k]} margin.`);
         if (percent || perGramPaise) out[k] = { percent, perGramPaise };
       }
-      const prem = { GOLD: Number(premium.GOLD), SILVER: Number(premium.SILVER), PLATINUM: Number(premium.PLATINUM) };
+      const prem = { GOLD: Number(premium.GOLD), SILVER: Number(premium.SILVER) };
       if (Object.values(prem).some((n) => !Number.isFinite(n) || n < -20 || n > 60)) throw new ApiError(400, 'VALIDATION_FAILED', 'India premium: enter a % between -20 and 60.');
       return api<{ following: number; repriced: number }>('/admin/metal-rates/margins', {
         method: 'PUT',
@@ -135,7 +135,7 @@ export default function MetalRatesPage() {
     <div className="max-w-5xl">
       <PageHeader
         title="Metal rates"
-        description="Today's gold, silver and platinum rate per gram. Pieces set to “Price follows the daily metal rate” are re-priced the moment a rate or margin is saved; every other piece keeps its own price."
+        description="Today's gold and silver rate per gram. Pieces set to “Price follows the daily metal rate” are re-priced the moment a rate or margin is saved; every other piece keeps its own price."
         actions={
           editable && (
             <>
@@ -224,12 +224,12 @@ export default function MetalRatesPage() {
               Live market rates (updated every hour)
             </label>
             <p className="mt-1 text-xs text-muted">
-              Gold, silver and platinum from the world market price in ₹, plus the India premium below (import duty, taxes and the usual
+              Gold and silver from the world market price in ₹, plus the India premium below (import duty, taxes and the usual
               premium), so they match the rates quoted in India. A rate typed in above wins for the rest of that day. A feed link below
               takes the place of the live market. Pearls have no live market: set them per farm under Pearl rates.
             </p>
             <div className="mt-3 flex flex-wrap gap-3">
-              {(['GOLD', 'SILVER', 'PLATINUM'] as const).map((m) => (
+              {(['GOLD', 'SILVER'] as const).map((m) => (
                 <label key={m} className="flex flex-col gap-1 text-xs">
                   India premium, {m.charAt(0) + m.slice(1).toLowerCase()} (%)
                   <Input inputMode="decimal" className="max-w-28" value={premium[m]} onChange={(e) => setPremium({ ...premium, [m]: e.target.value })} disabled={!editable || !live} />

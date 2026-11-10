@@ -8,7 +8,7 @@ import { FormField, Notice, SelectInput, SubmitButton, TextArea, TextInput } fro
 
 const TYPES = ['Ring', 'Necklace', 'Earrings', 'Bracelet', 'Pendant', 'Bridal set', 'Other'];
 const MAX_IMAGES = 6;
-const METALS = ['18k gold', '22k gold', 'White gold', 'Rose gold', 'Sterling silver', 'Platinum', 'Not sure yet'];
+const METALS = ['18k gold', '22k gold', 'White gold', 'Rose gold', 'Sterling silver', 'Not sure yet'];
 
 /** Customized Jewellery form. Ring Finder hands its answers over through sessionStorage. */
 export function CustomJewelleryForm() {

@@ -20,6 +20,8 @@ interface Result {
   gstPaise: number;
   suggestedPricePaise: number;
   ratePerCaratPaise: number;
+  baseRatePerCaratPaise: number;
+  extraPercent: number;
   gstRateBp: number;
   rate: { grade: string; farm: string; sizeMinMm: number; sizeMaxMm: number; source: string } | null;
   marginRule: { name: string; marginBp: number; minMarginPaise: number | null } | null;
@@ -82,6 +84,7 @@ export default function CalculatorPage() {
           </>
         }
       />
+      <PearlExtra canEdit={headOffice} />
       <div className="grid gap-4 lg:grid-cols-[1fr_360px]">
         <Card>
           <form className="grid gap-3 md:grid-cols-2" onSubmit={(e) => { e.preventDefault(); calc.mutate(); }}>
@@ -125,7 +128,7 @@ export default function CalculatorPage() {
               <p className="font-serif text-3xl">{inr(r.suggestedPricePaise)}</p>
               <p className="mb-3 text-xs text-muted">GST {r.gstRateBp / 100}% included, rounded up</p>
               <dl className="grid grid-cols-2 gap-1 text-sm">
-                <dt className="text-muted">Pearl ({inr(r.ratePerCaratPaise)}/ct)</dt><dd className="text-right">{inr(r.pearlCostPaise)}</dd>
+                <dt className="text-muted">Pearl ({inr(r.ratePerCaratPaise)}/ct{r.extraPercent ? `, ${inr(r.baseRatePerCaratPaise)} + ${r.extraPercent}%` : ''})</dt><dd className="text-right">{inr(r.pearlCostPaise)}</dd>
                 <dt className="text-muted">Metal</dt><dd className="text-right">{inr(r.metalCostPaise)}</dd>
                 <dt className="text-muted">Making</dt><dd className="text-right">{inr(r.labourCostPaise)}</dd>
                 <dt className="text-muted">Cost</dt><dd className="text-right">{inr(r.costPaise)}</dd>
@@ -146,5 +149,42 @@ export default function CalculatorPage() {
         </Card>
       </div>
     </div>
+  );
+}
+
+/** The extra % added on top of every pearl rate (owner, 10 Nov: 3 %). Head office can change it here. */
+function PearlExtra({ canEdit }: { canEdit: boolean }) {
+  const toast = useToast();
+  const bar = useQuery({ queryKey: ['/admin/pricing/rates-bar'], queryFn: () => api<{ pearl: { extraPercent: number } }>('/admin/pricing/rates-bar') });
+  const [val, setVal] = useState<string | null>(null);
+  const save = useMutation({
+    mutationFn: () => api('/admin/pricing/pearl-extra', { method: 'PUT', json: { extraPercent: Number(val) } }),
+    onSuccess: () => {
+      toast('Saved. New quotes use the new extra.');
+      setVal(null);
+      void bar.refetch();
+    },
+    onError: (e) => toast(errorText(e), 'danger'),
+  });
+  const current = bar.data?.pearl.extraPercent;
+  if (current == null) return null;
+  return (
+    <Card className="mb-4 flex flex-wrap items-center gap-3 text-sm">
+      <span>
+        Extra on pearl rates: <strong className="tabular-nums">{current}%</strong>
+        <span className="text-muted"> — added on top of every rate (table, live feed or a rate typed below) before the margin.</span>
+      </span>
+      {canEdit && (
+        <form className="ml-auto flex items-center gap-2" onSubmit={(e) => { e.preventDefault(); if (val != null) save.mutate(); }}>
+          <span className="w-20">
+            <Input aria-label="Extra on pearl rates (%)" inputMode="decimal" value={val ?? String(current)} onChange={(e) => setVal(e.target.value)} />
+          </span>
+          <span className="text-muted">%</span>
+          <Button type="submit" size="sm" variant="secondary" disabled={val == null || val === String(current) || save.isPending || !(Number(val) >= 0 && Number(val) <= 100)}>
+            Save
+          </Button>
+        </form>
+      )}
+    </Card>
   );
 }

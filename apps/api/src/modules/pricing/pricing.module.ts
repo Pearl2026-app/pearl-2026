@@ -1,4 +1,4 @@
-import { Body, Controller, Get, HttpCode, Inject, Injectable, Logger, Module, OnModuleInit, Post } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, Inject, Injectable, Logger, Module, OnModuleInit, Post, Put } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { ZodValidationPipe } from 'nestjs-zod';
 import { z } from 'zod';
@@ -10,6 +10,7 @@ import { crudController } from '../../common/crud';
 import { CurrentUser, Requires } from '../../common/decorators';
 import { badRequest, forbidden } from '../../common/errors';
 import { PrismaService } from '../../prisma/prisma.service';
+import { SettingsService } from '../../common/settings.service';
 import { JobsService } from '../../queue/jobs.service';
 import { PEARL_RATE_FEED, type PearlRateFeed } from '../../providers/types';
 import { MetalRatesController, MetalRatesService } from './metal-rates';
@@ -104,8 +105,19 @@ export class PearlPricingService implements OnModuleInit {
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
     private readonly jobs: JobsService,
+    private readonly settings: SettingsService,
     @Inject(PEARL_RATE_FEED) private readonly feed: PearlRateFeed,
   ) {}
+
+  /** The extra % added on top of every pearl rate (Settings → pearl_pricing, 3 % by default). */
+  async extraPercent() {
+    return (await this.settings.get('pearl_pricing')).extraPercent;
+  }
+
+  /** A rate with the extra added, rounded to the paisa. */
+  static withExtra(ratePerCaratPaise: number, extraPercent: number) {
+    return Math.round(ratePerCaratPaise * (1 + extraPercent / 100));
+  }
 
   onModuleInit() {
     this.jobs.register('pricing.feed-sync', async () => {
@@ -143,9 +155,11 @@ export class PearlPricingService implements OnModuleInit {
 
   async calculate(input: z.infer<typeof calcInput>) {
     const rate = input.ratePerCaratPaise ? null : await this.findRate(input.grade, input.farmId, input.sizeMm);
-    const ratePerCaratPaise = input.ratePerCaratPaise ?? rate?.ratePerCaratPaise;
-    if (!ratePerCaratPaise)
+    const baseRatePerCaratPaise = input.ratePerCaratPaise ?? rate?.ratePerCaratPaise;
+    if (!baseRatePerCaratPaise)
       throw badRequest('NO_RATE', `No active rate for grade ${input.grade}${input.sizeMm ? ` at ${input.sizeMm} mm` : ''}. Add one under Pearl rates or enter a rate.`, { grade: 'No rate found' });
+    const extraPercent = await this.extraPercent();
+    const ratePerCaratPaise = PearlPricingService.withExtra(baseRatePerCaratPaise, extraPercent);
     const rule = await this.findMargin(input.categoryId, input.grade);
     const category = input.categoryId ? await this.prisma.category.findUnique({ where: { id: input.categoryId }, select: { gstRateBp: true, name: true } }) : null;
     const gstRateBp = category?.gstRateBp ?? DEFAULT_GST_BP;
@@ -153,6 +167,8 @@ export class PearlPricingService implements OnModuleInit {
     return {
       ...result,
       ratePerCaratPaise,
+      baseRatePerCaratPaise,
+      extraPercent,
       gstRateBp,
       rate: rate ? { id: rate.id, grade: rate.grade, farm: rate.farm?.name ?? 'Any farm', sizeMinMm: Number(rate.sizeMinMm), sizeMaxMm: Number(rate.sizeMaxMm), source: rate.source } : null,
       marginRule: rule ? { id: rule.id, name: rule.name, marginBp: rule.marginBp, minMarginPaise: rule.minMarginPaise } : null,
@@ -181,12 +197,58 @@ export class PearlPricingService implements OnModuleInit {
   get feedStatus() {
     return { name: this.feed.name, configured: this.feed.configured };
   }
+
+  /** For the admin top bar: the lowest active rate of the best grade, with the extra, and where rates come from. */
+  async summary() {
+    const extraPercent = await this.extraPercent();
+    const rows = await this.prisma.pearlRate.findMany({ where: { isActive: true, effectiveFrom: { lte: new Date() } }, select: { grade: true, ratePerCaratPaise: true, source: true } });
+    const grades = ['AAA', 'AA', 'A'];
+    const grade = grades.find((g) => rows.some((r) => r.grade === g)) ?? rows[0]?.grade ?? null;
+    const ofGrade = rows.filter((r) => r.grade === grade);
+    const from = ofGrade.length ? Math.min(...ofGrade.map((r) => r.ratePerCaratPaise)) : null;
+    return {
+      liveFeed: this.feed.configured,
+      extraPercent,
+      grade,
+      fromPerCaratPaise: from == null ? null : PearlPricingService.withExtra(from, extraPercent),
+      baseFromPerCaratPaise: from,
+      activeRates: rows.length,
+    };
+  }
+
+  async setExtraPercent(user: AuthUser, extraPercent: number) {
+    const before = await this.settings.get('pearl_pricing');
+    const value = { ...before, extraPercent };
+    await this.prisma.setting.upsert({ where: { key: 'pearl_pricing' }, create: { key: 'pearl_pricing', value }, update: { value } });
+    this.settings.invalidate('pearl_pricing');
+    await this.audit.record('Setting', 'pearl_pricing', 'UPDATE', before, { ...value, by: user.id });
+    return value;
+  }
 }
 
 @ApiTags('pricing')
 @Controller('admin/pricing')
 export class PricingCalcController {
-  constructor(private readonly pricing: PearlPricingService) {}
+  constructor(
+    private readonly pricing: PearlPricingService,
+    private readonly metals: MetalRatesService,
+  ) {}
+
+  /** Today's gold and silver rates and the pearl rate, for the top bar of every admin page. */
+  @Get('rates-bar')
+  @Requires('DASHBOARD', 'view')
+  async ratesBar() {
+    const [metals, pearl] = await Promise.all([this.metals.today(), this.pricing.summary()]);
+    return { date: metals.date, liveMetals: metals.liveMarket || metals.feed.configured, metalSource: metals.feed.kind, metals: metals.rates, pearl };
+  }
+
+  /** The extra % on top of pearl rates (head office). */
+  @Put('pearl-extra')
+  @Requires('PRICING', 'edit')
+  async pearlExtra(@CurrentUser() user: AuthUser, @Body(new ZodValidationPipe(z.object({ extraPercent: z.number().min(0).max(100) }))) dto: { extraPercent: number }) {
+    headOfficeWrites(user);
+    return this.pricing.setExtraPercent(user, dto.extraPercent);
+  }
 
   /** Carat, grade and farm in → suggested price out, with the rate and margin rule that produced it. */
   @Post('calculate')

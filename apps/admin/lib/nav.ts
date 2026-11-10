@@ -121,7 +121,7 @@ export const NAV: NavGroup[] = [
     items: [
       { href: '/pricing/calculator', info: 'Work out a selling price from pearl, metal, making cost and GST.', label: 'Price calculator', module: 'PRICING' },
       { href: '/pearl-rates', info: "Today's pearl rates used by the price calculator.", label: 'Pearl rates', module: 'PRICING', roles: ['SUPER_ADMIN', 'STAFF'] },
-      { href: '/pricing/metal-rates', info: "Today's gold, silver and platinum rate per gram, with margins; pieces set to follow the rate are re-priced when it is saved.", label: 'Metal rates', module: 'PRICING', roles: ['SUPER_ADMIN', 'STAFF'] },
+      { href: '/pricing/metal-rates', info: "Today's gold and silver rate per gram, with margins; pieces set to follow the rate are re-priced when it is saved.", label: 'Metal rates', module: 'PRICING', roles: ['SUPER_ADMIN', 'STAFF'] },
       { href: '/margin-rules', info: 'The markups applied to cost to get selling and B2B prices.', label: 'Margin rules', module: 'PRICING', roles: ['SUPER_ADMIN', 'STAFF'] },
     ],
   },

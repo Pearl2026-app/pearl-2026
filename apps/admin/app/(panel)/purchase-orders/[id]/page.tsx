@@ -33,7 +33,7 @@ interface Cost {
   totalPaise: number;
 }
 
-const METALS = ['92.5 Silver', '18K Gold', '22K Gold', '14K Gold', '9K Gold', 'Platinum'];
+const METALS = ['92.5 Silver', '18K Gold', '22K Gold', '14K Gold', '9K Gold'];
 const EMPTY = { manufacturerId: '', specification: '', quantity: '1', cost: '', dueDate: '', notes: '', size: '', pearlSizeMm: '', pearlWeightCt: '', metal: '', metalWeightG: '', rate: '', gstPercent: '5' };
 type Form = typeof EMPTY;
 const str = (v: unknown) => (v == null ? '' : String(Number(v)));
