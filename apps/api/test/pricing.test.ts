@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { suggestPrice } from '@sahyadri/shared';
-import { parseMetalFeed } from '../src/modules/pricing/metal-rates';
+import { marketRates, parseMetalFeed } from '../src/modules/pricing/metal-rates';
 import { PearlPricingService } from '../src/modules/pricing/pricing.module';
 import { api, bearer, db, getApp, http, tokenFor } from './helpers';
 
@@ -107,8 +107,20 @@ describe('daily metal rates', () => {
     const page = await http().get(api('/admin/metal-rates')).set(bearer(admin)).expect(200);
     expect(page.body.following.some((p: { id: string }) => p.id === following.body.id)).toBe(true);
     expect(page.body.margins.GOLD_22K.percent).toBe(10);
-    // No feed configured: fetching says so.
+    // Live market on by default; switched off and no feed link: fetching says so.
+    expect(page.body.feed.kind).toBe('market');
+    await http().put(api('/admin/metal-rates/margins')).set(bearer(admin)).send({ margins: page.body.margins, liveMarket: false }).expect(200);
     expect((await http().post(api('/admin/metal-rates/fetch')).set(bearer(admin)).send({})).body.code).toBe('FEED_OFF');
+    await http().put(api('/admin/metal-rates/margins')).set(bearer(admin)).send({ margins: page.body.margins, liveMarket: true }).expect(200);
+  });
+
+  it('turns live spot prices into Indian rates per gram', () => {
+    // ₹3,86,761 / troy oz gold and ₹4,996.57 / oz silver (10 Nov 2026), with 13.8% and 16.7% India premium.
+    const r = Object.fromEntries(marketRates({ XAU: 386_761.15, XAG: 4_996.57 }, { GOLD: 13.8, SILVER: 16.7, PLATINUM: 10 }).map((x) => [x.metal, x.ratePerGramPaise]));
+    expect(r.GOLD_24K).toBe(1_415_064); // ₹14,150.64 / g ≈ ₹1,41,506 / 10 g
+    expect(r.GOLD_22K).toBe(Math.round(((386_761.15 / 31.1034768) * 1.138 * (22 / 24)) * 100));
+    expect(r.SILVER_999).toBe(18_747); // ₹187.47 / g ≈ ₹1,87,470 / kg
+    expect(r.PLATINUM).toBeUndefined(); // no spot price, no rate
   });
 
   it('reads the common feed shapes', () => {

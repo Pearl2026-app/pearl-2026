@@ -24,7 +24,9 @@ interface Margin {
 }
 interface Page {
   date: string;
-  feed: { configured: boolean; fromEnv: boolean; url: string | null };
+  feed: { configured: boolean; fromEnv: boolean; url: string | null; kind: 'url' | 'market' | null };
+  liveMarket: boolean;
+  marketPremium: { GOLD: number; SILVER: number; PLATINUM: number };
   rates: Rate[];
   history: Array<{ id: string; metal: MetalRateKey; ratePerGramPaise: number; effectiveDate: string; source: string }>;
   margins: Partial<Record<MetalRateKey, Margin>>;
@@ -47,6 +49,8 @@ export default function MetalRatesPage() {
   const [rates, setRates] = useState<Partial<Record<MetalRateKey, string>>>({});
   const [margins, setMargins] = useState<Partial<Record<MetalRateKey, { percent: string; perGram: string }>>>({});
   const [feedUrl, setFeedUrl] = useState('');
+  const [live, setLive] = useState(true);
+  const [premium, setPremium] = useState({ GOLD: '', SILVER: '', PLATINUM: '' });
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
@@ -62,6 +66,8 @@ export default function MetalRatesPage() {
       ),
     );
     setFeedUrl(q.data.feed.url ?? '');
+    setLive(q.data.liveMarket);
+    setPremium({ GOLD: String(q.data.marketPremium.GOLD), SILVER: String(q.data.marketPremium.SILVER), PLATINUM: String(q.data.marketPremium.PLATINUM) });
   }, [q.data]);
 
   const done = async (msg: string) => {
@@ -99,14 +105,19 @@ export default function MetalRatesPage() {
         if (!Number.isFinite(percent) || percent < 0 || !Number.isFinite(perGramPaise) || perGramPaise < 0) throw new ApiError(400, 'VALIDATION_FAILED', `Check the ${METAL_RATE_LABEL[k]} margin.`);
         if (percent || perGramPaise) out[k] = { percent, perGramPaise };
       }
-      return api<{ following: number; repriced: number }>('/admin/metal-rates/margins', { method: 'PUT', json: { margins: out, ...(q.data?.feed.fromEnv ? {} : { feedUrl: feedUrl.trim() }) } });
+      const prem = { GOLD: Number(premium.GOLD), SILVER: Number(premium.SILVER), PLATINUM: Number(premium.PLATINUM) };
+      if (Object.values(prem).some((n) => !Number.isFinite(n) || n < -20 || n > 60)) throw new ApiError(400, 'VALIDATION_FAILED', 'India premium: enter a % between -20 and 60.');
+      return api<{ following: number; repriced: number }>('/admin/metal-rates/margins', {
+        method: 'PUT',
+        json: { margins: out, liveMarket: live, marketPremium: prem, ...(q.data?.feed.fromEnv ? {} : { feedUrl: feedUrl.trim() }) },
+      });
     },
     onSuccess: (r) => void done(`Margins saved.${repriced(r)}`),
     onError: (e) => toast(errorText(e), 'danger'),
   });
   const fetchFeed = useMutation({
     mutationFn: () => api<{ saved: number; following: number; repriced: number }>('/admin/metal-rates/fetch', { method: 'POST', json: {} }),
-    onSuccess: (r) => void done(`${r.saved} ${r.saved === 1 ? 'rate' : 'rates'} fetched from the feed.${repriced(r)}`),
+    onSuccess: (r) => void done(`${r.saved} ${r.saved === 1 ? 'rate' : 'rates'} updated from ${q.data?.feed.kind === 'market' ? 'the live market' : 'the feed'}.${repriced(r)}`),
     onError: (e) => toast(errorText(e), 'danger'),
   });
   const reprice = useMutation({
@@ -129,8 +140,8 @@ export default function MetalRatesPage() {
           editable && (
             <>
               {d.feed.configured && (
-                <Button size="sm" variant="secondary" loading={fetchFeed.isPending} onClick={() => fetchFeed.mutate()}>
-                  Fetch from feed
+                <Button size="sm" loading={fetchFeed.isPending} onClick={() => fetchFeed.mutate()}>
+                  {d.feed.kind === 'market' ? 'Fetch live rates now' : 'Fetch from feed'}
                 </Button>
               )}
               <Button size="sm" variant="secondary" loading={reprice.isPending} onClick={() => reprice.mutate()}>
@@ -146,7 +157,7 @@ export default function MetalRatesPage() {
       <Card className="mb-4">
         <h2 className="mb-1 font-semibold">Rates per gram</h2>
         <p className="mb-3 text-xs text-muted">
-          Enter the rates you use today (₹ per gram). Leave a metal empty to keep its last rate. {d.feed.configured ? 'The feed fills them in once a day if nobody has by then.' : ''}
+          Enter the rates you use today (₹ per gram). Leave a metal empty to keep its last rate. {d.feed.kind === 'market' ? 'Live market rates fill them in every hour unless you type one in for today.' : d.feed.configured ? 'The feed fills them in once a day if nobody has by then.' : ''}
         </p>
         <form onSubmit={(e) => (e.preventDefault(), saveRates.mutate())}>
           <label className="mb-3 flex max-w-xs flex-col gap-1 text-sm">
@@ -159,7 +170,7 @@ export default function MetalRatesPage() {
                 <span className="flex items-center justify-between gap-2">
                   <span className="font-medium">{r.label}</span>
                   {r.ratePerGramPaise != null &&
-                    (r.isToday ? <Badge tone="success">{r.source === 'FEED' ? 'Today · feed' : 'Today'}</Badge> : <Badge tone="waiting">{day(r.effectiveDate!)}</Badge>)}
+                    (r.isToday ? <Badge tone="success">{r.source === 'FEED' ? (d.feed.kind === 'market' ? 'Today · live market' : 'Today · feed') : 'Today'}</Badge> : <Badge tone="waiting">{day(r.effectiveDate!)}</Badge>)}
                 </span>
                 <span className="flex items-center gap-2">
                   <span className="text-muted">₹</span>
@@ -207,6 +218,25 @@ export default function MetalRatesPage() {
               </tbody>
             </table>
           </div>
+          <div className="mt-5 max-w-2xl rounded-sm border border-line p-3">
+            <label className="flex items-center gap-2 text-sm font-medium">
+              <input type="checkbox" checked={live} onChange={(e) => setLive(e.target.checked)} disabled={!editable} />
+              Live market rates (updated every hour)
+            </label>
+            <p className="mt-1 text-xs text-muted">
+              Gold, silver and platinum from the world market price in ₹, plus the India premium below (import duty, taxes and the usual
+              premium), so they match the rates quoted in India. A rate typed in above wins for the rest of that day. A feed link below
+              takes the place of the live market. Pearls have no live market: set them per farm under Pearl rates.
+            </p>
+            <div className="mt-3 flex flex-wrap gap-3">
+              {(['GOLD', 'SILVER', 'PLATINUM'] as const).map((m) => (
+                <label key={m} className="flex flex-col gap-1 text-xs">
+                  India premium, {m.charAt(0) + m.slice(1).toLowerCase()} (%)
+                  <Input inputMode="decimal" className="max-w-28" value={premium[m]} onChange={(e) => setPremium({ ...premium, [m]: e.target.value })} disabled={!editable || !live} />
+                </label>
+              ))}
+            </div>
+          </div>
           <div className="mt-4 max-w-xl">
             <label className="flex flex-col gap-1 text-sm">
               Daily rate feed (optional)
@@ -222,7 +252,7 @@ export default function MetalRatesPage() {
           </div>
           {editable && (
             <Button type="submit" size="sm" className="mt-4" loading={saveMargins.isPending}>
-              Save margins
+              Save margins & rate source
             </Button>
           )}
         </form>

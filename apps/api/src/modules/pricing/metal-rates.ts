@@ -36,7 +36,34 @@ const marginsInput = z.object({
     .max(500)
     .refine((v) => v === '' || /^https:\/\/[^\s]+$/i.test(v), 'Use an https:// link, or leave it empty')
     .optional(),
+  liveMarket: z.boolean().optional(),
+  marketPremium: z.object({ GOLD: z.number().min(-20).max(60), SILVER: z.number().min(-20).max(60), PLATINUM: z.number().min(-20).max(60) }).optional(),
 });
+
+const TROY_OUNCE_G = 31.1034768;
+/** Purity of each rate against its base metal (24K gold, 999 silver, platinum). */
+const PURITY: Record<MetalRateKey, { base: 'XAU' | 'XAG' | 'XPT'; factor: number; premium: 'GOLD' | 'SILVER' | 'PLATINUM' }> = {
+  GOLD_24K: { base: 'XAU', factor: 1, premium: 'GOLD' },
+  GOLD_22K: { base: 'XAU', factor: 22 / 24, premium: 'GOLD' },
+  GOLD_18K: { base: 'XAU', factor: 0.75, premium: 'GOLD' },
+  GOLD_14K: { base: 'XAU', factor: 0.585, premium: 'GOLD' },
+  SILVER_999: { base: 'XAG', factor: 1, premium: 'SILVER' },
+  SILVER_925: { base: 'XAG', factor: 0.925, premium: 'SILVER' },
+  PLATINUM: { base: 'XPT', factor: 1, premium: 'PLATINUM' },
+};
+
+/**
+ * Indian rates per gram from live spot prices in ₹ per troy ounce: spot ÷ 31.1035 × (1 + premium) × purity.
+ * Spot comes from gold-api.com (free, no key; prices in ₹ at the current exchange rate).
+ */
+export function marketRates(spotInrPerOz: Partial<Record<'XAU' | 'XAG' | 'XPT', number>>, premium: { GOLD: number; SILVER: number; PLATINUM: number }) {
+  return METAL_RATE_KEYS.flatMap((metal) => {
+    const p = PURITY[metal];
+    const spot = spotInrPerOz[p.base];
+    if (!spot || !(spot > 0)) return [];
+    return [{ metal, ratePerGramPaise: Math.round(((spot / TROY_OUNCE_G) * (1 + premium[p.premium] / 100) * p.factor) * 100) }];
+  });
+}
 
 const headOffice = (u: AuthUser) => {
   if (u.role !== 'SUPER_ADMIN' && u.role !== 'STAFF') throw forbidden('Only head office can change metal rates.');
@@ -79,14 +106,17 @@ export class MetalRatesService implements OnModuleInit {
 
   onModuleInit() {
     this.jobs.register('pricing.metal-feed', async () => {
-      if (!(await this.feedUrl())) return;
-      // Once a day: skip when today's rates are already in (entered by hand or fetched earlier).
-      const today = await this.prisma.metalRate.count({ where: { effectiveDate: indiaDay() } });
-      if (today) return;
-      await this.fetchFeed(null).catch((e) => this.log.warn(`Metal rate feed failed: ${(e as Error).message}`));
+      const source = await this.source();
+      if (!source) return;
+      const rows = await this.prisma.metalRate.findMany({ where: { effectiveDate: indiaDay() }, select: { source: true, updatedAt: true } });
+      // A rate typed in by head office wins for the rest of the day.
+      if (rows.some((r) => r.source === 'MANUAL')) return;
+      // A feed link: once a day. Live market: refresh when the last fetch is older than ~an hour.
+      if (rows.length && (source.kind === 'url' || Date.now() - Math.max(...rows.map((r) => r.updatedAt.getTime())) < 55 * 60_000)) return;
+      await this.fetchFeed(null).catch((e) => this.log.warn(`Metal rate update failed: ${(e as Error).message}`));
     });
-    // Every 3 hours; the job does nothing without a feed or once today's rates are in.
-    this.jobs.repeat('pricing.metal-feed', 3 * 3600_000);
+    // Every hour; the job does nothing when today's rates were entered by hand or are fresh.
+    this.jobs.repeat('pricing.metal-feed', 3600_000);
   }
 
   /** The feed: METAL_RATE_FEED_URL, else the link saved on the Metal rates page (Settings → metal_pricing). */
@@ -95,6 +125,30 @@ export class MetalRatesService implements OnModuleInit {
     if (env) return { url: env, fromEnv: true };
     const saved = (await this.settings.get('metal_pricing')).feedUrl.trim();
     return saved ? { url: saved, fromEnv: false } : null;
+  }
+
+  /** Where rates come from: a feed link (server, then admin), else the live market when on, else typed by hand. */
+  async source(): Promise<{ kind: 'url'; url: string; fromEnv: boolean } | { kind: 'market' } | null> {
+    const feed = await this.feedUrl();
+    if (feed) return { kind: 'url', ...feed };
+    return (await this.settings.get('metal_pricing')).liveMarket ? { kind: 'market' } : null;
+  }
+
+  /** Live spot prices in ₹ per troy ounce. */
+  private async spot(): Promise<Partial<Record<'XAU' | 'XAG' | 'XPT', number>>> {
+    const out: Partial<Record<'XAU' | 'XAG' | 'XPT', number>> = {};
+    await Promise.all(
+      (['XAU', 'XAG', 'XPT'] as const).map(async (sym) => {
+        try {
+          const res = await fetch(`https://api.gold-api.com/price/${sym}/INR`, { signal: AbortSignal.timeout(10_000) });
+          const body = (await res.json().catch(() => null)) as { price?: number; currency?: string } | null;
+          if (res.ok && body?.currency === 'INR' && typeof body.price === 'number' && body.price > 0) out[sym] = body.price;
+        } catch (e) {
+          this.log.warn(`Spot ${sym} failed: ${(e as Error).message}`);
+        }
+      }),
+    );
+    return out;
   }
 
   /** The latest rate per metal on or before the given day. */
@@ -109,10 +163,12 @@ export class MetalRatesService implements OnModuleInit {
 
   async today() {
     const day = indiaDay();
-    const [latest, feed] = await Promise.all([this.latest(day), this.feedUrl()]);
+    const [latest, feed, src, settings] = await Promise.all([this.latest(day), this.feedUrl(), this.source(), this.settings.get('metal_pricing')]);
     return {
       date: day.toISOString().slice(0, 10),
-      feed: { configured: !!feed, fromEnv: feed?.fromEnv ?? false, url: feed && !feed.fromEnv ? feed.url : null },
+      feed: { configured: !!src, fromEnv: feed?.fromEnv ?? false, url: feed && !feed.fromEnv ? feed.url : null, kind: src?.kind ?? null },
+      liveMarket: settings.liveMarket,
+      marketPremium: settings.marketPremium,
       rates: METAL_RATE_KEYS.map((k) => {
         const r = latest.get(k);
         return { metal: k, label: METAL_RATE_LABEL[k], ratePerGramPaise: r?.ratePerGramPaise ?? null, effectiveDate: r ? r.effectiveDate.toISOString().slice(0, 10) : null, isToday: !!r && r.effectiveDate.getTime() === day.getTime(), source: r?.source ?? null };
@@ -137,7 +193,13 @@ export class MetalRatesService implements OnModuleInit {
 
   async setMargins(input: z.infer<typeof marginsInput>) {
     const before = await this.settings.get('metal_pricing');
-    const value = { ...before, margins: input.margins, ...(input.feedUrl !== undefined ? { feedUrl: input.feedUrl } : {}) };
+    const value = {
+      ...before,
+      margins: input.margins,
+      ...(input.feedUrl !== undefined ? { feedUrl: input.feedUrl } : {}),
+      ...(input.liveMarket !== undefined ? { liveMarket: input.liveMarket } : {}),
+      ...(input.marketPremium ? { marketPremium: input.marketPremium } : {}),
+    };
     await this.prisma.setting.upsert({ where: { key: 'metal_pricing' }, create: { key: 'metal_pricing', value: value as Prisma.InputJsonValue }, update: { value: value as Prisma.InputJsonValue } });
     this.settings.invalidate('metal_pricing');
     await this.audit.record('Setting', 'metal_pricing', 'UPDATE', before, value);
@@ -145,6 +207,13 @@ export class MetalRatesService implements OnModuleInit {
   }
 
   async fetchFeed(user: AuthUser | null) {
+    const src = await this.source();
+    if (src?.kind === 'market') {
+      const spot = await this.spot();
+      const rates = marketRates(spot, (await this.settings.get('metal_pricing')).marketPremium);
+      if (!rates.length) throw badRequest('FEED_FAILED', 'The live market prices could not be reached; nothing was changed. Try again, or enter today’s rates by hand.');
+      return { ...(await this.setRates(user, { rates }, 'FEED')), spot };
+    }
     const feed = await this.feedUrl();
     if (!feed) throw badRequest('FEED_OFF', 'No metal rate feed is set up. Enter today’s rates by hand.');
     const url = feed.url;
