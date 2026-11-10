@@ -2,8 +2,7 @@ import Link from 'next/link';
 import { CategoryTiles, CenterHeading, FinishTabs, OutlineLink, ProductRail } from '@/components/home-store';
 import { LocationGate } from '@/components/location-gate';
 import { IconFor } from '@/components/icons';
-import { OceanHero, type OceanProduct } from '@/components/ocean/OceanHero';
-import { SP_JRP_01_BOTTOM_ROWS } from '@/components/turntable-cuts';
+import { PearlFilm, type FilmProduct } from '@/components/pearl-film/PearlFilm';
 import { Container } from '@/components/ui';
 import { JsonLd, meta, SITE_URL } from '@/lib/seo';
 import { cityFromCookie, get, pinFromCookie } from '@/lib/server-api';
@@ -83,7 +82,7 @@ export default async function HomePage() {
   // The opening scene's glass card: only what the catalogue says about the piece.
   const crownFinishes = [...new Set(signature.filter((p) => p.sku.startsWith('SP-JRP-01-')).map((p) => p.metal).filter((m): m is string => !!m))];
   const waNumber = site?.whatsapp.default?.replace(/\D/g, '');
-  const oceanProduct: OceanProduct = {
+  const oceanProduct: FilmProduct = {
     name: 'Filigree Crown Ring',
     href: crownHref,
     collection: 'The Signature Collection',
@@ -107,7 +106,7 @@ export default async function HomePage() {
       {/* The first thing a new visitor meets: where should we deliver? */}
       <LocationGate />
       {/* The opening scene: a shell on the sea opens, a pearl rises out of it, and under the water it becomes the ring. */}
-      <OceanHero frames="/turntable/sp-jrp-01" count={120} product={oceanProduct} ringCuts={SP_JRP_01_BOTTOM_ROWS} />
+      <PearlFilm frames="/turntable/sp-jrp-01-cut" count={120} product={oceanProduct} />
 
       {/* Why buy here, in four lines. */}
       <div className="border-b border-line bg-surface">
