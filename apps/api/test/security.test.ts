@@ -189,3 +189,27 @@ describe('cart reminders', () => {
     expect(safeFirstName(null)).toBe('there');
   });
 });
+
+describe('transport hardening (pre-launch audit)', () => {
+  it('refuses compressed request bodies before any parser runs (body-parser GHSA-27r3-jxmh-p828)', async () => {
+    const { gzipSync } = await import('node:zlib');
+    const body = Buffer.concat([gzipSync(Buffer.from(JSON.stringify({ email: 'gz@example.test', consent: true }))), Buffer.from('trailing-bytes')]);
+    const res = await http().post(api('/newsletter')).set('Content-Type', 'application/json').set('Content-Encoding', 'gzip').send(body).expect(415);
+    expect(res.body.code).toBe('UNSUPPORTED_ENCODING');
+    // The webhook route is covered too, and uncompressed bodies still work.
+    await http().post(api('/webhooks/payment')).set('Content-Type', 'application/json').set('Content-Encoding', 'deflate').send(Buffer.from('x')).expect(415);
+    await http().post(api('/payments/verify')).set('Content-Encoding', 'identity').send({ orderId: 'a', paymentId: 'b', signature: '00' }).expect(200);
+  });
+
+  it('serves media as data, never as a page that can run script', async () => {
+    const { mkdirSync, writeFileSync } = await import('node:fs');
+    const { join } = await import('node:path');
+    const dir = join(process.env.STORAGE_LOCAL_DIR!, 'public', 'audit');
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(join(dir, 'x.svg'), '<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>');
+    const res = await http().get('/media/audit/x.svg').expect(200);
+    expect(res.headers['content-security-policy']).toMatch(/sandbox/);
+    expect(res.headers['content-security-policy']).toMatch(/default-src 'none'/);
+    expect(res.headers['x-content-type-options']).toBe('nosniff');
+  });
+});

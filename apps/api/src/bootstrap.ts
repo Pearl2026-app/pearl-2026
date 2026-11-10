@@ -17,6 +17,21 @@ import { JobsService } from './queue/jobs.service';
 import { STORAGE, type StorageProvider } from './providers/types';
 
 
+/** Media is data, never a page: an uploaded or bundled file (an SVG, say) cannot run script on the shop's origin. */
+const mediaHeaders = (res: express.Response) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('Content-Security-Policy', "default-src 'none'; img-src 'self'; style-src 'unsafe-inline'; sandbox");
+};
+
+/** 415 for a request body sent with a Content-Encoding (gzip, deflate, br…). */
+export function rejectEncodedBodies(req: express.Request, res: express.Response, next: express.NextFunction) {
+  const enc = String(req.headers['content-encoding'] ?? '').trim().toLowerCase();
+  if (enc && enc !== 'identity') {
+    res.status(415).json({ code: 'UNSUPPORTED_ENCODING', message: 'Send the request body uncompressed.' });
+    return;
+  }
+  next();
+}
 
 export async function createApp(opts: { logger?: boolean } = {}): Promise<INestApplication> {
   const c = config();
@@ -26,6 +41,9 @@ export async function createApp(opts: { logger?: boolean } = {}): Promise<INestA
     bodyParser: true,
   });
   app.set('trust proxy', 1);
+  // No client of this API compresses request bodies. Refusing them before any body parser runs closes the
+  // body-parser < 2.4.0 crash on compressed bodies with trailing bytes (GHSA-27r3-jxmh-p828) and zip bombs.
+  app.use(rejectEncodedBodies);
   app.useBodyParser('json', { limit: '2mb' });
   app.use(
     helmet({
@@ -49,7 +67,7 @@ export async function createApp(opts: { logger?: boolean } = {}): Promise<INestA
   // On Vercel Functions the photos that ship with the code (sample art, stock photos, the signature collection) are
   // prepared in the build into apps/api/bundled-media and served read-only from there.
   const bundled = join(__dirname, '../bundled-media/public');
-  if (existsSync(bundled)) app.use('/media', express.static(bundled, { maxAge: '365d', immutable: true, setHeaders: (res) => res.setHeader('X-Content-Type-Options', 'nosniff') }));
+  if (existsSync(bundled)) app.use('/media', express.static(bundled, { maxAge: '365d', immutable: true, setHeaders: mediaHeaders }));
 
   // Scheduled jobs on Vercel Functions: no long-running process, so due jobs run when requests come in (at most once a
   // minute per instance), plus a daily Vercel Cron call to /api/v1/system/tick.
@@ -67,10 +85,7 @@ export async function createApp(opts: { logger?: boolean } = {}): Promise<INestA
     express.static(join(c.storageDir, 'public'), {
       maxAge: '365d',
       immutable: true,
-      setHeaders: (res) => {
-        res.setHeader('X-Content-Type-Options', 'nosniff');
-        res.setHeader('Content-Security-Policy', "default-src 'none'; img-src 'self'; style-src 'unsafe-inline'; sandbox");
-      },
+      setHeaders: mediaHeaders,
     }),
   );
 
@@ -89,8 +104,7 @@ export async function createApp(opts: { logger?: boolean } = {}): Promise<INestA
           if (!body) return void res.status(404).end();
           res.setHeader('Content-Type', TYPES[key.split('.').pop()!.toLowerCase()] ?? 'application/octet-stream');
           res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
-          res.setHeader('X-Content-Type-Options', 'nosniff');
-          res.setHeader('Content-Security-Policy', "default-src 'none'; img-src 'self'; style-src 'unsafe-inline'; sandbox");
+          mediaHeaders(res);
           res.end(req.method === 'HEAD' ? undefined : body);
         })
         .catch(next);
