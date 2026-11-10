@@ -69,39 +69,50 @@ Take them from a production build with real product photos (the sample data has 
 
 ## 2. Sahyadri Pearls Delivery (delivery partner app)
 
-Listed as **unlisted / private** where possible: on Play, internal or closed testing; on iOS, Apple Business Manager custom app or an unlisted app. Only registered partners can sign in.
+Release files: built by the "Delivery app (Android release)" GitHub workflow (branch `android-builds`), then signed
+with the owner's upload key (kept off GitHub; SHA-1 `A4:AB:C1:F7:0E:77:34:0F:70:B4:63:74:F2:F4:6C:76:2F:F7:CA:27`).
+Google keeps the app signing key (Play App Signing).
+
+**Which track.** Only registered partners can sign in, so start on **Internal testing** (live within minutes, up to
+100 testers by email). A *personal* developer account made after November 2023 must run a closed test with at least
+12 testers for 14 days before it may publish to Production; an *organisation* account can go to Production directly.
 
 | Field | Value |
 |---|---|
 | App name | Sahyadri Pearls Delivery |
-| Package / bundle id | `in.sahyadripearls.delivery` |
+| Package | `in.sahyadripearls.delivery` |
 | Category | Business |
-| Content rating | Everyone / 4+ |
-| Privacy policy | `https://www.sahyadripearls.in/privacy` |
+| Content rating | Everyone (questionnaire: no violence, no user-generated content shared with others, no purchases) |
+| Privacy policy | `https://<site>/delivery-app-privacy` (today `https://sahyadri-pearls-demo.vercel.app/delivery-app-privacy`) |
+| Account deletion | `https://<site>/delete-account` |
+| Ads | No |
 
-**Short description**
+**Short description** (80 characters at most)
 Deliveries for Sahyadri Pearls partners: jobs, proof of delivery and cash.
 
 **Full description**
 For registered Sahyadri Pearls delivery partners only.
-• Today's deliveries and history
-• One tap for picked up and out for delivery
-• Proof of delivery: photo, customer code or signature
-• Cash on delivery collection and cash to hand over
-• Works with no signal: updates are sent when you are back online
-• A notification for every new delivery
+• Your deliveries for today, and the ones you have completed
+• One tap for "Picked up" and "Start delivery"
+• Proof of delivery: a photo of the handover, plus the customer's code or a signature
+• Cash on delivery: shows what to collect, and records it
+• Works with a weak signal: updates are saved on the phone and sent when you are back online
 
-**Reviewer access (both stores):** provide a test partner login. The reviewer signs in with a phone number and a one-time code, so give them a dedicated test number whose code the team can read from the admin message log, or arrange a fixed review code with the SMS provider. Never put a real partner's details in the review notes.
+Not in this first version: push notifications (they need a Firebase project; the jobs list refreshes by itself).
+
+**Reviewer access.** Google's reviewers need a working login. Create a test partner in the admin (Staff & partner
+logins → Delivery partner) with a spare number, give it one sample order, and put the number and how to get the
+code in Play Console → App content → App access. Never use a real partner's details.
 
 ### Google Play: Data safety
-| Data type | Collected | Purpose |
-|---|---|---|
-| Name, phone number | Yes | Account management |
-| Precise location | Yes, once when a delivery is completed (not in the background) | App functionality (proof of delivery) |
-| Photos | Yes (proof-of-delivery photos) | App functionality |
-| Device IDs (push token) | Yes | Notifications |
+| Data type | Collected | Shared | Purpose |
+|---|---|---|---|
+| Name, phone number | Yes | No | Account management |
+| Precise location | Optional, once at the moment of handover (never in the background) | No | App functionality (proof of delivery) |
+| Photos | Yes, the handover photo | No | App functionality (proof of delivery) |
 
-Encrypted in transit: **Yes**. Deletion: the partner asks the city team, who deactivate the login in the admin.
+Encrypted in transit: **Yes**. Users can ask for deletion: **Yes**, at `/delete-account` or through the city team.
+No ads, no analytics, no data sold.
 
 ---
 

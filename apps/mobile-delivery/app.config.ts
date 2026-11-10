@@ -27,6 +27,16 @@ const config: ExpoConfig = {
     versionCode: Number(process.env.ANDROID_VERSION_CODE ?? 1),
     adaptiveIcon: { foregroundImage: './assets/adaptive-icon.png', backgroundColor: '#070E4D' },
     permissions: ['CAMERA', 'ACCESS_COARSE_LOCATION', 'ACCESS_FINE_LOCATION', 'POST_NOTIFICATIONS'],
+    // Added by libraries but never used (the camera takes still photos only; no overlays, files or biometrics).
+    // Leaving them out keeps the Play Store data-safety form and the review simple.
+    blockedPermissions: [
+      'android.permission.RECORD_AUDIO',
+      'android.permission.SYSTEM_ALERT_WINDOW',
+      'android.permission.READ_EXTERNAL_STORAGE',
+      'android.permission.WRITE_EXTERNAL_STORAGE',
+      'android.permission.USE_BIOMETRIC',
+      'android.permission.USE_FINGERPRINT',
+    ],
   },
   // Browser preview served under a path of the website (EXPO_BASE_URL, e.g. /apps/customer).
   ...(process.env.EXPO_BASE_URL ? { experiments: { baseUrl: process.env.EXPO_BASE_URL } } : {}),
