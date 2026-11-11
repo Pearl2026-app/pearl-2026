@@ -19,7 +19,9 @@
     "format": "prettier --write .",
     "e2e": "node e2e/reset-db.mjs && playwright test -c e2e",
     "load": "node scripts/load/load.mjs",
-    "api:docs": "pnpm --filter @sahyadri/api build && node --env-file=apps/api/.env apps/api/dist/openapi.js docs/api/openapi.json && node scripts/api-reference.mjs"
+    "api:docs": "pnpm --filter @sahyadri/api build && node --env-file=apps/api/.env apps/api/dist/openapi.js docs/api/openapi.json && node scripts/api-reference.mjs",
+    "hostinger:build": "bash scripts/hostinger/build.sh",
+    "start": "node scripts/hostinger/start.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.0",
