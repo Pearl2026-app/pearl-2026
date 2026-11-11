@@ -149,13 +149,17 @@ export const WATER_FRAG = /* glsl */ `
       // the sun's path: a field of glints towards the sun
       float spec = pow(max(dot(r, uSun), 0.0), 220.0);
       float glint = pow(noise(vWorld.xz * 6.0 + vec2(uTime * 2.0, -uTime * 1.6)), 8.0);
-      col += uSunGlow * spec * (1.5 + 6.0 * glint);
+      col += uSunGlow * spec * (1.5 + 6.0 * glint) * (1.0 - 0.85 * uClear * (1.0 - smoothstep(3.0, 9.0, length(vWorld.xz - uClearC))));
       // haze into the horizon
       col = mix(col, skyColour(normalize(vec3(v.x, 0.02, v.z))), smoothstep(30.0, 160.0, dist));
-      // the shallows around the scallop: clear enough to see the sand and its moving light
-      float shallow = uClear * (1.0 - smoothstep(3.0, 9.0, length(vWorld.xz - uClearC)));
-      col = mix(col, mix(col, vec3(0.62, 0.93, 0.9), 0.25), shallow);
-      float alpha = mix(mix(0.93, 1.0, smoothstep(1.0, 8.0, dist)), 0.42 + 0.4 * fres, shallow);
+      // the shallows around the scallop: clear enough to see the sand and its moving light; rings spread from the shell
+      float dc = length(vWorld.xz - uClearC);
+      float shallow = uClear * (1.0 - smoothstep(3.0, 9.0, dc));
+      float rings = sin(dc * 70.0 - uTime * 3.2) * exp(-dc * 5.0) * smoothstep(0.1, 0.16, dc);
+      float ringGlint = pow(max(rings, 0.0), 6.0) * shallow;
+      col = mix(col, sky, clamp(fres * 0.12, 0.0, 1.0) * shallow);
+      col += vec3(1.0, 0.98, 0.94) * ringGlint * 0.5;
+      float alpha = mix(mix(0.93, 1.0, smoothstep(1.0, 8.0, dist)), 0.1 + 0.55 * fres + ringGlint * 0.4, shallow);
       gl_FragColor = vec4(col * mix(1.0, 0.35, uDark), alpha);
     } else {
       // from below: a bright moving window overhead, mirror-like at grazing angles
@@ -413,22 +417,141 @@ export const SEABED_VERT = /* glsl */ `
     gl_Position = projectionMatrix * viewMatrix * w;
   }
 `;
+/**
+ * Light through rippling water on a shallow sandy bottom, as in the owner's picture: thin, bright, wavy lines (an
+ * iterated warp, the classic "water caustics" pattern), a little sparkle where they cross, refraction wobble, the
+ * scallop's soft shadow, and the water's turquoise. Colours are taken from the picture.
+ */
+const CAUSTIC_GLSL = /* glsl */ `
+  float causticTile(vec2 uv, float time) {
+    vec2 p = mod(uv * 6.28318, 6.28318) - 250.0;
+    vec2 i = p;
+    float c = 1.0;
+    float inten = 0.005;
+    for (int n = 0; n < 5; n++) {
+      float t = time * (1.0 - (3.5 / float(n + 1)));
+      i = p + vec2(cos(t - i.x) + sin(t + i.y), sin(t - i.y) + cos(t + i.x));
+      c += 1.0 / length(vec2(p.x / (sin(i.x + t) / inten), p.y / (cos(i.y + t) / inten)));
+    }
+    c /= 5.0;
+    c = 1.17 - pow(c, 1.4);
+    return pow(abs(c), 8.0);
+  }
+`;
 export const SEABED_FRAG = /* glsl */ `
   ${NOISE_GLSL}
+  ${CAUSTIC_GLSL}
   uniform float uTime, uDark;
+  uniform vec2 uShadow; // where the scallop's shadow falls
   varying vec3 vWorld;
   varying vec2 vUv;
   void main() {
-    vec2 p = vWorld.xz * 1.6;
-    vec2 w = p + 0.25 * vec2(sin(p.y * 1.3 + uTime * 0.6), cos(p.x * 1.1 - uTime * 0.5));
-    float a = 1.0 - smoothstep(0.0, 0.07, cells(w, uTime * 0.8));
-    float b = 1.0 - smoothstep(0.0, 0.08, cells(w * 1.7 + 4.0, uTime * 1.05));
-    // pale sand seen through turquoise water, with the bright web of light moving across it
-    vec3 sand = mix(vec3(0.7, 0.78, 0.68), vec3(0.84, 0.88, 0.78), noise(vWorld.xz * 0.8));
-    vec3 col = sand * vec3(0.32, 0.72, 0.68) + vec3(0.7, 1.0, 0.94) * (a * 0.32 + b * 0.18);
+    vec2 q = vWorld.xz;
+    // the bottom seen through moving water bends a little
+    q += 0.012 * vec2(sin(q.y * 9.0 + uTime * 1.3), cos(q.x * 8.0 - uTime * 1.1));
+    float c1 = causticTile(q * 1.5, uTime * 0.45);
+    float c2 = causticTile(q * 1.5 * 1.37 + 3.1, uTime * 0.38);
+    float cau = clamp(c1 * 0.75 + c2 * 0.45, 0.0, 1.6);
+    // water over sand: turquoise, a shade deeper towards the far side
+    vec3 base = mix(vec3(0.016, 0.32, 0.29), vec3(0.01, 0.22, 0.23), smoothstep(-0.2, 1.4, -(vWorld.z - uShadow.y)));
+    base *= 0.92 + 0.12 * noise(q * 3.0);
+    vec3 col = base + vec3(0.6, 0.82, 0.7) * cau * 0.9;
+    col += vec3(1.0) * pow(cau, 4.0) * 0.5 * (0.6 + 0.4 * sin(uTime * 3.0 + q.x * 40.0)); // sparkle
+    // the scallop's soft shadow on the sand
+    float sh = exp(-dot((q - uShadow) * vec2(1.0, 1.4), (q - uShadow) * vec2(1.0, 1.4)) / 0.012);
+    col *= 1.0 - 0.45 * sh;
     // under the water, distance turns it to the water's own colour
     col = mix(col, vec3(0.03, 0.3, 0.32), smoothstep(1.0, 9.0, length(vWorld - cameraPosition)) * step(cameraPosition.y, 0.0));
     float edge = smoothstep(0.5, 0.36, length(vUv - 0.5));
     gl_FragColor = vec4(col * mix(1.0, 0.35, uDark), edge);
   }
 `;
+
+// ---- the scallop of the owner's picture -------------------------------------------------------------------------------
+/**
+ * One valve of a scallop like the one in the picture: a rounded fan of about 15 rounded ribs from a straight hinge, the
+ * ribs carrying through to a scalloped, wavy lip; a real shell with thickness (an outside, an inside, and the rim between
+ * them that catches the light). The hinge lies along x at the origin and the fan spreads to +z (radius about 1). kind
+ * 'lower' is the bowl (it hangs down), 'upper' the lid (it domes up). Colours from the picture: outside peach-pink with
+ * lighter crests, deeper grooves and faint orange growth bands; inside a smooth pale pink; the rim lightest.
+ */
+export function scallopFan(kind: 'lower' | 'upper', seg = { s: 64, a: 200 }) {
+  const span = THREE.MathUtils.degToRad(80);
+  const ribs = 15;
+  const depth = kind === 'lower' ? -0.55 : 0.3;
+  const out = kind === 'lower' ? -1 : 1; // which way "outside" is
+  const thick = 0.03;
+  const pos: number[] = [];
+  const col: number[] = [];
+  const idx: number[] = [];
+  const C = (h: number) => new THREE.Color(h);
+  const oCrest = C(0xf3b8ab), oBody = C(0xe4857f), oGroove = C(0xc86068), oBand = C(0xe07e60);
+  const iCrest = C(0xf8d2c8), iBody = C(0xeea09a), iGroove = C(0xcf7276);
+  const rimCol = C(0xfbe1d8);
+  const c = new THREE.Color();
+  const row = seg.a + 1;
+  const ring = (inner: boolean) => {
+    const base = pos.length / 3;
+    for (let i = 0; i <= seg.s; i++) {
+      const t = i / seg.s;
+      for (let j = 0; j <= seg.a; j++) {
+        const a = -span + (2 * span * j) / seg.a;
+        const ph = (a / span) * (ribs / 2) * Math.PI;
+        const rib = Math.sign(Math.cos(ph)) * Math.pow(Math.abs(Math.cos(ph)), 0.8);
+        const r = t * (1 + 0.035 * rib * t); // the lip follows the ribs: a wavy, scalloped edge
+        const x = Math.sin(a) * r;
+        const z = Math.cos(a) * r * (0.88 + 0.12 * Math.cos(a)) + 0.06 * t;
+        const bowl = Math.sin(Math.PI * Math.min(1, Math.pow(t, 0.85) * 0.62 + 0.38 * t)) * (1 - 0.3 * (a / span) ** 2);
+        const flare = (kind === 'lower' ? 0.06 : -0.04) * Math.pow(t, 5); // the rim turns out a little
+        let y = depth * bowl + out * 0.06 * rib * Math.pow(t, 1.1) + flare;
+        if (inner) y -= out * thick * Math.min(1, t * 4); // the inside sits a shell's thickness in
+        pos.push(x, y, z);
+        const k = rib * 0.5 + 0.5;
+        if (inner) c.copy(iGroove).lerp(iBody, Math.min(1, k * 1.3)).lerp(iCrest, Math.max(0, k - 0.5) * 1.6 * (0.3 + 0.7 * t));
+        else {
+          const stripe = Math.max(0, Math.sin(t * 34 + 2 * Math.sin(a * 3)) - 0.55) * 0.9;
+          c.copy(oGroove).lerp(oBody, Math.min(1, k * 1.3)).lerp(oCrest, Math.max(0, k - 0.55) * 1.6 * (0.35 + 0.65 * t)).lerp(oBand, stripe * 0.35);
+        }
+        if (t > 0.985) c.lerp(rimCol, 0.3);
+        col.push(c.r, c.g, c.b);
+      }
+    }
+    return base;
+  };
+  const o = ring(false);
+  const n = ring(true);
+  for (let i = 0; i < seg.s; i++)
+    for (let j = 0; j < seg.a; j++) {
+      const a = i * row + j;
+      const b = a + row;
+      // outside faces outward (down on the bowl, up on the lid), inside faces the other way
+      if (out > 0) {
+        idx.push(o + a, o + b, o + a + 1, o + b, o + b + 1, o + a + 1);
+        idx.push(n + a, n + a + 1, n + b, n + b, n + a + 1, n + b + 1);
+      } else {
+        idx.push(o + a, o + a + 1, o + b, o + b, o + a + 1, o + b + 1);
+        idx.push(n + a, n + b, n + a + 1, n + b, n + b + 1, n + a + 1);
+      }
+    }
+  // the rim: join the outside and the inside round the lip and down both sides
+  const last = seg.s * row;
+  const tri = (p: number, q: number, r: number) => (out > 0 ? idx.push(p, q, r) : idx.push(p, r, q));
+  for (let j = 0; j < seg.a; j++) {
+    tri(o + last + j, n + last + j, o + last + j + 1);
+    tri(n + last + j, n + last + j + 1, o + last + j + 1);
+  }
+  for (let i = 0; i < seg.s; i++) {
+    const l = i * row;
+    const r = i * row + seg.a;
+    tri(o + l, n + l, o + l + row);
+    tri(n + l, n + l + row, o + l + row);
+    tri(o + r, o + r + row, n + r);
+    tri(n + r, o + r + row, n + r + row);
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+  g.setIndex(idx);
+  g.computeVertexNormals();
+  return g;
+}

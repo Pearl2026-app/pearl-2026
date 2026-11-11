@@ -9,8 +9,6 @@ import { Bloom, EffectComposer, Vignette } from '@react-three/postprocessing';
 import { useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 import { FARM, SHELL_AT, type StoryVersion, type V3 } from './versions';
 import {
   MOTE_FRAG,
@@ -31,6 +29,7 @@ import {
   netTexture,
   oysterValve,
   ridge,
+  scallopFan,
   waveHeight,
   waveSlope,
 } from './world';
@@ -53,7 +52,8 @@ const smooth = (x: number) => {
 const span = (p: number, [a, b]: [number, number]) => smooth((p - a) / (b - a));
 const mix = THREE.MathUtils.lerp;
 const OYSTER_SCALE = 0.16;
-const SCALLOP_SCALE = 0.13;
+const SCALLOP_SCALE = 0.15;
+const SCALLOP_PEARL_R = 0.039;
 const PEARL_R = 0.032;
 const RING_ASPECT = 720 / 880;
 const FOG_ABOVE = new THREE.Color(0xeac3b8);
@@ -196,16 +196,16 @@ function Farm({ version, progress, frames, count, small, onReady }: StageProps) 
     const topGeo = oysterValve(0.17, { r: 40, a: 110 }, 1.3);
     const botGeo = oysterValve(-0.27, { r: 40, a: 110 }, 2.1);
     const pearlMat = new THREE.MeshPhysicalMaterial({
-      color: 0xf8f2ec,
-      roughness: 0.1,
+      color: 0xcdc0c6,
+      roughness: 0.16,
       metalness: 0,
       clearcoat: 1,
       clearcoatRoughness: 0.06,
-      iridescence: 0.45,
+      iridescence: 0.65,
       iridescenceIOR: 1.5,
       sheen: 0.6,
       sheenColor: new THREE.Color(0xffd9e1),
-      envMapIntensity: 1.5,
+      envMapIntensity: 0.6,
       transparent: true,
     });
     const pearlGeo = new THREE.SphereGeometry(1, 48, 32);
@@ -266,13 +266,14 @@ function Farm({ version, progress, frames, count, small, onReady }: StageProps) 
     const glowGeo = new THREE.PlaneGeometry(1, 1);
     const fog = new THREE.FogExp2(new THREE.Color(0xf0dbd4), 0.0065);
     // the shallows' sandy bottom under the scallop, and the scallop's materials (its shape comes from the GLB model)
-    const seabed = new THREE.ShaderMaterial({ vertexShader: SEABED_VERT, fragmentShader: SEABED_FRAG, transparent: true, depthWrite: false, uniforms: { uTime: { value: 0 }, uDark: { value: 0 } } });
+    const seabed = new THREE.ShaderMaterial({ vertexShader: SEABED_VERT, fragmentShader: SEABED_FRAG, transparent: true, depthWrite: false, uniforms: { uTime: { value: 0 }, uDark: { value: 0 }, uShadow: { value: new THREE.Vector2(SHELL_AT[0] + 0.07, SHELL_AT[2] - 0.05) } } });
     const seabedGeo = new THREE.PlaneGeometry(22, 22).rotateX(-Math.PI / 2);
-    const shellOut = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.42, metalness: 0, envMapIntensity: 0.7, side: THREE.FrontSide });
+    // the picture's shell: wet and glossy outside, smooth pale pink inside
+    const shellOut = new THREE.MeshPhysicalMaterial({ vertexColors: true, roughness: 0.38, metalness: 0, clearcoat: 0.9, clearcoatRoughness: 0.18, sheen: 0.4, sheenColor: new THREE.Color(0xffd6cf), envMapIntensity: 0.9, side: THREE.FrontSide });
     const shellIn = new THREE.MeshPhysicalMaterial({
-      color: 0xf2c3c3,
-      roughness: 0.2,
-      iridescence: 0.8,
+      color: 0xf3b4ae,
+      roughness: 0.22,
+      iridescence: 0.25,
       iridescenceIOR: 1.5,
       iridescenceThicknessRange: [200, 500],
       clearcoat: 0.5,
@@ -299,57 +300,25 @@ function Farm({ version, progress, frames, count, small, onReady }: StageProps) 
     };
   }, [b, scene]);
 
-  // ---- the scallop (public/models/scallop.glb, meshopt-compressed), for the Shell & Sea story --------------------
+  // ---- the scallop of the owner's picture, for the Shell & Sea story (shape and colours made in code) -------------
   const scallopStory = version.hero === 'scallop';
-  const shell = useRef<{ upper: THREE.BufferGeometry; lower: THREE.BufferGeometry } | null>(null);
   const shellGroup = useRef<THREE.Group>(null);
   const shellTop = useRef<THREE.Group>(null);
   useEffect(() => {
-    if (!scallopStory) return;
-    let live = true;
-    new GLTFLoader()
-      .setMeshoptDecoder(MeshoptDecoder)
-      .loadAsync('/models/scallop.glb')
-      .then((gltf) => {
-        gltf.scene.updateMatrixWorld(true);
-        // the file stores quantised vertices with a scale/offset on each node: bake that back into plain floats
-        const geo = (name: string) => {
-          const mesh = gltf.scene.getObjectByName(name) as THREE.Mesh | undefined;
-          if (!mesh) return null;
-          const g = mesh.geometry;
-          for (const key of Object.keys(g.attributes)) {
-            const a = g.getAttribute(key) as THREE.BufferAttribute;
-            const f = new Float32Array(a.count * a.itemSize);
-            const get = [a.getX, a.getY, a.getZ, a.getW]; // these undo the normalised (quantised) storage
-            for (let i = 0; i < a.count; i++) for (let k = 0; k < a.itemSize; k++) f[i * a.itemSize + k] = get[k].call(a, i);
-            g.setAttribute(key, new THREE.BufferAttribute(f, a.itemSize));
-          }
-          return g.applyMatrix4(mesh.matrixWorld);
-        };
-        const upper = geo('upper');
-        // the upper valve's faces point inwards in the file: turn them so its painted outside faces out
-        if (upper?.index) {
-          const ix = upper.index.array as Uint32Array | Uint16Array;
-          for (let i = 0; i < ix.length; i += 3) [ix[i + 1], ix[i + 2]] = [ix[i + 2], ix[i + 1]];
-          upper.index.needsUpdate = true;
-          upper.computeVertexNormals();
-        }
-        const lower = geo('lower');
-        if (!live || !upper || !lower || !shellGroup.current || !shellTop.current) return;
-        shell.current = { upper, lower };
-        const add = (parent: THREE.Object3D, g: THREE.BufferGeometry) => {
-          parent.add(new THREE.Mesh(g, b.shellOut), new THREE.Mesh(g, b.shellIn));
-        };
-        add(shellGroup.current, lower);
-        add(shellTop.current, upper);
-      })
-      .catch(() => {});
+    if (!scallopStory || !shellGroup.current || !shellTop.current) return;
+    const seg = small ? { s: 40, a: 130 } : { s: 64, a: 200 };
+    const lower = scallopFan('lower', seg);
+    const upper = scallopFan('upper', seg);
+    // each valve is a solid shell (outside, inside and rim in one shape, coloured per vertex)
+    const meshes = [new THREE.Mesh(lower, b.shellOut), new THREE.Mesh(upper, b.shellOut)];
+    shellGroup.current.add(meshes[0]);
+    shellTop.current.add(meshes[1]);
     return () => {
-      live = false;
-      shell.current?.upper.dispose();
-      shell.current?.lower.dispose();
+      meshes.forEach((m) => m.removeFromParent());
+      lower.dispose();
+      upper.dispose();
     };
-  }, [scallopStory, b]);
+  }, [scallopStory, b, small]);
 
   // ---- the ring's photographs, fetched when the story nears its end -----------------------------------------------
   const ring = useRef({ imgs: [] as Array<HTMLImageElement | null>, asked: false, shown: -1 });
@@ -566,10 +535,11 @@ function Farm({ version, progress, frames, count, small, onReady }: StageProps) 
       const [sx, , sz] = SHELL_AT;
       const [dx, dz] = waveSlope(sx, sz, t);
       sg.visible = scallopStory;
-      sg.position.set(sx, waveHeight(sx, sz, t) + 0.035, sz);
-      sg.rotation.set(dz * 0.7 + 0.04, 0.15 + Math.sin(t * 0.2) * 0.04, -dx * 0.7);
+      // as in the picture: sitting a little into the water, the hinge at the back right, the open lip facing the camera's left
+      sg.position.set(sx, waveHeight(sx, sz, t) + 0.022, sz);
+      sg.rotation.set(dz * 0.5 + 0.03, -0.8 + Math.sin(t * 0.2) * 0.03, -dx * 0.5);
       sg.scale.setScalar(SCALLOP_SCALE);
-      if (shellTop.current) shellTop.current.rotation.x = -open * 1.0;
+      if (shellTop.current) shellTop.current.rotation.x = -open * 1.35; // about 77° open, as in the picture
     }
 
     // the pearl: in the shell, rises, then moves to where the ring's pearl will be
@@ -578,7 +548,7 @@ function Farm({ version, progress, frames, count, small, onReady }: StageProps) 
       hero.updateMatrixWorld();
       const holder = scallopStory && sg ? sg : hero;
       holder.updateMatrixWorld();
-      const seat = scallopStory ? tmp.c.set(0, 0.02, 0.95).applyMatrix4(holder.matrixWorld) : tmp.c.set(0, 0.0, 0.55).applyMatrix4(holder.matrixWorld);
+      const seat = scallopStory ? tmp.c.set(0, -0.2, 0.5).applyMatrix4(holder.matrixWorld) : tmp.c.set(0, 0.0, 0.55).applyMatrix4(holder.matrixWorld);
       const lifted = tmp.a.copy(seat).add(tmp.up.set(0, (scallopStory ? 0.12 : 0.16) * rise + Math.sin(t * 1.2) * 0.006 * rise, 0));
       if (scallopStory && V.sink) {
         // the pearl slips into the water and sinks, the camera following it down
@@ -615,8 +585,9 @@ function Farm({ version, progress, frames, count, small, onReady }: StageProps) 
       // the ring's pearl in frame 0: 50% across, 58.4% down, 19.5% of the width across
       const ringPearl = tmp.s.copy(centre).addScaledVector(tmp.up, H * (0.5 - 0.584));
       pearl.position.copy(lifted).lerp(ringPearl, land);
-      pearl.scale.setScalar(mix(PEARL_R, H * RING_ASPECT * 0.0975, land));
+      pearl.scale.setScalar(mix(scallopStory ? SCALLOP_PEARL_R : PEARL_R, H * RING_ASPECT * 0.0975, land));
       b.pearlMat.opacity = 1 - smooth((ringIn - 0.5) / 0.5);
+      b.pearlMat.transparent = b.pearlMat.opacity < 0.999; // solid (drawn with the shells) until it fades into the ring
       pearl.visible = b.pearlMat.opacity > 0.01 && (open > 0.04 || land > 0); // shut, it is hidden inside
     }
 
@@ -685,7 +656,9 @@ function Farm({ version, progress, frames, count, small, onReady }: StageProps) 
         </group>
       </group>
       <mesh ref={refs.pearl} geometry={b.pearlGeo} material={b.pearlMat} renderOrder={10} />
-      {scallopStory && <mesh geometry={b.seabedGeo} material={b.seabed} position={[SHELL_AT[0], -1.25, SHELL_AT[2] - 2]} renderOrder={1} />}
+      {scallopStory && <mesh geometry={b.seabedGeo} material={b.seabed} position={[SHELL_AT[0], -0.42, SHELL_AT[2] - 2]} renderOrder={1} />}
+      {/* the picture's sunlight: high, from the front left, warm */}
+      {scallopStory && <directionalLight position={[SHELL_AT[0] - 1.6, 2.6, SHELL_AT[2] + 1.4]} color={0xfff1e2} intensity={1.3} />}
       <group ref={shellGroup} visible={false}>
         <group ref={shellTop} />
       </group>

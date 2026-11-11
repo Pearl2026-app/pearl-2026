@@ -14,6 +14,8 @@ export interface StoryLine {
   eyebrow?: string;
   first: string;
   second?: string;
+  /** a small line under the words (the picture's "Pearl jewellery in gold") */
+  foot?: string;
 }
 export interface StoryVersion {
   slug: string;
@@ -35,6 +37,8 @@ export interface StoryVersion {
   hero?: 'oyster' | 'scallop';
   /** the scallop story: the pearl slips into the water and sinks, glowing, as the camera follows */
   sink?: Span;
+  /** a still shown while the 3D loads, and to visitors who prefer reduced motion */
+  poster?: string;
   /** when the ring's title and then the card show */
   title: Span;
   card: Span;
@@ -162,8 +166,8 @@ export const SHELL_AT: V3 = [-30, 0, 10];
 const S = (x: number, y: number, z: number): V3 => [SHELL_AT[0] + x, y, SHELL_AT[2] + z];
 
 /**
- * Shell & Sea: the home page's opening, after the owner's reference video. Seen from above, a pink scallop floats on
- * clear shallow water with light patterns moving on the sand; it opens and the pearl rises out of it; the view lowers
+ * Shell & Sea: the home page's opening, after the owner's reference video. It starts as the owner's picture, in 3D: an open
+ * pink scallop with its pearl on clear shallow water, light moving on the sand; the pearl rises out of it; the view lowers
  * to the horizon; the pearl slips into the water and the camera follows it under, into rays and bubbles; the pearl
  * settles into the Filigree Crown ring, which turns; then the glass card.
  */
@@ -172,11 +176,12 @@ export const SHELL_STORY: StoryVersion = {
   name: 'Shell & Sea',
   summary: 'A pink scallop on clear water opens on its pearl; the view lowers to the horizon and dives under the surface, where the pearl settles into the ring.',
   hero: 'scallop',
+  poster: '/pearl-film/photo.webp',
   cam: [
-    // the camera looks a little left of the shell, so on wide screens it sits to the right of the words
-    { p: 0, pos: S(-0.12, 1.75, 0.5), look: S(-0.2, 0, -0.06) },
-    { p: 0.12, pos: S(0.08, 1.25, 0.62), look: S(-0.16, 0.02, -0.04) },
-    { p: 0.26, pos: S(0.26, 0.72, 0.82), look: S(-0.12, 0.08, -0.05) },
+    // the owner's picture: looking down at about 45°, the open shell and its pearl on the right, open water on the left
+    { p: 0, pos: S(-0.42, 0.42, 0.64), look: S(-0.22, -0.01, -0.02) },
+    { p: 0.14, pos: S(-0.34, 0.4, 0.58), look: S(-0.15, 0.0, -0.02) },
+    { p: 0.28, pos: S(-0.26, 0.5, 0.74), look: S(-0.08, 0.08, -0.02) },
     { p: 0.4, pos: S(0.22, 0.1, 0.95), look: S(0, 0.1, -2) },
     { p: 0.5, pos: S(0.16, -0.3, 0.85), look: S(0, -0.3, -1.4) },
     { p: 0.62, pos: S(0.1, -0.78, 0.9), look: S(0, -0.62, -0.8) },
@@ -185,16 +190,16 @@ export const SHELL_STORY: StoryVersion = {
   ],
   lift: [2, 3],
   float: [2, 3],
-  open: [0.08, 0.22],
-  rise: [0.18, 0.3],
+  open: [-0.2, -0.1], // open from the first frame, as in the picture
+  rise: [0.14, 0.28],
   sink: [0.42, 0.6],
   land: [0.66, 0.76],
   ring: [0.68, 0.78],
   turn: [0.7, 1],
   dark: [0.88, 0.97],
   lines: [
-    { at: [0, 0.08], eyebrow: 'Sahyadri Pearls', first: 'A pearl,', second: 'held close.' },
-    { at: [0.12, 0.28], eyebrow: 'The Signature Collection', first: 'Lustre,', second: 'made to be worn.' },
+    { at: [0, 0.09], eyebrow: 'Sahyadri Pearls', first: 'A pearl,', second: 'held close.', foot: 'Pearl jewellery in gold' },
+    { at: [0.13, 0.28], eyebrow: 'The Signature Collection', first: 'Lustre,', second: 'made to be worn.' },
     { at: [0.33, 0.44], first: 'Calm as', second: 'still water.' },
   ],
   title: [0.7, 0.86],

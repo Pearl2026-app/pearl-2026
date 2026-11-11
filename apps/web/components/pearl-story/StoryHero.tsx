@@ -133,13 +133,17 @@ export function StoryHero({ slug, product, frames, count, tabs }: { slug: string
     <LazyMotion features={domAnimation} strict>
       <section ref={section} aria-label={`The story of a pearl: ${version.name}`} className={`relative ${still ? '' : 'h-[640vh] lg:h-[720vh]'}`}>
         <div className={`${still ? 'relative min-h-[100svh]' : 'sticky top-0 h-[100svh]'} overflow-hidden ${opening}`}>
+          {/* the story's still (Shell & Sea: the owner's picture): on screen at once, then the 3D takes over */}
+          {version.poster && (
+            <img src={version.poster} alt="" fetchPriority="high" className={`absolute inset-0 h-full w-full object-cover object-[72%_50%] transition-opacity duration-1000 ${ready ? 'opacity-0' : 'opacity-100'}`} />
+          )}
           {Stage && (
             <div aria-hidden className={`absolute inset-0 transition-opacity duration-1000 ${ready ? 'opacity-100' : 'opacity-0'}`}>
               <Stage version={version} progress={progress} frames={frames} count={count} active={active} small={small} onReady={() => setReady(true)} />
             </div>
           )}
           {/* the opening comes up out of the dark */}
-          <m.div aria-hidden className="pointer-events-none absolute inset-0 bg-[#021a1f]" initial={{ opacity: still ? 0 : 0.9 }} animate={{ opacity: ready || still ? 0 : 0.9, transition: { duration: 2.2, ease: 'easeOut' } }} />
+          <m.div aria-hidden className="pointer-events-none absolute inset-0 bg-[#021a1f]" initial={{ opacity: still || version.poster ? 0 : 0.9 }} animate={{ opacity: ready || still || version.poster ? 0 : 0.9, transition: { duration: 2.2, ease: 'easeOut' } }} />
           {/* the three stories' tabs stay on screen through the whole story */}
           {tabs && <div className="absolute inset-x-0 top-0 z-10 flex justify-center px-4 pt-4">{tabs}</div>}
           <div aria-hidden className="pointer-events-none absolute inset-0 bg-[linear-gradient(90deg,rgba(3,40,46,0.42),rgba(3,40,46,0.12)_40%,transparent_60%)] max-lg:bg-[linear-gradient(180deg,rgba(3,40,46,0.45),rgba(3,40,46,0.08)_38%,transparent_55%)]" />
@@ -160,6 +164,7 @@ export function StoryHero({ slug, product, frames, count, tabs }: { slug: string
                         </>
                       )}
                     </AnimeText>
+                    {line.foot && <p className="lux-track mt-6 text-[11px] text-white/85 lg:text-[12px]">{line.foot}</p>}
                   </m.div>
                 )}
                 {showTitle && (
