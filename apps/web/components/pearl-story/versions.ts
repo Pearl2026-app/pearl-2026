@@ -179,9 +179,9 @@ export const SHELL_STORY: StoryVersion = {
   poster: '/pearl-film/photo.webp',
   cam: [
     // the owner's picture: looking down at about 45°, the open shell and its pearl on the right, open water on the left
-    { p: 0, pos: S(-0.42, 0.42, 0.64), look: S(-0.22, -0.01, -0.02) },
-    { p: 0.14, pos: S(-0.34, 0.4, 0.58), look: S(-0.15, 0.0, -0.02) },
-    { p: 0.28, pos: S(-0.26, 0.5, 0.74), look: S(-0.08, 0.08, -0.02) },
+    { p: 0, pos: S(-0.47, 0.46, 0.72), look: S(-0.22, 0.04, -0.02) },
+    { p: 0.14, pos: S(-0.4, 0.45, 0.68), look: S(-0.15, 0.06, -0.02) },
+    { p: 0.28, pos: S(-0.3, 0.54, 0.84), look: S(-0.08, 0.12, -0.02) },
     { p: 0.4, pos: S(0.22, 0.1, 0.95), look: S(0, 0.1, -2) },
     { p: 0.5, pos: S(0.16, -0.3, 0.85), look: S(0, -0.3, -1.4) },
     { p: 0.62, pos: S(0.1, -0.78, 0.9), look: S(0, -0.62, -0.8) },
