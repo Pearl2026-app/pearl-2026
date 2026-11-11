@@ -4,6 +4,13 @@ The whole shop runs as **one** Hostinger Web App on one address: the website, `/
 router (`scripts/hostinger/start.mjs`), the same split `vercel.json` makes. The database stays where it is (the
 Postgres used on Vercel); Hostinger only runs the code.
 
+## Upload instead of Git
+
+While a collaborator manages the account, Hostinger switches Git deployment off. Then make an archive with
+`bash scripts/hostinger/pack.sh` (add `NO_VIDEOS=1` to stay under a 10 MB upload) and choose **Upload your files**.
+Inside the archive, `npm run build` runs `scripts/hostinger/build.sh`, because the form only offers the standard script
+names; the entry file is `scripts/hostinger/start.mjs`.
+
 ## Create the app (hPanel → Websites → Web Apps → Get started)
 
 1. Domain: **Use temporary domain** to test first (a real domain such as `shop.sahyadripearls.com` can be connected later).
