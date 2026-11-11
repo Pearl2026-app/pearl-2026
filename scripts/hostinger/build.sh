@@ -9,7 +9,7 @@ cd "$(dirname "$0")/../.."
 PNPM="pnpm"
 command -v pnpm >/dev/null 2>&1 || PNPM="npx -y pnpm@9.12.0"
 
-[ -n "${SKIP_INSTALL:-}" ] || $PNPM install --frozen-lockfile --filter "@sahyadri/web..." --filter "@sahyadri/admin..." --filter "@sahyadri/api..."
+[ -n "${SKIP_INSTALL:-}" ] || $PNPM install --frozen-lockfile --filter sahyadri-pearls --filter "@sahyadri/web..." --filter "@sahyadri/admin..." --filter "@sahyadri/api..."
 # the website's and the admin's server-side calls to the API stay inside the app (start.mjs runs the API here);
 # the admin bakes this into its rewrites at build time
 export API_INTERNAL_URL="http://127.0.0.1:4100"

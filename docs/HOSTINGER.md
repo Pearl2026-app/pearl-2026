@@ -1,8 +1,10 @@
 # Hosting on Hostinger (Web App, Business plan)
 
 The whole shop runs as **one** Hostinger Web App on one address: the website, `/admin` and the API, behind a small
-router (`scripts/hostinger/start.mjs`), the same split `vercel.json` makes. The database stays where it is (the
-Postgres used on Vercel); Hostinger only runs the code.
+router (`scripts/hostinger/start.mjs`), the same split `vercel.json` makes. Without `DATABASE_URL`, the app runs its
+own PostgreSQL 16 beside it (`scripts/hostinger/db.mjs`, the `embedded-postgres` binaries), with its data in
+`~/sahyadri-db` (outside the app folder, so redeploys keep it) and a password generated on the server. Set
+`DATABASE_URL` instead to use an outside database (for example the Neon one Vercel uses).
 
 ## Upload instead of Git
 
@@ -28,8 +30,8 @@ names; the entry file is `scripts/hostinger/start.mjs`.
 | Variable | Value |
 | --- | --- |
 | `PUBLIC_URL` | the app's address, e.g. `https://<temporary-domain>` (no trailing slash) |
-| `DATABASE_URL` | the same database string as on Vercel |
-| `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET`, `APP_SECRET` | the same as on Vercel (16+ characters each) |
+| `DATABASE_URL` | optional: an outside database; leave it out to use the app's own PostgreSQL |
+| `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET`, `APP_SECRET` | demo: leave out (derived from the database address); live shop: required, 16+ characters each |
 | `DEMO_MODE` / `SETUP_ON_START` | as on Vercel (`DEMO_MODE=true` for the demo) |
 | everything else set on Vercel | the same values (payments, storage, mail, Redis if used) |
 

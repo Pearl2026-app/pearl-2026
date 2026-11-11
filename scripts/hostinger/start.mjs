@@ -1,7 +1,8 @@
 // Runs the whole shop as ONE Hostinger Web App (owner, 11 Nov: Vercel is paused; host on Hostinger). Starts the API,
 // the website and the admin on private ports and puts a small router on the port Hostinger gives the app, splitting
 // requests the way vercel.json does: /api and /media → API, /admin → admin, everything else → website. Each part is
-// restarted if it stops. Settings come from the app's environment variables in hPanel (see docs/HOSTINGER.md).
+// restarted if it stops. Settings come from the app's environment variables in hPanel (see docs/HOSTINGER.md); without
+// DATABASE_URL the shop runs its own PostgreSQL beside it.
 import { spawn } from 'node:child_process';
 import http from 'node:http';
 import { createRequire } from 'node:module';
@@ -12,6 +13,15 @@ const root = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const PORT = Number(process.env.PORT ?? 3000);
 const PUBLIC_URL = (process.env.PUBLIC_URL ?? `http://localhost:${PORT}`).replace(/\/+$/, '');
 const PORTS = { api: 4100, web: 4101, admin: 4102 };
+
+// No DATABASE_URL: the shop runs its own PostgreSQL here (scripts/hostinger/db.mjs).
+let ownDb = null;
+if (!process.env.DATABASE_URL) {
+  const { ownDatabase } = await import('./db.mjs');
+  ownDb = await ownDatabase();
+  process.env.DATABASE_URL = ownDb.url;
+  for (const sig of ['SIGTERM', 'SIGINT']) process.on(sig, () => void ownDb.stop().finally(() => process.exit(0)));
+}
 
 const shared = {
   ...process.env,

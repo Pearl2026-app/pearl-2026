@@ -41,14 +41,23 @@
       "prisma",
       "sharp",
       "@swc/core",
-      "esbuild"
+      "esbuild",
+      "@embedded-postgres/linux-x64",
+      "@embedded-postgres/linux-arm64"
     ],
     "overrides": {
       "@types/react": "19.2.18",
       "sharp": "^0.35.5",
       "postcss@<8.5.23": "^8.5.29",
       "js-yaml@<5.4.1": "^5.4.3",
-      "body-parser@<2.4.0": "^2.4.0"
+      "body-parser@<2.4.0": "^2.4.0",
+      "@embedded-postgres/linux-x64": "16.14.0-beta.17",
+      "@embedded-postgres/linux-arm64": "16.14.0-beta.17",
+      "@embedded-postgres/darwin-arm64": "16.14.0-beta.17",
+      "@embedded-postgres/darwin-x64": "16.14.0-beta.17"
     }
+  },
+  "dependencies": {
+    "embedded-postgres": "16.14.0-beta.17"
   }
 }
