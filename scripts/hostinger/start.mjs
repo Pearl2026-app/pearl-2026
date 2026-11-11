@@ -6,13 +6,16 @@
 import { spawn } from 'node:child_process';
 import http from 'node:http';
 import { createRequire } from 'node:module';
-import { dirname, join } from 'node:path';
+import { delimiter, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const PORT = Number(process.env.PORT ?? 3000);
 const PUBLIC_URL = (process.env.PUBLIC_URL ?? `http://localhost:${PORT}`).replace(/\/+$/, '');
 const PORTS = { api: 4100, web: 4101, admin: 4102 };
+// Hostinger starts this file by node's full path without node on PATH, so tools run as scripts (Prisma's migrate,
+// which the API runs at start) fail with "node: not found": put this node's folder first on PATH for every part.
+process.env.PATH = [dirname(process.execPath), process.env.PATH].filter(Boolean).join(delimiter);
 
 // No DATABASE_URL: the shop runs its own PostgreSQL here (scripts/hostinger/db.mjs).
 let ownDb = null;
