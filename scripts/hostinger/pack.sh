@@ -2,7 +2,7 @@
 # Packs the shop for a Hostinger Web App upload (hPanel → Web Apps → Upload your files) when Git deployment is not
 # available (it is switched off while a collaborator manages the account). Hostinger's form only offers the
 # package.json scripts named build/dev/lint/test as the build command, so inside the archive "build" runs
-# scripts/hostinger/build.sh (in the repository it stays the turbo build that CI uses). Uploads from the browser
+# scripts/hostinger/build.sh directly (in the repository, scripts/build.mjs picks it on Hostinger and turbo elsewhere). Uploads from the browser
 # tool are limited to 10 MB, so the product videos are left out with NO_VIDEOS=1.
 set -euo pipefail
 cd "$(dirname "$0")/../.."
