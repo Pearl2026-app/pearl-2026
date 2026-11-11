@@ -9,6 +9,13 @@ cd "$(dirname "$0")/../.."
 PNPM="pnpm"
 command -v pnpm >/dev/null 2>&1 || PNPM="npx -y pnpm@9.12.0"
 
+# pnpm's store for this build lives in this folder and is deleted at the end (the plan counts every file). The store
+# Hostinger's own `pnpm install` used before this script is remembered, to be emptied at the end too; that install's
+# node_modules is removed first, as pnpm will not reuse modules linked from another store.
+HOST_STORE="$($PNPM store path 2>/dev/null || true)"
+export npm_config_store_dir="$PWD/.pnpm-store"
+[ -n "${KEEP_NODE_MODULES:-}" ] || [ -n "${SKIP_INSTALL:-}" ] || rm -rf node_modules apps/*/node_modules packages/*/node_modules
+
 [ -n "${SKIP_INSTALL:-}" ] || $PNPM install --frozen-lockfile --filter sahyadri-pearls --filter "@sahyadri/web..." --filter "@sahyadri/admin..." --filter "@sahyadri/api..."
 # the website's and the admin's server-side calls to the API stay inside the app (start.mjs runs the API here);
 # the admin bakes this into its rewrites at build time
@@ -39,6 +46,9 @@ if [ -z "${KEEP_NODE_MODULES:-}" ]; then
   $PNPM install --frozen-lockfile --prod --store-dir "$PWD/.pnpm-store" --filter sahyadri-pearls --filter "@sahyadri/api..."
   (cd packages/db && ./node_modules/.bin/prisma generate)
   rm -rf .pnpm-store
+  case "$HOST_STORE" in
+    "$HOME"/*pnpm*) case "$HOST_STORE" in "$PWD"/*) ;; *) rm -rf "$HOST_STORE" && echo "Emptied pnpm's store at $HOST_STORE" ;; esac ;;
+  esac
   echo "Files kept: $(find . -path ./.git -prune -o -print | wc -l)"
 fi
 echo "Build finished."
