@@ -15,10 +15,14 @@ import { fileURLToPath } from 'node:url';
 const site = /[\\/]domains[\\/]([^\\/]+)[\\/]/.exec(fileURLToPath(import.meta.url))?.[1] ?? 'default';
 const sitePort = 5433 + ([...site].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7) % 400);
 
-/** Is something answering on this port? */
+// PostgreSQL is reached over its Unix socket in /tmp, never TCP: the processes of a Hostinger app cannot reach
+// each other over 127.0.0.1 (a server listening there is never answered).
+const SOCKET_DIR = '/tmp';
+
+/** Is PostgreSQL answering on its socket? */
 const reachable = (port) =>
   new Promise((done) => {
-    const s = connect({ host: '127.0.0.1', port }, () => (s.end(), done(true)));
+    const s = connect({ path: join(SOCKET_DIR, `.s.PGSQL.${port}`) }, () => (s.end(), done(true)));
     s.on('error', () => done(false));
     s.setTimeout(3000, () => (s.destroy(), done(false)));
   });
@@ -34,18 +38,23 @@ export async function ownDatabase() {
   const port = Number(process.env.SP_DB_PORT ?? sitePort);
   // PostgreSQL's own messages go to the app's runtime log, so a stop or a refusal there can be seen
   const say = (m) => String(m).split('\n').forEach((l) => l.trim() && console.log('[pg]', l.trim()));
-  const pg = new EmbeddedPostgres({ databaseDir: dataDir, user: 'sahyadri', password, port, persistent: true, onLog: say, onError: (e) => console.error('[db]', String(e)) });
+  const pg = new EmbeddedPostgres({ databaseDir: dataDir, user: 'sahyadri', password, port, persistent: true, postgresFlags: ['-c', `unix_socket_directories=${SOCKET_DIR}`], onLog: say, onError: (e) => console.error('[db]', String(e)) });
   if (!existsSync(join(dataDir, 'PG_VERSION'))) {
     console.log(`[db] creating the database in ${dataDir} (first start)`);
     await pg.initialise();
   }
   await pg.start();
   pg.process?.on?.('exit', (code, signal) => console.error(`[db] PostgreSQL stopped (${code ?? signal})`));
-  console.log(`[db] PostgreSQL on 127.0.0.1:${port}: ${(await reachable(port)) ? 'answering' : 'NOT answering'}`);
+  console.log(`[db] PostgreSQL on ${SOCKET_DIR}/.s.PGSQL.${port}: ${(await reachable(port)) ? 'answering' : 'NOT answering'}`);
+  const admin = pg.getPgClient('postgres', SOCKET_DIR);
   try {
-    await pg.createDatabase('sahyadri');
-  } catch {
-    // already there
+    await admin.connect();
+    const { rowCount } = await admin.query("SELECT 1 FROM pg_database WHERE datname = 'sahyadri'");
+    if (!rowCount) await admin.query('CREATE DATABASE sahyadri');
+  } catch (e) {
+    console.error('[db] could not create the database:', String(e));
+  } finally {
+    await admin.end().catch(() => {});
   }
   const stop = async () => {
     try {
@@ -54,5 +63,5 @@ export async function ownDatabase() {
       // already stopped
     }
   };
-  return { url: `postgresql://sahyadri:${password}@127.0.0.1:${port}/sahyadri`, stop };
+  return { url: `postgresql://sahyadri:${password}@localhost:${port}/sahyadri?host=${SOCKET_DIR}`, stop };
 }
