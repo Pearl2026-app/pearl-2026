@@ -21,4 +21,24 @@ $PNPM --filter "@sahyadri/admin..." build
 MEDIA="$PWD/apps/api/bundled-media"
 rm -rf "$MEDIA" && mkdir -p "$MEDIA"
 (cd packages/db && STORAGE_LOCAL_DIR="$MEDIA" npx tsx seed/draw-samples.ts) || echo "WARNING: sample art not drawn; the shop still runs."
+
+# Keep only what runs (owner, 11 Nov: the Business plan's 600,000-file limit, shared with the WordPress sites, was
+# exceeded by a full install, about 125,000 files a copy, and Hostinger keeps several copies). The website and the
+# admin run from Next's standalone output (a few thousand files each, with only the packages they use); everything
+# else is reinstalled with only the runtime packages of the API and the root (about 22,000 files), and pnpm's own
+# store is kept in this folder and deleted. KEEP_NODE_MODULES=1 skips this (a local test build).
+if [ -z "${KEEP_NODE_MODULES:-}" ]; then
+  rm -rf deploy && mkdir -p deploy
+  for app in web admin; do
+    cp -a "apps/$app/.next/standalone" "deploy/$app"
+    cp -a "apps/$app/.next/static" "deploy/$app/apps/$app/.next/static"
+    [ -d "apps/$app/public" ] && cp -a "apps/$app/public" "deploy/$app/apps/$app/public"
+    rm -rf "apps/$app/.next"
+  done
+  rm -rf node_modules apps/*/node_modules packages/*/node_modules .pnpm-store
+  $PNPM install --frozen-lockfile --prod --store-dir "$PWD/.pnpm-store" --filter sahyadri-pearls --filter "@sahyadri/api..."
+  (cd packages/db && ./node_modules/.bin/prisma generate)
+  rm -rf .pnpm-store
+  echo "Files kept: $(find . -path ./.git -prune -o -print | wc -l)"
+fi
 echo "Build finished."

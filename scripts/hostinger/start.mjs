@@ -4,6 +4,7 @@
 // restarted if it stops. Settings come from the app's environment variables in hPanel (see docs/HOSTINGER.md); without
 // DATABASE_URL the shop runs its own PostgreSQL beside it.
 import { spawn } from 'node:child_process';
+import { existsSync } from 'node:fs';
 import http from 'node:http';
 import { createRequire } from 'node:module';
 import { delimiter, dirname, join } from 'node:path';
@@ -37,11 +38,17 @@ const shared = {
 };
 if (!PUBLIC_URL.startsWith('https://')) shared.COOKIE_SECURE ??= 'false';
 
-const nextBin = (app) => createRequire(join(root, 'apps', app, 'package.json')).resolve('next/dist/bin/next');
+// The website and the admin: Next's standalone server from deploy/ (build.sh), or `next start` in a local test build.
+const nextPart = (app, port) => {
+  const standalone = join(root, 'deploy', app, 'apps', app);
+  if (existsSync(join(standalone, 'server.js'))) return { cwd: standalone, args: ['server.js'], env: { PORT: String(port), HOSTNAME: '127.0.0.1' } };
+  const next = createRequire(join(root, 'apps', app, 'package.json')).resolve('next/dist/bin/next');
+  return { cwd: join(root, 'apps', app), args: [next, 'start', '-p', String(port), '-H', '127.0.0.1'], env: {} };
+};
 const parts = {
   api: { cwd: join(root, 'apps/api'), args: ['--enable-source-maps', 'dist/main.js'], env: { PORT: String(PORTS.api) } },
-  web: { cwd: join(root, 'apps/web'), args: [nextBin('web'), 'start', '-p', String(PORTS.web), '-H', '127.0.0.1'], env: {} },
-  admin: { cwd: join(root, 'apps/admin'), args: [nextBin('admin'), 'start', '-p', String(PORTS.admin), '-H', '127.0.0.1'], env: {} },
+  web: nextPart('web', PORTS.web),
+  admin: nextPart('admin', PORTS.admin),
 };
 const keep = (name) => {
   const p = parts[name];

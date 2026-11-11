@@ -13,6 +13,9 @@ git ls-files | grep -vE '^(docs/|e2e/|Dockerfile|scripts/demo/space/|apps/web/pu
 tar -cf "$STAGE/src.tar" -T "$STAGE/files.txt"
 mkdir "$STAGE/src" && tar -xf "$STAGE/src.tar" -C "$STAGE/src"
 node -e "const f='$STAGE/src/package.json',p=require(f);p.scripts.build='bash scripts/hostinger/build.sh';require('fs').writeFileSync(f,JSON.stringify(p,null,2)+'\n')"
+# Hostinger's own `pnpm install` before the build: only the root's packages (build.sh installs what each app needs),
+# with pnpm's store inside the folder so build.sh can delete it (the plan counts every file against its limit)
+printf 'recursive-install=false\nstore-dir=.pnpm-store\n' >> "$STAGE/src/.npmrc"
 tar -czf "$OUT" -C "$STAGE/src" .
 rm -rf "$STAGE"
 ls -la "$OUT"

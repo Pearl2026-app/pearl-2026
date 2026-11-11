@@ -21,12 +21,12 @@
   },
   "dependencies": {
     "@prisma/client": "~6.19.3",
-    "@sahyadri/shared": "workspace:*"
+    "@sahyadri/shared": "workspace:*",
+    "prisma": "~6.19.3",
+    "tsx": "^4.20.0"
   },
   "devDependencies": {
     "@types/node": "^22.10.0",
-    "prisma": "~6.19.3",
-    "tsx": "^4.20.0",
     "typescript": "~5.9.3"
   }
 }
