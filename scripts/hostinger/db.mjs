@@ -44,7 +44,7 @@ export async function ownDatabase({ onStop } = {}) {
   // one already answering (left by an app process that was killed outright): use it rather than start a second
   if (await reachable(port)) {
     console.log(`[db] PostgreSQL already running on ${SOCKET_DIR}/.s.PGSQL.${port}; using it`);
-    return { url, stop: async () => {} };
+    return { url, stop: async () => {}, alive: () => reachable(port) };
   }
   if (!existsSync(join(dataDir, 'PG_VERSION'))) {
     console.log(`[db] creating the database in ${dataDir} (first start)`);
@@ -75,5 +75,5 @@ export async function ownDatabase({ onStop } = {}) {
       // already stopped
     }
   };
-  return { url, stop };
+  return { url, stop, alive: () => reachable(port) };
 }

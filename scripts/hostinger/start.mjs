@@ -39,12 +39,29 @@ async function shutdown(code = 0) {
 }
 for (const sig of ['SIGTERM', 'SIGINT']) process.on(sig, () => void shutdown(0));
 
-// No DATABASE_URL: the shop runs its own PostgreSQL here (scripts/hostinger/db.mjs).
+// No DATABASE_URL: the shop runs its own PostgreSQL here (scripts/hostinger/db.mjs). It is checked every 10 s and
+// started again if it is gone (12 Nov: when Hostinger restarts the app, the new copy can start while the old one is
+// still running, use the old one's database, and lose it when the old copy stops; admin sign-in then failed).
 if (!process.env.DATABASE_URL) {
   const { ownDatabase } = await import('./db.mjs');
-  // if PostgreSQL stops by itself, the whole app stops so Hostinger starts it again cleanly
-  ownDb = await ownDatabase({ onStop: () => shutdown(1) });
+  let healing = false;
+  const heal = async () => {
+    if (healing || stopping) return;
+    healing = true;
+    try {
+      if (!(await ownDb.alive())) {
+        console.error('[db] PostgreSQL is not answering; starting it again');
+        ownDb = await ownDatabase({ onStop: () => void heal() });
+      }
+    } catch (e) {
+      console.error('[db] could not start PostgreSQL again:', String(e));
+    } finally {
+      healing = false;
+    }
+  };
+  ownDb = await ownDatabase({ onStop: () => void heal() });
   process.env.DATABASE_URL = ownDb.url;
+  setInterval(() => void heal(), 10_000).unref();
 }
 
 const shared = {
