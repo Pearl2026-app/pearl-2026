@@ -25,13 +25,26 @@ const shim = join(root, 'scripts', 'hostinger', 'socket-shim.cjs');
 // which the API runs at start) fail with "node: not found": put this node's folder first on PATH for every part.
 process.env.PATH = [dirname(process.execPath), process.env.PATH].filter(Boolean).join(delimiter);
 
-// No DATABASE_URL: the shop runs its own PostgreSQL here (scripts/hostinger/db.mjs).
 let ownDb = null;
+// Stopping (Hostinger restarts or idles the app): stop the parts and the database too, so nothing is left running
+// without the rest (11 Nov: an API left behind kept answering with no database, and admin sign-in failed).
+const children = new Map();
+let stopping = false;
+async function shutdown(code = 0) {
+  if (stopping) return;
+  stopping = true;
+  for (const c of children.values()) c.kill('SIGTERM');
+  await ownDb?.stop();
+  process.exit(code);
+}
+for (const sig of ['SIGTERM', 'SIGINT']) process.on(sig, () => void shutdown(0));
+
+// No DATABASE_URL: the shop runs its own PostgreSQL here (scripts/hostinger/db.mjs).
 if (!process.env.DATABASE_URL) {
   const { ownDatabase } = await import('./db.mjs');
-  ownDb = await ownDatabase();
+  // if PostgreSQL stops by itself, the whole app stops so Hostinger starts it again cleanly
+  ownDb = await ownDatabase({ onStop: () => shutdown(1) });
   process.env.DATABASE_URL = ownDb.url;
-  for (const sig of ['SIGTERM', 'SIGINT']) process.on(sig, () => void ownDb.stop().finally(() => process.exit(0)));
 }
 
 const shared = {
@@ -61,7 +74,9 @@ const parts = {
 const keep = (name) => {
   const p = parts[name];
   const child = spawn(process.execPath, ['-r', shim, ...p.args], { cwd: p.cwd, env: { ...shared, ...p.env, LISTEN_SOCKET: SOCK[name] }, stdio: 'inherit' });
+  children.set(name, child);
   child.on('exit', (code) => {
+    if (stopping) return;
     console.error(`[shop] ${name} stopped (${code}); restarting in 2 s`);
     setTimeout(() => keep(name), 2000);
   });

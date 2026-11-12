@@ -12,6 +12,11 @@ const { Readable } = require('node:stream');
 
 const LISTEN = process.env.LISTEN_SOCKET;
 if (LISTEN) {
+  // a part never outlives the router that started it (if the router is killed outright, it would otherwise keep
+  // running on its own, without the database)
+  const parent = process.ppid;
+  setInterval(() => process.ppid !== parent && process.exit(0), 5000).unref();
+
   const listen = net.Server.prototype.listen;
   let taken = false;
   net.Server.prototype.listen = function (...args) {

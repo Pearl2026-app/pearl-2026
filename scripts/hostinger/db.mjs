@@ -27,7 +27,8 @@ const reachable = (port) =>
     s.setTimeout(3000, () => (s.destroy(), done(false)));
   });
 
-export async function ownDatabase() {
+/** onStop: called if PostgreSQL stops by itself (not through stop()). */
+export async function ownDatabase({ onStop } = {}) {
   const { default: EmbeddedPostgres } = await import('embedded-postgres');
   const base = process.env.SP_DB_DIR ?? join(homedir(), 'sahyadri-db', site);
   const dataDir = join(base, 'data');
@@ -39,12 +40,22 @@ export async function ownDatabase() {
   // PostgreSQL's own messages go to the app's runtime log, so a stop or a refusal there can be seen
   const say = (m) => String(m).split('\n').forEach((l) => l.trim() && console.log('[pg]', l.trim()));
   const pg = new EmbeddedPostgres({ databaseDir: dataDir, user: 'sahyadri', password, port, persistent: true, postgresFlags: ['-c', `unix_socket_directories=${SOCKET_DIR}`], onLog: say, onError: (e) => console.error('[db]', String(e)) });
+  const url = `postgresql://sahyadri:${password}@localhost:${port}/sahyadri?host=${SOCKET_DIR}`;
+  // one already answering (left by an app process that was killed outright): use it rather than start a second
+  if (await reachable(port)) {
+    console.log(`[db] PostgreSQL already running on ${SOCKET_DIR}/.s.PGSQL.${port}; using it`);
+    return { url, stop: async () => {} };
+  }
   if (!existsSync(join(dataDir, 'PG_VERSION'))) {
     console.log(`[db] creating the database in ${dataDir} (first start)`);
     await pg.initialise();
   }
   await pg.start();
-  pg.process?.on?.('exit', (code, signal) => console.error(`[db] PostgreSQL stopped (${code ?? signal})`));
+  let stopping = false;
+  pg.process?.on?.('exit', (code, signal) => {
+    console.error(`[db] PostgreSQL stopped (${code ?? signal})`);
+    if (!stopping) onStop?.();
+  });
   console.log(`[db] PostgreSQL on ${SOCKET_DIR}/.s.PGSQL.${port}: ${(await reachable(port)) ? 'answering' : 'NOT answering'}`);
   const admin = pg.getPgClient('postgres', SOCKET_DIR);
   try {
@@ -57,11 +68,12 @@ export async function ownDatabase() {
     await admin.end().catch(() => {});
   }
   const stop = async () => {
+    stopping = true;
     try {
       await pg.stop();
     } catch {
       // already stopped
     }
   };
-  return { url: `postgresql://sahyadri:${password}@localhost:${port}/sahyadri?host=${SOCKET_DIR}`, stop };
+  return { url, stop };
 }
